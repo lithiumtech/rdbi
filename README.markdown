@@ -4,6 +4,30 @@ RDBI
 RDBI provides a convenience interface for Lua operations with Redis in Java. It uses Jedis as the Redis driver and is not
 an abstraction layer ontop of Jedis. It tries to make Lua operations with Jedis simpler and cleaner.
 
+USAGE
+-----
+
+	static interface TestDAO {
+		@RedisQuery(
+	    	"redis.call('SET',  KEYS[1], ARGV[1]);" +
+	        "return 0;"
+	    )
+	    int testExec(List<String> keys, List<String> args);
+	}
+	
+	...
+	
+	RDBI rdbi = new RDBI(new JedisPool("localhost"));
+
+	rdbi.withHandle(new RDBICallback<Object>() {
+			@Override
+	        public Object run(JedisHandle handle) {
+	                assertEquals(handle.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
+	                return null;
+	            }
+	});
+
+
 TODO
 ----
 
