@@ -13,6 +13,13 @@ public class RDBI {
         this.pool = pool;
     }
 
+    /**
+     * Attaches a jedis handle and run with handle. RDBI will take care of the resource cleanup and exception propagation
+     *
+     * @param callback The callback instance
+     * @param <T> the class type the callback will return
+     * @return the value the callback class will return
+     */
     public <T> T withHandle(RDBICallback<T> callback) {
         Jedis resource = pool.getResource();
         JedisHandle handle = new JedisHandle(resource);
