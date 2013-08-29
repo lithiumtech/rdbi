@@ -7,7 +7,7 @@ an abstraction layer ontop of Jedis. It tries to make Lua operations with Jedis 
 USAGE
 -----
 
-	static interface TestDAO {
+	private static interface TestDAO {
 		@RedisQuery(
 	    	"redis.call('SET',  KEYS[1], ARGV[1]);" +
 	        "return 0;"
@@ -19,12 +19,11 @@ USAGE
 	
 	RDBI rdbi = new RDBI(new JedisPool("localhost"));
 
-	rdbi.withHandle(new RDBICallback<Object>() {
+	rdbi.withHandle(new RDBICallback<Integer>() {
 			@Override
-	        public Object run(JedisHandle handle) {
-	                assertEquals(handle.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
-	                return null;
-	            }
+	        public Integer run(JedisHandle handle) {
+	        	return handle.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world"));
+	        }
 	});
 
 
