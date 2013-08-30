@@ -49,7 +49,7 @@ class ProxyFactory {
             factory = (Factory) e.create();
             factoryCache.putIfAbsent(t, factory);
         }
-        return (T) factory.newInstance(new ContextMethodInterceptor(jedis, methodContextCache.get(t)));
+        return (T) factory.newInstance(new MethodContextInterceptor(jedis, methodContextCache.get(t)));
     }
 
     private static <T> void buildMethodContext(Class<T> t, Jedis jedis) throws IllegalAccessException, InstantiationException {

@@ -8,12 +8,12 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
-class ContextMethodInterceptor implements MethodInterceptor {
+class MethodContextInterceptor implements MethodInterceptor {
 
     private final Jedis jedis;
     private final Map<Method, MethodContext> contexts;
 
-    ContextMethodInterceptor(Jedis jedis, Map<Method, MethodContext> contexts) {
+    MethodContextInterceptor(Jedis jedis, Map<Method, MethodContext> contexts) {
         this.jedis = jedis;
         this.contexts = contexts;
     }

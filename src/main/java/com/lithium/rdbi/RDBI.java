@@ -5,6 +5,9 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisException;
 
+import javax.annotation.concurrent.ThreadSafe;
+
+@ThreadSafe
 public class RDBI {
 
     private JedisPool pool;
