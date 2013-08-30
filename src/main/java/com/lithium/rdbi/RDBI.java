@@ -20,7 +20,7 @@ public class RDBI {
      * @param <T> the class type the callback will return
      * @return the value the callback class will return
      */
-    public <T> T withHandle(RDBICallback<T> callback) {
+    public <T> T withHandle(JedisCallback<T> callback) {
         Jedis resource = pool.getResource();
         JedisHandle handle = new JedisHandle(resource);
 

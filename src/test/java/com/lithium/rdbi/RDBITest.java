@@ -15,17 +15,10 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
 public class RDBITest {
-
-    static interface TestDAO2 {
-        @RedisQuery(
-            "redis.call('SET',  KEYS[1], ARGV[1]);" +
-            "return 0;"
-        )
-        int testExec2(List<String> keys, List<String> args);
-    }
 
     static interface TestDAO {
         @RedisQuery(
@@ -35,23 +28,59 @@ public class RDBITest {
         int testExec(List<String> keys, List<String> args);
     }
 
+    static interface TestCopyDAO {
+        @RedisQuery(
+                "redis.call('SET',  KEYS[1], ARGV[1]);" +
+                        "return 0;"
+        )
+        int testExec2(List<String> keys, List<String> args);
+    }
+
+    static class BasicObjectUnderTest {
+
+        private final String input;
+
+        public BasicObjectUnderTest(Integer input) {
+            this.input = input.toString();
+        }
+
+        public String getInput() {
+            return input;
+        }
+    }
+    static class BasicRedisResultMapper implements RedisResultMapper<BasicObjectUnderTest> {
+        @Override
+        public BasicObjectUnderTest map(Object result) {
+            return new BasicObjectUnderTest((Integer) result);
+        }
+    }
+    static interface TestDAOWithResultSetMapper {
+
+        @RedisQuery(
+            "redis.call('SET',  KEYS[1], ARGV[1]);" +
+            "return 0;"
+        )
+        @Mapper(BasicRedisResultMapper.class)
+        BasicObjectUnderTest testExec(List<String> keys, List<String> args);
+    }
+
     @Test
     public void testExceptionThrownInRDBIAttach() {
         RDBI rdbi = new RDBI(getBadJedisPool());
 
         try {
-            rdbi.withHandle(new RDBICallback<Void>() {
+            rdbi.withHandle(new JedisCallback<Void>() {
                 @Override
                 public Void run(JedisHandle handle) {
-                    handle.attach(TestDAO2.class);
+                    handle.attach(TestCopyDAO.class);
                     return null;
                 }
             });
             fail("Should have thrown exception for loadScript error");
         } catch (RuntimeException e) {
             //expected
-            assertFalse(RDBIProxyFactory.factoryCache.containsKey(TestDAO2.class));
-            assertFalse(RDBIProxyFactory.sha1Cache.containsKey(TestDAO2.class));
+            assertFalse(ProxyFactory.factoryCache.containsKey(TestCopyDAO.class));
+            assertFalse(ProxyFactory.methodContextCache.containsKey(TestCopyDAO.class));
         }
     }
 
@@ -60,7 +89,7 @@ public class RDBITest {
         RDBI rdbi = new RDBI(getBadJedisPool());
 
         try {
-            rdbi.withHandle(new RDBICallback<Void>() {
+            rdbi.withHandle(new JedisCallback<Void>() {
                 @Override
                 public Void run(JedisHandle handle) {
                     handle.jedis().get("hello");
@@ -79,14 +108,14 @@ public class RDBITest {
 
         RDBI rdbi = new RDBI(getJedisPool());
 
-        rdbi.withHandle(new RDBICallback<Object>() {
+        rdbi.withHandle(new JedisCallback<Object>() {
             @Override
             public Object run(JedisHandle handle) {
                 assertEquals(handle.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
                 return null;
             }
         });
-        rdbi.withHandle(new RDBICallback<Void>() {
+        rdbi.withHandle(new JedisCallback<Void>() {
             @Override
             public Void run(JedisHandle handle) {
                 assertEquals(handle.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
@@ -94,14 +123,29 @@ public class RDBITest {
             }
         });
 
-        assertTrue(RDBIProxyFactory.factoryCache.containsKey(TestDAO.class));
-        assertTrue(RDBIProxyFactory.sha1Cache.containsKey(TestDAO.class));
+        assertTrue(ProxyFactory.factoryCache.containsKey(TestDAO.class));
+        assertTrue(ProxyFactory.methodContextCache.containsKey(TestDAO.class));
 
-        rdbi.withHandle(new RDBICallback<Object>() {
+        rdbi.withHandle(new JedisCallback<Object>() {
             @Override
             public Object run(JedisHandle handle) {
                 String result = handle.jedis().get("hello");
                 assertEquals("world", result);
+                return null;
+            }
+        });
+    }
+
+    @Test
+    public void testAttachWithResultSetMapper() {
+        RDBI rdbi = new RDBI(getJedisPool());
+
+        rdbi.withHandle(new JedisCallback<Object>() {
+            @Override
+            public Object run(JedisHandle handle) {
+                BasicObjectUnderTest dut = handle.attach(TestDAOWithResultSetMapper.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world"));
+                assertNotNull(dut);
+                assertEquals(dut.getInput(), "0");
                 return null;
             }
         });

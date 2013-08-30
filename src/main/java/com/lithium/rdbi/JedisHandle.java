@@ -15,6 +15,6 @@ public class JedisHandle {
     }
 
     public <T> T attach(Class<T> type) {
-        return RDBIProxyFactory.attach(jedis, type);
+        return ProxyFactory.attach(jedis, type);
     }
 }

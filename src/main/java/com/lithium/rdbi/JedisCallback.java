@@ -1,5 +1,5 @@
 package com.lithium.rdbi;
 
-public interface RDBICallback<T> {
+public interface JedisCallback<T> {
     T run(JedisHandle handle);
 }
