@@ -8,21 +8,23 @@ import net.sf.cglib.proxy.Factory;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 class ProxyFactory {
 
     @VisibleForTesting
-    static final ConcurrentMap<Class<?>, Factory> factoryCache = Maps.newConcurrentMap();
+    final ConcurrentMap<Class<?>, Factory> factoryCache = Maps.newConcurrentMap();
 
     @VisibleForTesting
-    static final ConcurrentMap<Class<?>, Map<Method, MethodContext>> methodContextCache = Maps.newConcurrentMap();
+    final ConcurrentMap<Class<?>, Map<Method, MethodContext>> methodContextCache = Maps.newConcurrentMap();
 
     @SuppressWarnings("unchecked")
-    static <T> T attach(final Jedis jedis, final Class<T> t) {
+    <T> T attach(final JedisPool pool, final Jedis jedis, final Class<T> t) {
 
         Factory factory;
         if (factoryCache.containsKey(t)) {
@@ -38,7 +40,7 @@ class ProxyFactory {
             }
 
             Enhancer e = new Enhancer();
-            e.setSuperclass(t);
+            e.setInterfaces(new Class[]{t, RDBIClosable.class});
             e.setCallback(new MethodInterceptor() {
                 @Override
                 public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
@@ -49,10 +51,10 @@ class ProxyFactory {
             factory = (Factory) e.create();
             factoryCache.putIfAbsent(t, factory);
         }
-        return (T) factory.newInstance(new MethodContextInterceptor(jedis, methodContextCache.get(t)));
+        return (T) factory.newInstance(new MethodContextInterceptor(pool, jedis, methodContextCache.get(t)));
     }
 
-    private static <T> void buildMethodContext(Class<T> t, Jedis jedis) throws IllegalAccessException, InstantiationException {
+    private <T> void buildMethodContext(Class<T> t, Jedis jedis) throws IllegalAccessException, InstantiationException {
 
         if (methodContextCache.containsKey(t)) {
             return;
@@ -64,8 +66,16 @@ class ProxyFactory {
 
             RedisQuery redisQuery = method.getAnnotation(RedisQuery.class);
             String queryStr = redisQuery.value();
-            method.getParameterAnnotations();
-            String sha1 = jedis.scriptLoad(queryStr);
+
+            LuaContext luaContext = null;
+            String sha1;
+
+            if (isRawMethod(method)) {
+                sha1 = jedis.scriptLoad(queryStr);
+            } else {
+                luaContext = new LuaContextExtractor().render(queryStr, method);
+                sha1 = jedis.scriptLoad(luaContext.getRenderedLuaString());
+            }
 
             Mapper methodMapper = method.getAnnotation(Mapper.class);
             RedisResultMapper mapper = null;
@@ -73,9 +83,19 @@ class ProxyFactory {
                 mapper = methodMapper.value().newInstance();
             }
 
-            contexts.put(method, new MethodContext(sha1, mapper));
+            contexts.put(method, new MethodContext(sha1, mapper, luaContext));
         }
 
         methodContextCache.putIfAbsent(t, contexts);
+    }
+
+    /**
+     * If the method does not have @Bind or @BindKey it is assumed to be a call without script bindings
+     * @param method the function to check on
+     * @return true if the method is considered not to have any bindings needed
+     */
+    private boolean isRawMethod(Method method) {
+        return (method.getParameterTypes().length == 0)
+                || (method.getParameterTypes()[0] == List.class);
     }
 }

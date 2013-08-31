@@ -1,13 +1,18 @@
 package com.lithium.rdbi;
 
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
 
 public class JedisHandle {
 
+    private final JedisPool pool;
     private final Jedis jedis;
+    private final ProxyFactory proxyFactory;
 
-    public JedisHandle(Jedis jedis) {
+    public JedisHandle(JedisPool pool, Jedis jedis, ProxyFactory proxyFactory) {
+        this.pool = pool;
         this.jedis = jedis;
+        this.proxyFactory = proxyFactory;
     }
 
     public Jedis jedis() {
@@ -15,6 +20,6 @@ public class JedisHandle {
     }
 
     public <T> T attach(Class<T> type) {
-        return ProxyFactory.attach(jedis, type);
+        return proxyFactory.attach(pool, jedis, type);
     }
 }

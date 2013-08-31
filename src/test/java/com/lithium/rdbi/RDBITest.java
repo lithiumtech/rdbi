@@ -36,6 +36,18 @@ public class RDBITest {
         int testExec2(List<String> keys, List<String> args);
     }
 
+    static interface NoInputDAO {
+        @RedisQuery("return 0;")
+        int noInputMethod();
+    }
+
+    static interface DynamicDAO {
+        @RedisQuery(
+                "redis.call('SET', $a$, $b$); return 0;"
+        )
+        int testExect(@BindKey("a") String a, @Bind("b") String b);
+    }
+
     static class BasicObjectUnderTest {
 
         private final String input;
@@ -79,8 +91,8 @@ public class RDBITest {
             fail("Should have thrown exception for loadScript error");
         } catch (RuntimeException e) {
             //expected
-            assertFalse(ProxyFactory.factoryCache.containsKey(TestCopyDAO.class));
-            assertFalse(ProxyFactory.methodContextCache.containsKey(TestCopyDAO.class));
+            assertFalse(rdbi.proxyFactory.factoryCache.containsKey(TestCopyDAO.class));
+            assertFalse(rdbi.proxyFactory.methodContextCache.containsKey(TestCopyDAO.class));
         }
     }
 
@@ -123,8 +135,8 @@ public class RDBITest {
             }
         });
 
-        assertTrue(ProxyFactory.factoryCache.containsKey(TestDAO.class));
-        assertTrue(ProxyFactory.methodContextCache.containsKey(TestDAO.class));
+        assertTrue(rdbi.proxyFactory.factoryCache.containsKey(TestDAO.class));
+        assertTrue(rdbi.proxyFactory.methodContextCache.containsKey(TestDAO.class));
 
         rdbi.withHandle(new JedisCallback<Object>() {
             @Override
@@ -139,7 +151,6 @@ public class RDBITest {
     @Test
     public void testAttachWithResultSetMapper() {
         RDBI rdbi = new RDBI(getJedisPool());
-
         rdbi.withHandle(new JedisCallback<Object>() {
             @Override
             public Object run(JedisHandle handle) {
@@ -151,7 +162,51 @@ public class RDBITest {
         });
     }
 
-    private JedisPool getJedisPool() {
+    @Test
+    public void testMethodWithNoInput() {
+        RDBI rdbi = new RDBI(getJedisPool());
+        rdbi.withHandle(new JedisCallback<Object>() {
+            @Override
+            public Object run(JedisHandle handle) {
+                int ret = handle.attach(NoInputDAO.class).noInputMethod();
+                assertEquals(ret, 0);
+                return null;
+            }
+        });
+    }
+
+    @Test
+    public void testDynamicDAO() {
+        RDBI rdbi = new RDBI(getJedisPool());
+
+        rdbi.withHandle(new JedisCallback<Object>() {
+            @Override
+            public Object run(JedisHandle handle) {
+
+                handle.attach(DynamicDAO.class).testExect("a", "b");
+                return null;
+            }
+        });
+    }
+
+    @Test
+    public void testCacheHitDAO() {
+        RDBI rdbi = new RDBI(getJedisPool());
+
+        for (int i = 0; i < 2; i++) {
+            rdbi.withHandle(new JedisCallback<Object>() {
+                @Override
+                public Object run(JedisHandle handle) {
+                    handle.attach(DynamicDAO.class).testExect("a", "b");
+                    return null;
+                }
+            });
+            assertTrue(rdbi.proxyFactory.factoryCache.containsKey(DynamicDAO.class));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    static JedisPool getJedisPool() {
         Jedis jedis = mock(Jedis.class);
         when(jedis.scriptLoad(anyString())).thenReturn("my-sha1-hash");
         when(jedis.evalsha(anyString(), anyList(), anyList())).thenReturn(0);
@@ -162,11 +217,19 @@ public class RDBITest {
         return pool;
     }
 
-    private JedisPool getBadJedisPool() {
+    static JedisPool getBadJedisPool() {
         Jedis jedis = mock(Jedis.class);
         when(jedis.scriptLoad(anyString())).thenThrow(new JedisException("thrown in test"));
         when(jedis.get("hello")).thenThrow(new RuntimeException("runtime exception"));
 
+        JedisPool pool = mock(JedisPool.class);
+        when(pool.getResource()).thenReturn(jedis);
+        return pool;
+    }
+
+    static JedisPool getBadJedisPoolWithRuntimeException() {
+        Jedis jedis = mock(Jedis.class);
+        when(jedis.scriptLoad(anyString())).thenThrow(new RuntimeException("thrown in test"));
         JedisPool pool = mock(JedisPool.class);
         when(pool.getResource()).thenReturn(jedis);
         return pool;
