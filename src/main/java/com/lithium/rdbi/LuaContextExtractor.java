@@ -17,16 +17,16 @@ class LuaContextExtractor {
         int paramCounter = 0;
         Set<Integer> keys = Sets.newHashSet();
         int keyCounter = 0;
-        int argvCounter = 0;
+        int argCounter = 0;
         for ( Annotation[] annotations : annotationsParams) {
             String attribute = null;
             boolean isBind = false;
 
             for (Annotation annotation : annotations) {
-                if (annotation instanceof Bind) {
-                    attribute = ((Bind) annotation).value();
+                if (annotation instanceof BindArg) {
+                    attribute = ((BindArg) annotation).value();
                     isBind = true;
-                    argvCounter++;
+                    argCounter++;
                     break;
                 } else if (annotation instanceof BindKey) {
                     attribute = ((BindKey) annotation).value();
@@ -43,7 +43,7 @@ class LuaContextExtractor {
 
             String value;
             if (isBind) {
-                value = "ARGV[" + argvCounter + "]";
+                value = "ARGV[" + argCounter + "]";
             } else {
                 value = "KEY[" + keyCounter + "]";
                 keys.add(paramCounter);

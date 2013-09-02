@@ -4,12 +4,12 @@ class MethodContext {
 
     private final String sha1;
     private final RedisResultMapper mapper;
-    private final LuaContext tranformerContext;
+    private final LuaContext luaContext;
 
-    public MethodContext(String sha1, RedisResultMapper mapper, LuaContext tranformerContext) {
+    public MethodContext(String sha1, RedisResultMapper mapper, LuaContext luaContext) {
         this.sha1 = sha1;
         this.mapper = mapper;
-        this.tranformerContext = tranformerContext;
+        this.luaContext = luaContext;
     }
 
     public RedisResultMapper getMapper() {
@@ -20,11 +20,11 @@ class MethodContext {
         return sha1;
     }
 
-    public LuaContext getTranformerContext() {
-        return tranformerContext;
+    public LuaContext getLuaContext() {
+        return luaContext;
     }
 
     public boolean hasDynamicLists() {
-        return tranformerContext != null;
+        return luaContext != null;
     }
 }

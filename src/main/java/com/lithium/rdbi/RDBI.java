@@ -14,73 +14,33 @@ import javax.annotation.concurrent.ThreadSafe;
 @ThreadSafe
 public class RDBI {
 
-    private JedisPool pool;
+    private final JedisPool pool;
 
     @VisibleForTesting
-    ProxyFactory proxyFactory;
+    final ProxyFactory proxyFactory;
 
     public RDBI(JedisPool pool) {
         this.pool = pool;
         this.proxyFactory = new ProxyFactory();
     }
 
-    /**
-     * Attaches a jedis handle and run with handle. RDBI will take care of the resource cleanup and exception propagation
-     *
-     * @param callback The callback instance
-     * @param <T> the class type the callback will return
-     * @return the value the callback class will return
-     */
     public <T> T withHandle(JedisCallback<T> callback) {
-        Jedis resource = pool.getResource();
-        JedisHandle handle = new JedisHandle(pool, resource, proxyFactory);
 
+        JedisHandle handle = open();
         try {
             T result = callback.run(handle);
-            pool.returnResource(resource);
             return result;
         } catch (JedisException e) {
-            pool.returnBrokenResource(resource);
             throw Throwables.propagate(e);
         } catch (Exception e) {
-            pool.returnBrokenResource(resource);
             throw Throwables.propagate(e);
+        } finally {
+            handle.close();
         }
     }
 
-    public <T> T open(Class<T> t) {
+    public JedisHandle open() {
         Jedis resource = pool.getResource();
-
-        try {
-            return proxyFactory.attach(pool, resource, t);
-        } catch (JedisException e) {
-            pool.returnBrokenResource(resource);
-            throw Throwables.propagate(e);
-        } catch (Exception e) {
-            pool.returnBrokenResource(resource);
-            throw Throwables.propagate(e);
-        }
-    }
-
-    public Jedis getJedis() {
-        return pool.getResource();
-    }
-
-    public void returnBrokenJedis(Jedis jedis) {
-        pool.returnBrokenResource(jedis);
-    }
-
-    public void returnJedis(Jedis jedis) {
-        pool.returnBrokenResource(jedis);
-    }
-
-    public void closeBroken(Object t) {
-        RDBIClosable rdbiClosable = (RDBIClosable) t;
-        rdbiClosable.__rdbi__close_broken__();
-    }
-
-    public void close(Object t) {
-        RDBIClosable rdbiClosable = (RDBIClosable) t;
-        rdbiClosable.__rdbi__close__();
+        return new JedisHandle(pool, resource, proxyFactory);
     }
 }

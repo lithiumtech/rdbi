@@ -7,11 +7,11 @@ import static org.testng.Assert.assertEquals;
 public class LuaContextExtractorTest {
 
     public static abstract class MyTestDao {
-        public abstract void abba(@Bind("a") String a, @Bind("b") String b, @BindKey("c") String c);
+        public abstract void abba(@BindArg("a") String a, @BindArg("b") String b, @BindKey("c") String c);
     }
 
     public static interface MissingOneBindDao {
-        public void abba(@Bind("a") String a, String b);
+        public void abba(@BindArg("a") String a, String b);
     }
 
     @Test

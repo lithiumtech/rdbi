@@ -5,8 +5,6 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.Factory;
-import net.sf.cglib.proxy.MethodInterceptor;
-import net.sf.cglib.proxy.MethodProxy;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
@@ -17,11 +15,25 @@ import java.util.concurrent.ConcurrentMap;
 
 class ProxyFactory {
 
-    @VisibleForTesting
-    final ConcurrentMap<Class<?>, Factory> factoryCache = Maps.newConcurrentMap();
+    //http://www.slideshare.net/osoco/understanding-java-dynamic-proxies-14286900
 
     @VisibleForTesting
-    final ConcurrentMap<Class<?>, Map<Method, MethodContext>> methodContextCache = Maps.newConcurrentMap();
+    final ConcurrentMap<Class<?>, Factory> factoryCache;
+
+    @VisibleForTesting
+    final ConcurrentMap<Class<?>, Map<Method, MethodContext>> methodContextCache;
+
+    private final Factory jedisInterceptorFactory;
+
+    public ProxyFactory() {
+        factoryCache = Maps.newConcurrentMap();
+        methodContextCache =  Maps.newConcurrentMap();
+        jedisInterceptorFactory = JedisWrapperMethodInterceptor.newFactory();
+    }
+
+    JedisWrapper attachJedis(final Jedis jedis) {
+        return JedisWrapperMethodInterceptor.newInstance(jedisInterceptorFactory, jedis);
+    }
 
     @SuppressWarnings("unchecked")
     <T> T attach(final JedisPool pool, final Jedis jedis, final Class<T> t) {
@@ -40,18 +52,13 @@ class ProxyFactory {
             }
 
             Enhancer e = new Enhancer();
-            e.setInterfaces(new Class[]{t, RDBIClosable.class});
-            e.setCallback(new MethodInterceptor() {
-                @Override
-                public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
-                    return null;
-                }
-            });
+            e.setSuperclass(t);
+            e.setCallback(new MethodNoOpInterceptor());
 
             factory = (Factory) e.create();
             factoryCache.putIfAbsent(t, factory);
         }
-        return (T) factory.newInstance(new MethodContextInterceptor(pool, jedis, methodContextCache.get(t)));
+        return (T) factory.newInstance(new MethodContextInterceptor(jedis, methodContextCache.get(t)));
     }
 
     private <T> void buildMethodContext(Class<T> t, Jedis jedis) throws IllegalAccessException, InstantiationException {

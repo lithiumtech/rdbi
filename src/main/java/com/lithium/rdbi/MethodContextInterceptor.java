@@ -12,12 +12,10 @@ import java.util.Map;
 
 class MethodContextInterceptor implements MethodInterceptor {
 
-    private final JedisPool pool;
     private final Jedis jedis;
     private final Map<Method, MethodContext> contexts;
 
-    public MethodContextInterceptor(JedisPool pool, Jedis jedis, Map<Method, MethodContext> contexts) {
-        this.pool = pool;
+    public MethodContextInterceptor(Jedis jedis, Map<Method, MethodContext> contexts) {
         this.jedis = jedis;
         this.contexts = contexts;
     }
@@ -25,14 +23,6 @@ class MethodContextInterceptor implements MethodInterceptor {
     @Override
     @SuppressWarnings("unchecked")
     public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
-
-        if (method.getName().equals("__rdbi__close__")) {
-            this.pool.returnResource(jedis);
-            return null;
-        } else if (method.getName().equals("__rdbi__close_broken__")) {
-            this.pool.returnBrokenResource(jedis);
-            return null;
-        }
 
         MethodContext context = contexts.get(method);
 
@@ -60,7 +50,7 @@ class MethodContextInterceptor implements MethodInterceptor {
         List<String> argv = Lists.newArrayList();
 
         for (int i = 0; i < objects.length; i++) {
-            if (context.getTranformerContext().isKey(i)) {
+            if (context.getLuaContext().isKey(i)) {
                 keys.add((String) objects[i]);
             } else {
                 argv.add((String) objects[i]);

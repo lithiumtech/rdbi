@@ -45,7 +45,7 @@ public class RDBITest {
         @RedisQuery(
                 "redis.call('SET', $a$, $b$); return 0;"
         )
-        int testExect(@BindKey("a") String a, @Bind("b") String b);
+        int testExect(@BindKey("a") String a, @BindArg("b") String b);
     }
 
     static class BasicObjectUnderTest {
@@ -80,19 +80,16 @@ public class RDBITest {
     public void testExceptionThrownInRDBIAttach() {
         RDBI rdbi = new RDBI(getBadJedisPool());
 
+        JedisHandle handle = rdbi.open();
         try {
-            rdbi.withHandle(new JedisCallback<Void>() {
-                @Override
-                public Void run(JedisHandle handle) {
-                    handle.attach(TestCopyDAO.class);
-                    return null;
-                }
-            });
+            handle.attach(TestCopyDAO.class);
             fail("Should have thrown exception for loadScript error");
         } catch (RuntimeException e) {
             //expected
             assertFalse(rdbi.proxyFactory.factoryCache.containsKey(TestCopyDAO.class));
             assertFalse(rdbi.proxyFactory.methodContextCache.containsKey(TestCopyDAO.class));
+        } finally {
+            handle.close();
         }
     }
 
@@ -100,17 +97,14 @@ public class RDBITest {
     public void testExceptionThrownInNormalGet() {
         RDBI rdbi = new RDBI(getBadJedisPool());
 
+        JedisHandle handle = rdbi.open();
         try {
-            rdbi.withHandle(new JedisCallback<Void>() {
-                @Override
-                public Void run(JedisHandle handle) {
-                    handle.jedis().get("hello");
-                    return null;
-                }
-            });
+            handle.jedis().get("hello");
             fail("Should have thrown exception on get");
         } catch (Exception e) {
             //expected
+        } finally {
+            handle.close();
         }
     }
 
@@ -120,88 +114,83 @@ public class RDBITest {
 
         RDBI rdbi = new RDBI(getJedisPool());
 
-        rdbi.withHandle(new JedisCallback<Object>() {
-            @Override
-            public Object run(JedisHandle handle) {
-                assertEquals(handle.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
-                return null;
-            }
-        });
-        rdbi.withHandle(new JedisCallback<Void>() {
-            @Override
-            public Void run(JedisHandle handle) {
-                assertEquals(handle.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
-                return null;
-            }
-        });
+        JedisHandle handle1 = rdbi.open();
+        try {
+            assertEquals(handle1.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
+        } finally {
+            handle1.close();
+        }
+
+        JedisHandle handle2 = rdbi.open();
+        try {
+            assertEquals(handle2.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
+        } finally {
+            handle2.close();
+        }
 
         assertTrue(rdbi.proxyFactory.factoryCache.containsKey(TestDAO.class));
         assertTrue(rdbi.proxyFactory.methodContextCache.containsKey(TestDAO.class));
 
-        rdbi.withHandle(new JedisCallback<Object>() {
-            @Override
-            public Object run(JedisHandle handle) {
-                String result = handle.jedis().get("hello");
-                assertEquals("world", result);
-                return null;
-            }
-        });
+
+        JedisHandle handle3 = rdbi.open();
+        try {
+            assertEquals("world", handle3.jedis().get("hello"));
+        } finally {
+            handle3.close();
+        }
     }
 
     @Test
     public void testAttachWithResultSetMapper() {
         RDBI rdbi = new RDBI(getJedisPool());
-        rdbi.withHandle(new JedisCallback<Object>() {
-            @Override
-            public Object run(JedisHandle handle) {
-                BasicObjectUnderTest dut = handle.attach(TestDAOWithResultSetMapper.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world"));
-                assertNotNull(dut);
-                assertEquals(dut.getInput(), "0");
-                return null;
-            }
-        });
+
+        JedisHandle handle = rdbi.open();
+        try {
+            BasicObjectUnderTest dut = handle.attach(TestDAOWithResultSetMapper.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world"));
+            assertNotNull(dut);
+            assertEquals(dut.getInput(), "0");
+        } finally {
+            handle.close();
+        }
     }
 
     @Test
     public void testMethodWithNoInput() {
         RDBI rdbi = new RDBI(getJedisPool());
-        rdbi.withHandle(new JedisCallback<Object>() {
-            @Override
-            public Object run(JedisHandle handle) {
-                int ret = handle.attach(NoInputDAO.class).noInputMethod();
-                assertEquals(ret, 0);
-                return null;
-            }
-        });
+
+        JedisHandle handle = rdbi.open();
+        try {
+            int ret = handle.attach(NoInputDAO.class).noInputMethod();
+            assertEquals(ret, 0);
+        } finally {
+            handle.close();
+        }
     }
 
     @Test
     public void testDynamicDAO() {
         RDBI rdbi = new RDBI(getJedisPool());
+        JedisHandle handle = rdbi.open();
 
-        rdbi.withHandle(new JedisCallback<Object>() {
-            @Override
-            public Object run(JedisHandle handle) {
-
-                handle.attach(DynamicDAO.class).testExect("a", "b");
-                return null;
-            }
-        });
+        try {
+            handle.attach(DynamicDAO.class).testExect("a", "b");
+        } finally {
+            handle.close();
+        }
     }
 
     @Test
     public void testCacheHitDAO() {
         RDBI rdbi = new RDBI(getJedisPool());
+        JedisHandle handle = rdbi.open();
 
-        for (int i = 0; i < 2; i++) {
-            rdbi.withHandle(new JedisCallback<Object>() {
-                @Override
-                public Object run(JedisHandle handle) {
-                    handle.attach(DynamicDAO.class).testExect("a", "b");
-                    return null;
-                }
-            });
+        try {
+            for (int i = 0; i < 2; i++) {
+                handle.attach(DynamicDAO.class).testExect("a", "b");
+            }
             assertTrue(rdbi.proxyFactory.factoryCache.containsKey(DynamicDAO.class));
+        } finally {
+            handle.close();
         }
     }
 
