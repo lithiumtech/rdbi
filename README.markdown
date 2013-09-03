@@ -17,7 +17,7 @@ USAGE
 	    int testExec(List<String> keys, List<String> args);
 	}
 	
-	...
+	//...
 	
 	RDBI rdbi = new RDBI(new JedisPool("localhost"));
 
