@@ -37,6 +37,12 @@ USAGE
 	} finally {
 		handle.close();
 	}
+	
+	// Java 7 version:
+	try (JedisHandle handle = rdbi.open();) {
+		handle.jedis().get("a");
+		handle.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world"));
+	}
 
 TODO
 ----
