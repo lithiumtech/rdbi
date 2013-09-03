@@ -2,7 +2,7 @@ RDBI
 ====
 
 RDBI provides a convenience interface for Lua operations with Redis in Java. It uses Jedis as the Redis driver and is not
-an abstraction layer ontop of Jedis. It tries to make Lua operations with Jedis simpler and cleaner.
+an abstraction layer ontop of Jedis. It tries to make Lua operations with Jedis simpler and cleaner. Finally it cleans some Jedis usage up (why do I have to keep track that it's a broken jedis object?).
 
 Eventually I'd like RDBI to do service management of Redis cluster and automatic failover for the client, either via redis sentinal or zookeeper service pool.
 
