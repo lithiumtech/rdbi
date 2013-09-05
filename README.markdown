@@ -5,7 +5,7 @@ rDBI provides convenience utilites for Jedis, cleaning up some of Jedis's api pi
 # USAGE
 ## Cleanup of Jedis
 
-The main cleanup we like to make in Jedis is, if the jedis client came from a pool, it should know to return to that pool appropriately without having the application code keep track of the state of the Jedis client.
+The main cleanup we made with Jedis is, if the jedis client came from a pool, it should know to return to that pool without having the application code keep track of the state of the Jedis client or which pool to return to.
 
 	// You don't have to know if jedis is broken or which pool it comes from
 	// Just close the handle and you're good to go!
