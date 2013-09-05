@@ -2,9 +2,9 @@ package com.lithium.rdbi;
 
 import redis.clients.jedis.Jedis;
 
-public abstract class JedisWrapper extends Jedis {
+abstract class JedisWrapperDoNotUse extends Jedis {
 
-    JedisWrapper() {
+    JedisWrapperDoNotUse() {
         super("doesntmatter");
     }
 

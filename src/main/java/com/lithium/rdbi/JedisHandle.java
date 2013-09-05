@@ -10,7 +10,7 @@ public class JedisHandle implements AutoCloseable {
 
     private final JedisPool pool;
     private final Jedis jedis;
-    private JedisWrapper jedisWrapper;
+    private JedisWrapperDoNotUse jedisWrapper;
 
     private final ProxyFactory proxyFactory;
 
@@ -30,7 +30,7 @@ public class JedisHandle implements AutoCloseable {
     }
 
     public <T> T attach(Class<T> type) {
-        return proxyFactory.attach(pool, jedis(), type);
+        return proxyFactory.attach(jedis(), type);
     }
 
     @Override

@@ -1,4 +1,4 @@
-package com.lithium.rdbi.recipes.schedular;
+package com.lithium.rdbi.recipes.scheduler;
 
 public enum JobState {
     DELAYED,

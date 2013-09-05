@@ -1,4 +1,4 @@
-package com.lithium.rdbi.recipes.schedular;
+package com.lithium.rdbi.recipes.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;

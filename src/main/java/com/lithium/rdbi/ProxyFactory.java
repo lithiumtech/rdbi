@@ -6,7 +6,6 @@ import com.google.common.collect.Maps;
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.Factory;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -25,22 +24,22 @@ class ProxyFactory {
 
     private final Factory jedisInterceptorFactory;
 
-    public ProxyFactory() {
+    ProxyFactory() {
         factoryCache = Maps.newConcurrentMap();
         methodContextCache =  Maps.newConcurrentMap();
         jedisInterceptorFactory = JedisWrapperMethodInterceptor.newFactory();
     }
 
-    JedisWrapper attachJedis(final Jedis jedis) {
+    JedisWrapperDoNotUse attachJedis(final Jedis jedis) {
         return JedisWrapperMethodInterceptor.newInstance(jedisInterceptorFactory, jedis);
     }
 
     @SuppressWarnings("unchecked")
-    <T> T attach(final JedisPool pool, final Jedis jedis, final Class<T> t) {
+    <T> T attach(final Jedis jedis, final Class<T> t) {
 
         Factory factory;
         if (factoryCache.containsKey(t)) {
-            factory = factoryCache.get(t);
+            return (T) factoryCache.get(t).newInstance(new MethodContextInterceptor(jedis, methodContextCache.get(t)));
         } else {
 
             try {
@@ -57,8 +56,8 @@ class ProxyFactory {
 
             factory = (Factory) e.create();
             factoryCache.putIfAbsent(t, factory);
+            return (T) factory.newInstance(new MethodContextInterceptor(jedis, methodContextCache.get(t)));
         }
-        return (T) factory.newInstance(new MethodContextInterceptor(jedis, methodContextCache.get(t)));
     }
 
     private <T> void buildMethodContext(Class<T> t, Jedis jedis) throws IllegalAccessException, InstantiationException {

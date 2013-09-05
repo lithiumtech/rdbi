@@ -16,13 +16,14 @@ class JedisWrapperMethodInterceptor implements MethodInterceptor {
 
     static Factory newFactory() {
         Enhancer e = new Enhancer();
-        e.setSuperclass(JedisWrapper.class);
+        e.setClassLoader(Jedis.class.getClassLoader());
+        e.setSuperclass(JedisWrapperDoNotUse.class);
         e.setCallback(new MethodNoOpInterceptor());
         return (Factory) e.create();
     }
 
-    static JedisWrapper newInstance(final Factory factory, final Jedis realJedis) {
-        return (JedisWrapper) factory.newInstance(new JedisWrapperMethodInterceptor(realJedis));
+    static JedisWrapperDoNotUse newInstance(final Factory factory, final Jedis realJedis) {
+        return (JedisWrapperDoNotUse) factory.newInstance(new JedisWrapperMethodInterceptor(realJedis));
     }
 
     private JedisWrapperMethodInterceptor(Jedis jedis) {
@@ -34,7 +35,7 @@ class JedisWrapperMethodInterceptor implements MethodInterceptor {
     public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
         try {
 
-            if ( method.equals("__rdbi_isJedisBusted__")) {
+            if ( method.getName().equals("__rdbi_isJedisBusted__")) {
                 return jedisBusted;
             }
 
