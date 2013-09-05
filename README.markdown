@@ -1,10 +1,11 @@
-# RDBI
+# rDBI
 
-RDBI provides a convenience interface for [Lua queries](http://redis.io/commands/eval) with Redis using the Jedis Java driver. rDBI also tries to clean up some of Jedis's api pitfalls. rDBI is not an abstraction framework ontop of Jedis; it is a convenience library for Jedis, inspired by [jDBI](http://jdbi.org/). We even use many of jDBI's constructs!
-
+rDBI provides convenience utilites for Jedis. rDBI cleans up some of Jedis's api pitfalls by [automatically returning the Jedis resource to the pool](https://github.com/xetorthio/jedis/issues/44). It also has helper utilities for making [Lua script calls to Redis](http://redis.io/commands/eval) easier. rDBI library is inspired by the awesome library [jDBI](http://jdbi.org/), a convenience library for SQL.  
 
 # USAGE
 ## Cleanup of Jedis
+
+The main cleanup we like to make in Jedis is, if the jedis client came from a pool, it should know to return to that pool appropriately without having the application code keep track of the state of the Jedis client.
 
 	// You don't have to know if jedis is broken or which pool it comes from
 	// Just close the handle and you're good to go!
@@ -35,6 +36,8 @@ RDBI provides a convenience interface for [Lua queries](http://redis.io/commands
 
 
 ## Now onto Lua and Coolness:
+
+Jedis provides a basic way of loading a Lua script into Redis and eval the script by its sha1 hash. rDBI provides the same functionality but cleans it up so the application developer does not have to think about preloading the scripts on startup of the app and injecting in a hashmap of sha1 keys where ever they want to use Lua functionality. rDBI will cache the lua scripts internally and load them on demand while keeping it all threadsafe. The api is based off of [jDBI's fluent queries](http://jdbi.org/fluent_queries/).
 
 	private static interface TestDAO {
 		@RedisQuery(
@@ -80,8 +83,8 @@ TODO
 - ~~Naming of RDBI package protected classes~~
 - ~~use antlr to clean up usage of lua string; ie. I don't like lua script to have to do KEYS[1] and ARGV[1], I'd like it to look like jdbi :myKey, :myValue~~
 - ~~see if there's something I can do about the handle.jedis() . The .jedis() part annoys me~~
-- performance tests for the cglib usage.
-- integration test for the sha1 usage.
+- ~~performance tests for the cglib usage.
+- ~~integration test for the sha1 usage.
 - extract recipes.
 
 
