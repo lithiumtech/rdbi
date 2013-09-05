@@ -27,9 +27,9 @@ The main cleanup we like to make in Jedis is, if the jedis client came from a po
 	}
 	
 	//Of course old school callback pattern works:
-	rdbi.withHandle(new JedisCallback<Integer>() {
+	rdbi.withHandle(new JedisCallback<String>() {
 		@Override
-	        public Integer run(JedisHandle handle) {
+	        public String run(JedisHandle handle) {
 	        	return handle.jedis().get("hello");
 	        }
 	});
