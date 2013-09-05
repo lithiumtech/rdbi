@@ -1,9 +1,8 @@
 # rDBI
 
-rDBI provides convenience utilites for Jedis. rDBI cleans up some of Jedis's api pitfalls by [automatically returning the Jedis resource to the pool](https://github.com/xetorthio/jedis/issues/44). It also has helper utilities for making [Lua script calls to Redis](http://redis.io/commands/eval) easier. rDBI library is inspired by the awesome library [jDBI](http://jdbi.org/), a convenience library for SQL.
+rDBI provides convenience utilites for Jedis, cleaning up some of Jedis's api pitfalls by [automatically returning the Jedis resource to the pool](https://github.com/xetorthio/jedis/issues/44). It also has helper utilities for making [Lua script calls to Redis](http://redis.io/commands/eval) easier. rDBI library is inspired by the awesome library [jDBI](http://jdbi.org/), a convenience library for SQL.  
 
 # USAGE
-
 ## Cleanup of Jedis
 
 The main cleanup we like to make in Jedis is, if the jedis client came from a pool, it should know to return to that pool appropriately without having the application code keep track of the state of the Jedis client.
