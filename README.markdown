@@ -6,7 +6,7 @@ RDBI provides a convenience interface for [Lua queries](http://redis.io/commands
 # USAGE
 ## Cleanup of Jedis
 
-	// You don't have to know [return broken versus return](https://github.com/xetorthio/jedis/issues/44)
+	// You don't have to know if jedis is broken or which pool it comes from
 	// Just close the handle and you're good to go!
 	
 	RDBI rdbi = new RDBI(new JedisPool("localhost"));
