@@ -83,8 +83,8 @@ TODO
 - ~~Naming of RDBI package protected classes~~
 - ~~use antlr to clean up usage of lua string; ie. I don't like lua script to have to do KEYS[1] and ARGV[1], I'd like it to look like jdbi :myKey, :myValue~~
 - ~~see if there's something I can do about the handle.jedis() . The .jedis() part annoys me~~
-- ~~performance tests for the cglib usage.
-- ~~integration test for the sha1 usage.
-- extract recipes.
+- ~~performance tests for the cglib usage.~~
+- ~~integration test for the sha1 usage.~~
+- extract recipes from codebase.
 
 
