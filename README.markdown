@@ -82,5 +82,6 @@ TODO
 - ~~see if there's something I can do about the handle.jedis() . The .jedis() part annoys me~~
 - performance tests for the cglib usage.
 - integration test for the sha1 usage.
+- extract recipes.
 
 
