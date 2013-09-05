@@ -1,8 +1,9 @@
 # rDBI
 
-rDBI provides convenience utilites for Jedis. rDBI cleans up some of Jedis's api pitfalls by [automatically returning the Jedis resource to the pool](https://github.com/xetorthio/jedis/issues/44). It also has helper utilities for making [Lua script calls to Redis](http://redis.io/commands/eval) easier. rDBI library is inspired by the awesome library [jDBI](http://jdbi.org/), a convenience library for SQL.  
+rDBI provides convenience utilites for Jedis. rDBI cleans up some of Jedis's api pitfalls by [automatically returning the Jedis resource to the pool](https://github.com/xetorthio/jedis/issues/44). It also has helper utilities for making [Lua script calls to Redis](http://redis.io/commands/eval) easier. rDBI library is inspired by the awesome library [jDBI](http://jdbi.org/), a convenience library for SQL.
 
 # USAGE
+
 ## Cleanup of Jedis
 
 The main cleanup we like to make in Jedis is, if the jedis client came from a pool, it should know to return to that pool appropriately without having the application code keep track of the state of the Jedis client.
@@ -37,7 +38,7 @@ The main cleanup we like to make in Jedis is, if the jedis client came from a po
 
 ## Now onto Lua and Coolness:
 
-Jedis provides a basic way of loading a Lua script into Redis and eval the script by its sha1 hash. rDBI provides the same functionality but cleans it up so the application developer does not have to think about preloading the scripts on startup of the app and injecting in a hashmap of sha1 keys where ever they want to use Lua functionality. rDBI will cache the lua scripts internally and load them on demand while keeping it all threadsafe. The api is based off of [jDBI's fluent queries](http://jdbi.org/fluent_queries/).
+Jedis provides a basic way of loading a Lua script into Redis and eval the script by its sha1 hash. rDBI provides this functionality via fluent queries, based off of [jDBI's fluent queries](http://jdbi.org/fluent_queries/). The application developer does not have to think about preloading the scripts on startup of the app or creating enums and storing sha1 in hashmaps. rDBI will cache the lua scripts internally and load them on demand while keeping it all thread-safe.
 
 	private static interface TestDAO {
 		@RedisQuery(
