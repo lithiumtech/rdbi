@@ -1,11 +1,40 @@
-RDBI
-====
+# RDBI
 
 RDBI provides a convenience interface for [Lua queries](http://redis.io/commands/eval) with Redis using the Jedis Java driver. rDBI also tries to clean up some of Jedis's api pitfalls. rDBI is not an abstraction framework ontop of Jedis; it is a convenience library for Jedis, inspired by [jDBI](http://jdbi.org/). We even use many of jDBI's constructs!
 
 
-USAGE
------
+# USAGE
+## Cleanup of Jedis
+
+	// You don't have to know [return broken versus return](https://github.com/xetorthio/jedis/issues/44)
+	// Just close the handle and you're good to go!
+	
+	RDBI rdbi = new RDBI(new JedisPool("localhost"));
+	
+	JedisHandle handle = rdbi.open();
+	
+	try {
+		Jedis jedis = handle.jedis();
+		jedis.get("bla");
+	} finally {
+		handle.close();
+	}
+	
+	//If you want to get fancy and use Java 7:
+	try (JedisHandle handle = rdbi.open();) {
+		handle.jedis().get("a");
+	}
+	
+	//Of course old school callback pattern works:
+	rdbi.withHandle(new JedisCallback<Integer>() {
+		@Override
+	        public Integer run(JedisHandle handle) {
+	        	return handle.jedis().get("hello");
+	        }
+	});
+
+
+## Now onto Lua and Coolness:
 
 	private static interface TestDAO {
 		@RedisQuery(
@@ -37,10 +66,7 @@ USAGE
 	}
 	
 	// Java 7 version:
-	try (JedisHandle handle = rdbi.open();) {
-		handle.jedis().get("a");
-		handle.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world"));
-	}
+
 
 TODO
 ----
