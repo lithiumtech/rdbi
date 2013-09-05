@@ -66,6 +66,11 @@ RDBI provides a convenience interface for [Lua queries](http://redis.io/commands
 	}
 	
 	// Java 7 version:
+	
+## Recipes (TODO, writeup)
+### Events
+### Job Scheduler
+### Presence
 
 
 TODO
