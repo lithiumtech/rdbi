@@ -29,6 +29,10 @@ class MethodContextInterceptor implements MethodInterceptor {
         Object ret = context.hasDynamicLists() ? callEvalDynamicList(context, objects)
                                                : callEval(context, objects);
 
+        if (ret == null) {
+            return null;
+        }
+
         if (contexts.get(method).getMapper() != null) {
             return contexts.get(method).getMapper().map(ret);
         } else {
@@ -51,9 +55,9 @@ class MethodContextInterceptor implements MethodInterceptor {
 
         for (int i = 0; i < objects.length; i++) {
             if (context.getLuaContext().isKey(i)) {
-                keys.add((String) objects[i]);
+                keys.add(objects[i].toString());
             } else {
-                argv.add((String) objects[i]);
+                argv.add(objects[i].toString());
             }
         }
 

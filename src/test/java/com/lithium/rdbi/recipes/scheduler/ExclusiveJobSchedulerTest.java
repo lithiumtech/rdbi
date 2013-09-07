@@ -5,28 +5,43 @@ import org.joda.time.Instant;
 import org.junit.Test;
 import redis.clients.jedis.JedisPool;
 
+import java.util.List;
+
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNull;
 
-public class ExclusiveJobSchedularTest {
+public class ExclusiveJobSchedulerTest {
 
     @Test
     public void testBasicSchedule() throws InterruptedException {
 
-        ExclusiveJobSchedular scheduledJobSystem = new ExclusiveJobSchedular(new RDBI(new JedisPool("localhost")), "myprefix:");
+        ExclusiveJobScheduler scheduledJobSystem = new ExclusiveJobScheduler(new RDBI(new JedisPool("localhost")), "myprefix:");
         scheduledJobSystem.nukeForTest("mytube");
         scheduledJobSystem.schedule("mytube", "{hello:world}", 0);
-        Thread.sleep(1500L);
-        String result2 = scheduledJobSystem.reserve("mytube", 1000);
-        assertEquals(result2, "{hello:world}");
-        String result3 = scheduledJobSystem.reserve("mytube", 1000);
+        List<JobInfo> result2 = scheduledJobSystem.reserve("mytube", 1000);
+        assertEquals(result2.get(0).getJobStr(), "{hello:world}");
+        List<JobInfo> result3 = scheduledJobSystem.reserve("mytube", 1000);
         assertNull(result3);
+    }
+
+    @Test
+    public void testCull() throws InterruptedException {
+
+        ExclusiveJobScheduler scheduledJobSystem = new ExclusiveJobScheduler(new RDBI(new JedisPool("localhost")), "myprefix:");
+        scheduledJobSystem.nukeForTest("mytube");
+
+        scheduledJobSystem.schedule("mytube", "{hello:world}", 0);
+        List<JobInfo> result3 = scheduledJobSystem.reserve("mytube", 1000);
+        assertEquals(result3.size(), 1);
+        Thread.sleep(2000);
+        List<JobInfo> infos = scheduledJobSystem.cull("mytube");
+        assertEquals(infos.size(), 1);
     }
 
     @Test
     public void testBasicPerformance() throws InterruptedException {
 
-        ExclusiveJobSchedular scheduledJobSystem = new ExclusiveJobSchedular(new RDBI(new JedisPool("localhost")), "myprefix:");
+        ExclusiveJobScheduler scheduledJobSystem = new ExclusiveJobScheduler(new RDBI(new JedisPool("localhost")), "myprefix:");
         scheduledJobSystem.nukeForTest("mytube");
 
         Instant before = new Instant();

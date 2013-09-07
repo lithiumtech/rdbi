@@ -31,4 +31,14 @@ public class JobInfo {
     public Instant getTtr() {
         return ttr;
     }
+
+    @Override
+    public String toString() {
+        return "JobInfo{" +
+                "jobStr='" + jobStr + '\'' +
+                ", ttl=" + ttl +
+                ", ttr=" + ttr +
+                ", state=" + state +
+                '}';
+    }
 }

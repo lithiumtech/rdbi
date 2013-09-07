@@ -45,7 +45,7 @@ class LuaContextExtractor {
             if (isBind) {
                 value = "ARGV[" + argCounter + "]";
             } else {
-                value = "KEY[" + keyCounter + "]";
+                value = "KEYS[" + keyCounter + "]";
                 keys.add(paramCounter);
             }
             st.add(attribute, value);

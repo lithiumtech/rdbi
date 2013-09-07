@@ -17,7 +17,7 @@ public class LuaContextExtractorTest {
     @Test
     public void testBasicRender() throws NoSuchMethodException {
         assertEquals(
-                "redis.call('SET',  ARGV[1], ARGV[2], KEY[1]); return 0;",
+                "redis.call('SET',  ARGV[1], ARGV[2], KEYS[1]); return 0;",
                 new LuaContextExtractor()
                         .render("redis.call('SET',  $a$, $b$, $c$); return 0;",
                                 MyTestDao.class.getDeclaredMethod("abba", String.class, String.class, String.class)).getRenderedLuaString());
