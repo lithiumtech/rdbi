@@ -8,8 +8,7 @@ import static org.testng.Assert.assertEquals;
 public class RDBIOpenRawTest {
 
     @Test
-    public void testBla() {
-
+    public void testNormalOpen() {
 
         RDBI rdbi = new RDBI(RDBITest.getJedisPool());
 

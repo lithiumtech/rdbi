@@ -2,7 +2,7 @@ package com.lithium.rdbi.recipes.scheduler;
 
 import com.lithium.rdbi.RDBI;
 import org.joda.time.Instant;
-import org.junit.Test;
+import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
 import java.util.List;
@@ -10,6 +10,7 @@ import java.util.List;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNull;
 
+@Test(groups = "integration")
 public class ExclusiveJobSchedulerTest {
 
     @Test
@@ -48,12 +49,10 @@ public class ExclusiveJobSchedulerTest {
         for ( int i = 0; i < 10000; i++) {
             scheduledJobSystem.schedule("mytube", "{hello:world} " + i, 0);
         }
-
         Instant after = new Instant();
+        System.out.println("final " + after.minus(before.getMillis()).getMillis());
 
         Thread.sleep(2000);
-
-        System.out.println("final " + after.minus(before.getMillis()).getMillis());
 
         Instant before2 = new Instant();
         for ( int i = 0; i < 10000; i++) {
