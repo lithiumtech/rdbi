@@ -79,9 +79,9 @@ public class ExclusiveJobScheduler {
     }
 
     public boolean schedule(final String tube, final String jobStr, final int ttlInMillis) {
-        return rdbi.withHandle(new JedisCallback<Boolean>() {
+        return rdbi.withHandle(new Callback<Boolean>() {
             @Override
-            public Boolean run(JedisHandle handle) {
+            public Boolean run(Handle handle) {
                 return 1 == handle.attach(DAO.class).schedule(
                         getReadyQueue(tube),
                         getRunningQueue(tube),
