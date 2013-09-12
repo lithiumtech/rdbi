@@ -75,6 +75,9 @@ Jedis provides a basic way of loading a Lua script into Redis and eval the scrip
 ### Job Scheduler
 ### Presence
 
+## Redis Sentinel
+
+## Native support of Sharded Redis Instance
 
 TODO
 ----
