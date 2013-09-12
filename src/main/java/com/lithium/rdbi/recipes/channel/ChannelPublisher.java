@@ -3,6 +3,7 @@ package com.lithium.rdbi.recipes.channel;
 import com.lithium.rdbi.JedisHandle;
 import com.lithium.rdbi.RDBI;
 import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.Transaction;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -60,21 +61,21 @@ public class ChannelPublisher {
                 return;
             }
 
-            Pipeline pipeline = handle.jedis().pipelined();
+            Transaction transaction = handle.jedis().multi();
             for ( String channel : channels) {
                 for (String message : messages) {
-                    pipeline.lpush(channel + ":queue", message);
+                    transaction.lpush(channel + ":queue", message);
                 }
             }
 
             for (String channel : channels) {
-                pipeline.incrBy(channel + ":depth", messages.size());
-                pipeline.expire(channel + ":depth", CHANNEL_EXPIRE_IN_SECONDS);
-                pipeline.ltrim(channel + ":queue", 0, CHANNEL_DEPTH);
-                pipeline.expire(channel + ":queue", CHANNEL_EXPIRE_IN_SECONDS);
+                transaction.incrBy(channel + ":depth", messages.size());
+                transaction.expire(channel + ":depth", CHANNEL_EXPIRE_IN_SECONDS);
+                transaction.ltrim(channel + ":queue", 0, CHANNEL_DEPTH);
+                transaction.expire(channel + ":queue", CHANNEL_EXPIRE_IN_SECONDS);
             }
 
-            pipeline.sync();
+            transaction.exec();
         } finally {
             handle.close();
         }
