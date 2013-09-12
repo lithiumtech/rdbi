@@ -5,40 +5,26 @@ import org.joda.time.Instant;
 public class JobInfo {
 
     private final String jobStr;
-    private final Instant ttl;
-    private final Instant ttr;
-    private final JobState state;
+    private final Instant time;
 
-    JobInfo(JobState state, String jobStr, Instant ttl, Instant ttr) {
-        this.state = state;
+    JobInfo(String jobStr, Instant time) {
         this.jobStr = jobStr;
-        this.ttl = ttl;
-        this.ttr = ttr;
-    }
-
-    public JobState getState() {
-        return state;
+        this.time = time;
     }
 
     public String getJobStr() {
         return jobStr;
     }
 
-    public Instant getTtl() {
-        return ttl;
-    }
-
-    public Instant getTtr() {
-        return ttr;
+    public Instant getTime() {
+        return time;
     }
 
     @Override
     public String toString() {
         return "JobInfo{" +
                 "jobStr='" + jobStr + '\'' +
-                ", ttl=" + ttl +
-                ", ttr=" + ttr +
-                ", state=" + state +
+                ", time=" + time +
                 '}';
     }
 }

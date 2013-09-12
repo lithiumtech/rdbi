@@ -8,6 +8,7 @@ import redis.clients.jedis.JedisPool;
 import java.util.List;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 
 @Test(groups = "integration")
@@ -37,6 +38,7 @@ public class ExclusiveJobSchedulerTest {
         Thread.sleep(2000);
         List<JobInfo> infos = scheduledJobSystem.cull("mytube");
         assertEquals(infos.size(), 1);
+        assertNotNull(infos.get(0).getTime());
     }
 
     @Test

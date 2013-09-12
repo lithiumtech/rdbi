@@ -16,17 +16,13 @@ public class ExclusiveJobScheduler {
 
     static interface DAO {
         @RedisQuery(
-            "local readyQueueJobRank = redis.call('ZSCORE', $readyQueue$, $jobStr$)\n" +
-            "local runningQueueJobRank = redis.call('ZSCORE', $runningQueue$, $jobStr$)\n" +
-            "if not readyQueueJobRank and not runningQueueJobRank then\n" +
-            "    redis.call('ZADD', $readyQueue$, $ttl$, $jobStr$)\n" +
-            "    return 1\n" +
-            "elseif not runningQueueJobRank then\n" +
-            "    return 2\n" +
-            "elseif not readyQueueJobRank then\n" +
-            "    return 3\n" +
+            "local readyJobScore = redis.call('ZSCORE', $readyQueue$, $jobStr$)\n" +
+            "local runningJobScore = redis.call('ZSCORE', $runningQueue$, $jobStr$)\n" +
+            "if not readyJobScore and not runningJobScore then\n" +
+            "   redis.call('ZADD', $readyQueue$, $ttl$, $jobStr$)\n" +
+            "   return 1\n" +
             "else\n" +
-            "    return 4\n" +
+            "   return 0\n" +
             "end"
         )
         public int schedule(
@@ -37,12 +33,12 @@ public class ExclusiveJobScheduler {
 
         @Mapper(JobInfoListMapper.class)
         @RedisQuery(
-            "local jobs = redis.call('ZRANGEBYSCORE', $readyQueue$, 0, $now$, 'LIMIT', 0, $limit$)\n" +
+            "local jobs = redis.call('ZRANGEBYSCORE', $readyQueue$, 0, $now$, 'WITHSCORES', 'LIMIT', 0, $limit$)\n" +
             "if next(jobs) == nil then\n" +
             "    return nil\n" +
             "end\n" +
             "local job = jobs[1]\n" +
-            "for i=1,#jobs do\n" +
+            "for i=1,2*#jobs,2 do\n" +
             "    redis.call('ZREM', $readyQueue$, jobs[i])\n" +         //note expensive: inorder to support "limit", we have to loop the delete
             "    redis.call('ZADD', $runningQueue$, $ttr$, jobs[i])\n" +
             "end\n" +
@@ -57,7 +53,7 @@ public class ExclusiveJobScheduler {
 
         @Mapper(JobInfoListMapper.class)
         @RedisQuery(
-            "local lateJobs = redis.call('ZRANGEBYSCORE', $runningQueue$, 0, $now$)\n" +
+            "local lateJobs = redis.call('ZRANGEBYSCORE', $runningQueue$, 0, $now$, 'WITHSCORES')\n" +
             "redis.call('ZREMRANGEBYSCORE', $runningQueue$, 0, $now$)\n" +
             "return lateJobs"
         )
@@ -68,12 +64,8 @@ public class ExclusiveJobScheduler {
             "local deletedFromRunningQueue = redis.call('ZREM', $runningQueue$, $job$)\n" +
             "if not deleteFromReadyQueue and not deletedFromRunningQueue then\n" +
             "   return 0\n" +
-            "elseif not deleteFromReadyQueue then\n" +
-            "   return 2\n" +
-            "elseif not deletedFromRunningQueue then\n" +
-            "   return 1\n" +
             "else\n" +
-            "   return 4\n" +
+            "   return 1\n" +
             "end"
         )
         public int clear(
@@ -87,16 +79,15 @@ public class ExclusiveJobScheduler {
         this.prefix = prefix;
     }
 
-    public void schedule(final String tube, final String jobStr, final int ttlInMillis) {
-        rdbi.withHandle(new JedisCallback<Void>() {
+    public boolean schedule(final String tube, final String jobStr, final int ttlInMillis) {
+        return rdbi.withHandle(new JedisCallback<Boolean>() {
             @Override
-            public Void run(JedisHandle handle) {
-                handle.attach(DAO.class).schedule(
+            public Boolean run(JedisHandle handle) {
+                return 1 == handle.attach(DAO.class).schedule(
                         getReadyQueue(tube),
                         getRunningQueue(tube),
                         jobStr,
                         Instant.now().getMillis() + ttlInMillis);
-                return null;
             }
         });
     }
@@ -118,7 +109,7 @@ public class ExclusiveJobScheduler {
     public boolean clear(final String tube, String jobStr) {
         JedisHandle handle = rdbi.open();
         try {
-            return 0 < handle.attach(DAO.class).clear(getReadyQueue(tube), getRunningQueue(tube), jobStr);
+            return 1 == handle.attach(DAO.class).clear(getReadyQueue(tube), getRunningQueue(tube), jobStr);
         } finally {
             handle.close();
         }
