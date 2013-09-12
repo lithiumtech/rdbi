@@ -3,16 +3,16 @@ package com.lithium.rdbi;
 class MethodContext {
 
     private final String sha1;
-    private final RedisResultMapper mapper;
+    private final ResultMapper mapper;
     private final LuaContext luaContext;
 
-    public MethodContext(String sha1, RedisResultMapper mapper, LuaContext luaContext) {
+    public MethodContext(String sha1, ResultMapper mapper, LuaContext luaContext) {
         this.sha1 = sha1;
         this.mapper = mapper;
         this.luaContext = luaContext;
     }
 
-    public RedisResultMapper getMapper() {
+    public ResultMapper getMapper() {
         return mapper;
     }
 

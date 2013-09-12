@@ -2,12 +2,12 @@ package com.lithium.rdbi.recipes.scheduler;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.lithium.rdbi.RedisResultMapper;
 import org.joda.time.Instant;
+import com.lithium.rdbi.ResultMapper;
 
 import java.util.List;
 
-public class JobInfoListMapper implements RedisResultMapper<List<JobInfo>> {
+public class JobInfoListMapper implements ResultMapper<List<JobInfo>> {
 
     @Override
     public List<JobInfo> map(Object result) {

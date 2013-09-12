@@ -35,7 +35,7 @@ class ProxyFactory {
     }
 
     @SuppressWarnings("unchecked")
-    <T> T attach(final Jedis jedis, final Class<T> t) {
+    <T> T createInstance(final Jedis jedis, final Class<T> t) {
 
         Factory factory;
         if (factoryCache.containsKey(t)) {
@@ -70,8 +70,8 @@ class ProxyFactory {
 
         for (Method method : t.getDeclaredMethods()) {
 
-            RedisQuery redisQuery = method.getAnnotation(RedisQuery.class);
-            String queryStr = redisQuery.value();
+            Query query = method.getAnnotation(Query.class);
+            String queryStr = query.value();
 
             LuaContext luaContext = null;
             String sha1;
@@ -84,7 +84,7 @@ class ProxyFactory {
             }
 
             Mapper methodMapper = method.getAnnotation(Mapper.class);
-            RedisResultMapper mapper = null;
+            ResultMapper mapper = null;
             if (methodMapper != null) {
                 mapper = methodMapper.value().newInstance();
             }

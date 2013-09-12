@@ -7,7 +7,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.io.Closeable;
 
 @NotThreadSafe
-public class JedisHandle implements Closeable {
+public class Handle implements Closeable {
 
     private final JedisPool pool;
     private final Jedis jedis;
@@ -16,7 +16,7 @@ public class JedisHandle implements Closeable {
 
     private final ProxyFactory proxyFactory;
 
-    public JedisHandle(JedisPool pool, Jedis jedis, ProxyFactory proxyFactory) {
+    public Handle(JedisPool pool, Jedis jedis, ProxyFactory proxyFactory) {
         this.pool = pool;
         this.jedis = jedis;
         this.proxyFactory = proxyFactory;
@@ -32,7 +32,7 @@ public class JedisHandle implements Closeable {
     }
 
     public <T> T attach(Class<T> type) {
-        return proxyFactory.attach(jedis(), type);
+        return proxyFactory.createInstance(jedis(), type);
     }
 
     @Override

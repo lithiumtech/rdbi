@@ -1,7 +1,6 @@
 package com.lithium.rdbi.recipes.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import com.lithium.rdbi.*;
 import org.joda.time.Instant;
 
@@ -15,7 +14,7 @@ public class ExclusiveJobScheduler {
     private final String prefix;
 
     static interface DAO {
-        @RedisQuery(
+        @Query(
             "local readyJobScore = redis.call('ZSCORE', $readyQueue$, $jobStr$)\n" +
             "local runningJobScore = redis.call('ZSCORE', $runningQueue$, $jobStr$)\n" +
             "if not readyJobScore and not runningJobScore then\n" +
@@ -32,7 +31,7 @@ public class ExclusiveJobScheduler {
                 @BindArg("ttl") Long ttlInMillis);
 
         @Mapper(JobInfoListMapper.class)
-        @RedisQuery(
+        @Query(
             "local jobs = redis.call('ZRANGEBYSCORE', $readyQueue$, 0, $now$, 'WITHSCORES', 'LIMIT', 0, $limit$)\n" +
             "if next(jobs) == nil then\n" +
             "    return nil\n" +
@@ -52,14 +51,14 @@ public class ExclusiveJobScheduler {
                 @BindArg("ttr") Long ttr);
 
         @Mapper(JobInfoListMapper.class)
-        @RedisQuery(
+        @Query(
             "local lateJobs = redis.call('ZRANGEBYSCORE', $runningQueue$, 0, $now$, 'WITHSCORES')\n" +
             "redis.call('ZREMRANGEBYSCORE', $runningQueue$, 0, $now$)\n" +
             "return lateJobs"
         )
         public List<JobInfo> cull(@BindKey("runningQueue") String runningQueue, @BindArg("now") Long now);
 
-        @RedisQuery(
+        @Query(
             "local deletedFromReadyQueue = redis.call('ZREM', $readyQueue$, $job$)\n" +
             "local deletedFromRunningQueue = redis.call('ZREM', $runningQueue$, $job$)\n" +
             "if not deleteFromReadyQueue and not deletedFromRunningQueue then\n" +
@@ -93,9 +92,9 @@ public class ExclusiveJobScheduler {
     }
 
     public List<JobInfo> reserve(final String tube, final long ttrInMillis) {
-        return rdbi.withHandle(new JedisCallback<List<JobInfo>>() {
+        return rdbi.withHandle(new Callback<List<JobInfo>>() {
             @Override
-            public List<JobInfo> run(JedisHandle handle) {
+            public List<JobInfo> run(Handle handle) {
                 return handle.attach(DAO.class).reserve(
                         getReadyQueue(tube),
                         getRunningQueue(tube),
@@ -107,7 +106,7 @@ public class ExclusiveJobScheduler {
     }
 
     public boolean clear(final String tube, String jobStr) {
-        JedisHandle handle = rdbi.open();
+        Handle handle = rdbi.open();
         try {
             return 1 == handle.attach(DAO.class).clear(getReadyQueue(tube), getRunningQueue(tube), jobStr);
         } finally {
@@ -116,7 +115,7 @@ public class ExclusiveJobScheduler {
     }
 
     public List<JobInfo> cull(String tube) {
-        JedisHandle handle = rdbi.open();
+        Handle handle = rdbi.open();
         try {
             return handle.attach(DAO.class).cull(getRunningQueue(tube), Instant.now().getMillis());
         } finally {
@@ -134,9 +133,9 @@ public class ExclusiveJobScheduler {
 
     @VisibleForTesting
     void nukeForTest(final String tube) {
-        rdbi.withHandle(new JedisCallback<Void>() {
+        rdbi.withHandle(new Callback<Void>() {
             @Override
-            public Void run(JedisHandle handle) {
+            public Void run(Handle handle) {
                 handle.jedis().del(prefix + tube + ":ready_queue", prefix + tube + ":running_queue");
                 return null;
             }

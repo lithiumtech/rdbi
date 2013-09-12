@@ -1,6 +1,6 @@
 package com.lithium.rdbi.recipes.channel;
 
-import com.lithium.rdbi.JedisHandle;
+import com.lithium.rdbi.Handle;
 import com.lithium.rdbi.RDBI;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Transaction;
@@ -32,7 +32,7 @@ public class ChannelPublisher {
 
     public void resetChannels(final Set<String> channels) {
 
-        JedisHandle handle = rdbi.open();
+        Handle handle = rdbi.open();
 
         try {
             Pipeline pipeline = handle.jedis().pipelined();
@@ -49,7 +49,7 @@ public class ChannelPublisher {
 
     public void publish(final Set<String> channels, final List<String> messages) {
 
-        JedisHandle handle = rdbi.open();
+        Handle handle = rdbi.open();
 
         try {
 

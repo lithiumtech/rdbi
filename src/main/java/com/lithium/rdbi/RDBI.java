@@ -24,9 +24,9 @@ public class RDBI {
         this.proxyFactory = new ProxyFactory();
     }
 
-    public <T> T withHandle(JedisCallback<T> callback) {
+    public <T> T withHandle(Callback<T> callback) {
 
-        JedisHandle handle = open();
+        Handle handle = open();
         try {
             T result = callback.run(handle);
             return result;
@@ -39,8 +39,8 @@ public class RDBI {
         }
     }
 
-    public JedisHandle open() {
+    public Handle open() {
         Jedis resource = pool.getResource();
-        return new JedisHandle(pool, resource, proxyFactory);
+        return new Handle(pool, resource, proxyFactory);
     }
 }

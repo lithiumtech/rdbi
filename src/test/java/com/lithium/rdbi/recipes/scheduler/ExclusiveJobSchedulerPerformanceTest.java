@@ -1,15 +1,19 @@
-package com.lithium.rdbi;
+package com.lithium.rdbi.recipes.scheduler;
 
-import com.lithium.rdbi.recipes.scheduler.ExclusiveJobScheduler;
+import com.lithium.rdbi.Handle;
+import com.lithium.rdbi.RDBI;
 import org.joda.time.Instant;
+import org.testng.annotations.Test;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
 import java.util.Set;
 
-public class Perf {
+@Test(groups = "integration")
+public class ExclusiveJobSchedulerPerformanceTest {
 
-    public static void main(String[] args) throws InterruptedException {
+    @Test
+    public void testPerformance() throws InterruptedException {
 
         RDBI rdbi = new RDBI(new JedisPool("localhost"));
 
@@ -18,10 +22,12 @@ public class Perf {
         for ( int i = 0; i < 100; i++) {
             scheduledJobSystem.schedule("mytube", "{hello:world} " + i, 0);
         }
+
         for ( int i = 0; i < 100; i++) {
             scheduledJobSystem.reserve("mytube", 1);
         }
-        JedisHandle handle = rdbi.open();
+
+        Handle handle = rdbi.open();
 
         try {
             Jedis jedis = handle.jedis();
@@ -36,7 +42,7 @@ public class Perf {
         Thread t1 = new Thread(new Runnable() {
             @Override
             public void run() {
-                for ( int i = 0; i < 3333; i++) {
+                for (int i = 0; i < 3333; i++) {
                     scheduledJobSystem.schedule("mytube", "{hello:world} " + i, 0);
                 }
             }
@@ -45,7 +51,7 @@ public class Perf {
         Thread t2 = new Thread(new Runnable() {
             @Override
             public void run() {
-                for ( int i = 0; i < 3333; i++) {
+                for (int i = 0; i < 3333; i++) {
                     scheduledJobSystem.schedule("mytube", "{hello:world} " + i, 0);
                 }
             }
@@ -54,7 +60,7 @@ public class Perf {
         Thread t3 = new Thread(new Runnable() {
             @Override
             public void run() {
-                for ( int i = 0; i < 3333; i++) {
+                for (int i = 0; i < 3333; i++) {
                     scheduledJobSystem.schedule("mytube", "{hello:world} " + i, 0);
                 }
             }
@@ -76,7 +82,7 @@ public class Perf {
         System.out.println("final " + after.minus(before.getMillis()).getMillis());
 
         Instant before2 = new Instant();
-        for ( int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 10000; i++) {
             scheduledJobSystem.reserve("mytube", 1);
         }
 

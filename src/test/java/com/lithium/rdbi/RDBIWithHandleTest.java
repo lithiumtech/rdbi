@@ -13,7 +13,7 @@ import static org.testng.Assert.assertEquals;
 public class RDBIWithHandleTest {
 
     static interface TestDAO {
-        @RedisQuery(
+        @Query(
                 "redis.call('SET',  KEYS[1], ARGV[1]);" +
                         "return 0;"
         )
@@ -24,9 +24,9 @@ public class RDBIWithHandleTest {
     public void testBasicWithHandle() {
         RDBI rdbi = new RDBI(RDBITest.getJedisPool());
 
-        rdbi.withHandle(new JedisCallback<Object>() {
+        rdbi.withHandle(new Callback<Object>() {
             @Override
-            public Object run(JedisHandle handle) {
+            public Object run(Handle handle) {
                 assertEquals(handle.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
                 return null;
             }
@@ -38,9 +38,9 @@ public class RDBIWithHandleTest {
         RDBI rdbi = new RDBI(RDBITest.getBadJedisPool());
 
         try {
-            rdbi.withHandle(new JedisCallback<Object>() {
+            rdbi.withHandle(new Callback<Object>() {
                 @Override
-                public Object run(JedisHandle handle) {
+                public Object run(Handle handle) {
                     handle.attach(TestDAO.class);
                     return null;
                 }
@@ -56,9 +56,9 @@ public class RDBIWithHandleTest {
 
         RDBI rdbi = new RDBI(RDBITest.getBadJedisPool());
 
-        rdbi.withHandle(new JedisCallback<Object>() {
+        rdbi.withHandle(new Callback<Object>() {
             @Override
-            public Object run(JedisHandle handle) {
+            public Object run(Handle handle) {
                 handle.jedis().get("hello");
                 fail("Should have thrown exception on get");
                 return null;

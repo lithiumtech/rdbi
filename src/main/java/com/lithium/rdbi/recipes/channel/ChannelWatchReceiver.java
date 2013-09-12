@@ -1,7 +1,7 @@
 package com.lithium.rdbi.recipes.channel;
 
 import com.google.common.collect.Lists;
-import com.lithium.rdbi.JedisHandle;
+import com.lithium.rdbi.Handle;
 import com.lithium.rdbi.RDBI;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
@@ -32,7 +32,7 @@ public class ChannelWatchReceiver implements ChannelReceiver {
 
     public GetResult get(final String channel, final Long lastSeenId) {
 
-        JedisHandle handle = rdbi.open();
+        Handle handle = rdbi.open();
 
         try {
 

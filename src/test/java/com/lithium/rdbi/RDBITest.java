@@ -21,7 +21,7 @@ import static org.testng.Assert.assertTrue;
 public class RDBITest {
 
     static interface TestDAO {
-        @RedisQuery(
+        @Query(
             "redis.call('SET',  KEYS[1], ARGV[1]);" +
             "return 0;"
         )
@@ -29,7 +29,7 @@ public class RDBITest {
     }
 
     static interface TestCopyDAO {
-        @RedisQuery(
+        @Query(
                 "redis.call('SET',  KEYS[1], ARGV[1]);" +
                         "return 0;"
         )
@@ -37,12 +37,12 @@ public class RDBITest {
     }
 
     static interface NoInputDAO {
-        @RedisQuery("return 0;")
+        @Query("return 0;")
         int noInputMethod();
     }
 
     static interface DynamicDAO {
-        @RedisQuery(
+        @Query(
                 "redis.call('SET', $a$, $b$); return 0;"
         )
         int testExect(@BindKey("a") String a, @BindArg("b") String b);
@@ -60,7 +60,7 @@ public class RDBITest {
             return input;
         }
     }
-    static class BasicRedisResultMapper implements RedisResultMapper<BasicObjectUnderTest> {
+    static class BasicResultMapper implements ResultMapper<BasicObjectUnderTest> {
         @Override
         public BasicObjectUnderTest map(Object result) {
             return new BasicObjectUnderTest((Integer) result);
@@ -68,11 +68,11 @@ public class RDBITest {
     }
     static interface TestDAOWithResultSetMapper {
 
-        @RedisQuery(
+        @Query(
             "redis.call('SET',  KEYS[1], ARGV[1]);" +
             "return 0;"
         )
-        @Mapper(BasicRedisResultMapper.class)
+        @Mapper(BasicResultMapper.class)
         BasicObjectUnderTest testExec(List<String> keys, List<String> args);
     }
 
@@ -80,7 +80,7 @@ public class RDBITest {
     public void testExceptionThrownInRDBIAttach() {
         RDBI rdbi = new RDBI(getBadJedisPool());
 
-        JedisHandle handle = rdbi.open();
+        Handle handle = rdbi.open();
         try {
             handle.attach(TestCopyDAO.class);
             fail("Should have thrown exception for loadScript error");
@@ -97,7 +97,7 @@ public class RDBITest {
     public void testExceptionThrownInNormalGet() {
         RDBI rdbi = new RDBI(getBadJedisPool());
 
-        JedisHandle handle = rdbi.open();
+        Handle handle = rdbi.open();
         try {
             handle.jedis().get("hello");
             fail("Should have thrown exception on get");
@@ -114,14 +114,14 @@ public class RDBITest {
 
         RDBI rdbi = new RDBI(getJedisPool());
 
-        JedisHandle handle1 = rdbi.open();
+        Handle handle1 = rdbi.open();
         try {
             assertEquals(handle1.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
         } finally {
             handle1.close();
         }
 
-        JedisHandle handle2 = rdbi.open();
+        Handle handle2 = rdbi.open();
         try {
             assertEquals(handle2.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
         } finally {
@@ -132,7 +132,7 @@ public class RDBITest {
         assertTrue(rdbi.proxyFactory.methodContextCache.containsKey(TestDAO.class));
 
 
-        JedisHandle handle3 = rdbi.open();
+        Handle handle3 = rdbi.open();
         try {
             assertEquals("world", handle3.jedis().get("hello"));
         } finally {
@@ -144,7 +144,7 @@ public class RDBITest {
     public void testAttachWithResultSetMapper() {
         RDBI rdbi = new RDBI(getJedisPool());
 
-        JedisHandle handle = rdbi.open();
+        Handle handle = rdbi.open();
         try {
             BasicObjectUnderTest dut = handle.attach(TestDAOWithResultSetMapper.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world"));
             assertNotNull(dut);
@@ -158,7 +158,7 @@ public class RDBITest {
     public void testMethodWithNoInput() {
         RDBI rdbi = new RDBI(getJedisPool());
 
-        JedisHandle handle = rdbi.open();
+        Handle handle = rdbi.open();
         try {
             int ret = handle.attach(NoInputDAO.class).noInputMethod();
             assertEquals(ret, 0);
@@ -170,7 +170,7 @@ public class RDBITest {
     @Test
     public void testDynamicDAO() {
         RDBI rdbi = new RDBI(getJedisPool());
-        JedisHandle handle = rdbi.open();
+        Handle handle = rdbi.open();
 
         try {
             handle.attach(DynamicDAO.class).testExect("a", "b");
@@ -182,7 +182,7 @@ public class RDBITest {
     @Test
     public void testCacheHitDAO() {
         RDBI rdbi = new RDBI(getJedisPool());
-        JedisHandle handle = rdbi.open();
+        Handle handle = rdbi.open();
 
         try {
             for (int i = 0; i < 2; i++) {

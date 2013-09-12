@@ -1,5 +1,5 @@
 package com.lithium.rdbi;
 
-public interface RedisResultMapper<T> {
+public interface ResultMapper<T> {
     T map(Object result);
 }

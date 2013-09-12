@@ -13,7 +13,7 @@ public class RDBIGeneralTest {
     public static void main(String[] args) {
         RDBI rdbi = new RDBI(new JedisPool("localhost"));
 
-        JedisHandle handle = rdbi.open();
+        Handle handle = rdbi.open();
 
         try {
             Jedis jedis = handle.jedis();
