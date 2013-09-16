@@ -7,7 +7,7 @@
             </run>
         </groups>
         <packages>
-            <package name="com.lithium.rdbi.*" />
+            <package name="com.lithium.dbi.rdbi.*" />
         </packages>
     </test>
 </suite>
