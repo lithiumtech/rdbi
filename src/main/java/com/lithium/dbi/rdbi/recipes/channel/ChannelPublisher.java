@@ -5,7 +5,6 @@ import com.lithium.dbi.rdbi.RDBI;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Transaction;
 
-import javax.inject.Inject;
 import java.util.List;
 import java.util.Set;
 
@@ -17,7 +16,6 @@ public class ChannelPublisher {
     private int CHANNEL_DEPTH = 99; //100 elements
     private int CHANNEL_EXPIRE_IN_SECONDS = 60 *60;
 
-    @Inject
     public ChannelPublisher(RDBI rdbi) {
         this.rdbi = rdbi;
     }

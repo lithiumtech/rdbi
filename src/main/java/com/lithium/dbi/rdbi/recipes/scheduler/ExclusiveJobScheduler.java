@@ -1,10 +1,13 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import com.lithium.dbi.rdbi.*;
 import org.joda.time.Instant;
+import redis.clients.jedis.Tuple;
 
 import java.util.List;
+import java.util.Set;
 
 //CR: Need a class-level javadoc explaining what this does and pointing reader to appropriate readme docs for more detail.
 
@@ -89,6 +92,37 @@ public class ExclusiveJobScheduler {
         try {
             return handle.attach(ExclusiveJobSchedulerDAO.class)
                          .removeExpiredJobs(getRunningQueue(tube), Instant.now().getMillis());
+        } finally {
+            handle.close();
+        }
+    }
+
+    public List<JobInfo> peakDelayed(String tube, int offset, int count) {
+        return peakInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+    }
+
+    public List<JobInfo> peakReady(String tube, int offset, int count) {
+        return peakInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+    }
+
+    public List<JobInfo> peakRunning(String tube, int offset, int count) {
+        return peakInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+    }
+
+    public List<JobInfo> peakExpired(String tube, int offset, int count) {
+        return peakInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+    }
+
+    private List<JobInfo> peakInternal(String queue, Double min, Double max, int offset, int count) {
+
+        List<JobInfo> jobInfos = Lists.newArrayList();
+        Handle handle = rdbi.open();
+        try {
+            Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
+            for (Tuple tuple : tupleSet) {
+                jobInfos.add(new JobInfo(tuple.getElement(), new Instant((long) tuple.getScore())));
+            }
+            return jobInfos;
         } finally {
             handle.close();
         }

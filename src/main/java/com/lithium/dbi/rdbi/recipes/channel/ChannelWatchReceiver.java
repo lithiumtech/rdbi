@@ -7,14 +7,12 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 
-import javax.inject.Inject;
 import java.util.List;
 
 public class ChannelWatchReceiver implements ChannelReceiver {
 
     private final RDBI rdbi;
 
-    @Inject
     public ChannelWatchReceiver(RDBI rdbi) {
         this.rdbi = rdbi;
     }
