@@ -5,7 +5,7 @@
 
     <groupId>com.lithium.dbi.rdbi</groupId>
     <artifactId>rdbi-core</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.1</version>
     <name>rDBI</name>
     <url>https://github.com/lithiumtech/rdbi</url>
     <description>
@@ -29,7 +29,8 @@
         <url>https://github.com/lithiumtech/rdbi</url>
         <connection>scm:git:git://github.com/lithiumtech/rdbi.git</connection>
         <developerConnection>scm:git:git://github.com/lithiumtech/rdbi.git</developerConnection>
-    </scm>
+      <tag>rdbi-core-0.1</tag>
+  </scm>
 
     <issueManagement>
         <system>GitHub</system>
