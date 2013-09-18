@@ -36,8 +36,41 @@
         <url>https://github.com/lithiumtech/rdbi/issues</url>
     </issueManagement>
 
+    <distributionManagement>
+        <repository>
+            <id>lithium-releases</id>
+            <name>nexus-maven-repo</name>
+            <url>http://nexus.dev.lithium.com/nexus/content/repositories/releases</url>
+        </repository>
+    </distributionManagement>
+    <repositories>
+        <repository>
+            <id>lithium-internal-nexus</id>
+            <name>nexus-maven-repo</name>
+            <url>http://nexus.dev.lithium.com/nexus/content/repositories/releases</url>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+    </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>lithium-internal-nexus</id>
+            <name>nexus-maven-repo</name>
+            <url>http://nexus.dev.lithium.com/nexus/content/repositories/releases</url>
+            <snapshots><enabled>false</enabled></snapshots>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.3.2</version>
+            </plugin>
             <!-- compiler -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
