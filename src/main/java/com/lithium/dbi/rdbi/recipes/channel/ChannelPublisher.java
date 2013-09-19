@@ -78,4 +78,12 @@ public class ChannelPublisher {
             handle.close();
         }
     }
+
+    static String getChannelDepthKey(String channel) {
+        return channel + ":depth";
+    }
+
+    static String getChannelQueueKey(String channel) {
+        return channel + ":queue";
+    }
 }
