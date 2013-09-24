@@ -1,7 +1,7 @@
 package com.lithium.dbi.rdbi;
 
 import com.google.common.collect.Sets;
-import org.stringtemplate.v4.ST;
+import org.antlr.stringtemplate.StringTemplate;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -11,7 +11,7 @@ class LuaContextExtractor {
 
     public LuaContext render(String query, Method method) {
 
-        ST st = new ST(query, '$', '$');
+        StringTemplate st = new StringTemplate(query);
 
         Annotation[][] annotationsParams = method.getParameterAnnotations();
         int paramCounter = 0;
@@ -48,10 +48,10 @@ class LuaContextExtractor {
                 value = "KEYS[" + keyCounter + "]";
                 keys.add(paramCounter);
             }
-            st.add(attribute, value);
+            st.setAttribute(attribute, value);
 
             paramCounter++;
         }
-        return new LuaContext(st.render(), keys);
+        return new LuaContext(st.toString(), keys);
     }
 }
