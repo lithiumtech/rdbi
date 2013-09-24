@@ -14,7 +14,7 @@ public class ChannelLuaReceiver implements ChannelReceiver {
 
     private final RDBI rdbi;
 
-    private static interface DAO {
+    public static interface DAO {
         @Query(
             "local current_count = redis.call(\"GET\", $countKey$)\n" +
             "if not current_count then\n" +
@@ -22,12 +22,10 @@ public class ChannelLuaReceiver implements ChannelReceiver {
             "else\n" +
             "   current_count = tonumber(current_count)\n" +
             "end\n" +
-            "\n" +
-            "if current_count <= $lastSeenCount$ then\n" +
+            "if current_count <= tonumber($lastSeenCount$) then\n" +
             "    return {tostring(0)}\n" +
             "end\n" +
-            "\n" +
-            "local results = redis.call(\"LRANGE\", $listKey$, 0, current_count - $lastSeenCount$ - 1)\n" +
+            "local results = redis.call(\"LRANGE\", $listKey$, 0, current_count - tonumber($lastSeenCount$) - 1)\n" +
             "results[#results + 1] = tostring(current_count)\n" +
             "return results"
         )
@@ -39,7 +37,7 @@ public class ChannelLuaReceiver implements ChannelReceiver {
         );
     }
 
-    private static class GetResultMapper implements ResultMapper<GetResult,List<String>> {
+    public static class GetResultMapper implements ResultMapper<GetResult,List<String>> {
 
         @Override
         public GetResult map(List<String> result) {
