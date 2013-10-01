@@ -1,5 +1,7 @@
 package com.lithium.dbi.rdbi.recipes.presence;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
@@ -47,6 +49,15 @@ public class PresenceRepository {
         }
     }
 
+    public boolean remove(String tube, String id) {
+        Handle handle = rdbi.open();
+        try {
+            return 0L < handle.jedis().zrem(getQueue(tube), id);
+        } finally {
+            handle.close();
+        }
+    }
+
     public void cull(String tube) {
         Instant now = Instant.now();
 
@@ -56,6 +67,17 @@ public class PresenceRepository {
         } finally {
             handle.close();
         }
+    }
+
+    @VisibleForTesting
+    void nukeForTest(final String tube) {
+        rdbi.withHandle(new Callback<Void>() {
+            @Override
+            public Void run(Handle handle) {
+                handle.jedis().del(getQueue(tube));
+                return null;
+            }
+        });
     }
 
     private String getQueue(String tube) {

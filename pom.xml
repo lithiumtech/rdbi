@@ -12,6 +12,7 @@
         rDBI provides convenience utilites for Jedis, cleaning up some of Jedis's api pitfalls by automatically returning the Jedis resource to the pool. It also has helper utilities for making Lua script calls to Redis easier. rDBI library is inspired by the awesome library jDBI, a convenience library for SQL.
     </description>
 
+
     <organization>
         <name>Lithium Technologies</name>
         <url>http://lithium.com</url>
