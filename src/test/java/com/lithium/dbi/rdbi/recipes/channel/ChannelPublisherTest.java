@@ -1,5 +1,9 @@
 package com.lithium.dbi.rdbi.recipes.channel;
 
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.lithium.dbi.rdbi.RDBI;
@@ -7,10 +11,8 @@ import org.joda.time.Instant;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertNotNull;
 import static org.testng.AssertJUnit.fail;
 
 @Test(groups = "integration")
@@ -61,6 +63,26 @@ public class ChannelPublisherTest {
         if (!thread1Finished.get() && !thread2Finished.get()) {
             fail("Did not finish in time");
         }
+    }
+
+    @Test
+    public void simpleInsertTest() {
+
+        final Set<String> channel = ImmutableSet.of("channel1");
+
+        final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
+        channelPublisher.resetChannels(channel);
+
+        channelPublisher.publish(channel, ImmutableList.of("Hello", "World") );
+
+        final ChannelReceiver receiver = new ChannelLuaReceiver(rdbi);
+        GetResult result = receiver.get("channel1", 0L);
+
+        assertNotNull(result);
+        assertEquals(result.getDepth(), (Long) 2L);
+        assertEquals("Hello", result.getMessages().get(0));
+        assertEquals("World", result.getMessages().get(1));
     }
 
     @Test

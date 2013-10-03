@@ -1,5 +1,8 @@
 package com.lithium.dbi.rdbi.recipes.channel;
 
+import java.util.List;
+
+import com.google.common.collect.Lists;
 import com.lithium.dbi.rdbi.BindArg;
 import com.lithium.dbi.rdbi.BindKey;
 import com.lithium.dbi.rdbi.Handle;
@@ -7,8 +10,6 @@ import com.lithium.dbi.rdbi.Mapper;
 import com.lithium.dbi.rdbi.Query;
 import com.lithium.dbi.rdbi.RDBI;
 import com.lithium.dbi.rdbi.ResultMapper;
-
-import java.util.List;
 
 public class ChannelLuaReceiver implements ChannelReceiver {
 
@@ -46,7 +47,7 @@ public class ChannelLuaReceiver implements ChannelReceiver {
                 return null;
             }
 
-            return new GetResult(result.subList(0, result.size() - 2), Long.valueOf(result.get(result.size() - 1)));
+            return new GetResult(Lists.reverse(result.subList(0, result.size() - 1)), Long.valueOf(result.get(result.size() - 1)));
         }
     }
 
