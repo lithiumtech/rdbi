@@ -14,6 +14,7 @@ import redis.clients.jedis.JedisPool;
 
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNotNull;
+import static org.testng.AssertJUnit.assertNull;
 import static org.testng.AssertJUnit.assertTrue;
 import static org.testng.AssertJUnit.fail;
 
@@ -116,7 +117,7 @@ public class ChannelPublisherTest {
 
         // Test out of bounds get case
         result = receiver.get("channel1", 3L, "channel1:processed");
-        assertNotNull(result);
+        assertNull(result);
 
         handle = rdbi.open();
         try {

@@ -68,7 +68,7 @@ public class ChannelLuaReceiver implements ChannelReceiver {
         public GetResult map(List<String> result) {
 
             if (result.size() == 0 || result.size() == 1) {
-                return new GetResult();
+                return null;
             }
 
             return new GetResult(Lists.reverse(result.subList(0, result.size() - 1)), Long.valueOf(result.get(result.size() - 1)));
