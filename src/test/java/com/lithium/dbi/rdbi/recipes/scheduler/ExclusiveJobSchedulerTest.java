@@ -1,7 +1,12 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
+import com.lithium.dbi.rdbi.Callback;
+import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
@@ -15,13 +20,29 @@ import static org.testng.Assert.assertNull;
 @Test(groups = "integration")
 public class ExclusiveJobSchedulerTest {
 
-    private ExclusiveJobScheduler scheduledJobSystem = null;
+    private static final RDBI rdbi = new RDBI(new JedisPool("localhost"));
     private static final String TEST_TUBE = "mytube";
 
+    private ExclusiveJobScheduler scheduledJobSystem = null;
+
     @BeforeMethod
-    public void setupTest(){
-        scheduledJobSystem  = new ExclusiveJobScheduler(new RDBI(new JedisPool("localhost")), "myprefix:");
-        scheduledJobSystem.nukeForTest(TEST_TUBE);
+    public void setup(){
+        scheduledJobSystem  = new ExclusiveJobScheduler(rdbi, "myprefix:");
+    }
+
+    @AfterMethod
+    public void tearDown(){
+        // nuke the queues
+        rdbi.withHandle(new Callback<Void>() {
+            @Override
+            public Void run(Handle handle) {
+                handle.jedis().del(scheduledJobSystem.getReadyQueue(TEST_TUBE), scheduledJobSystem.getRunningQueue(TEST_TUBE));
+                return null;
+            }
+        });
+
+        // ensure system is not paused
+        scheduledJobSystem.resume(TEST_TUBE);
     }
 
     @Test
@@ -120,4 +141,46 @@ public class ExclusiveJobSchedulerTest {
         Instant after2 = new Instant();
         System.out.println("final " + after2.minus(before2.getMillis()).getMillis());
     }
+
+    @Test
+    public void testIsPaused(){
+        assertFalse(scheduledJobSystem.isPaused(TEST_TUBE));
+        scheduledJobSystem.pause(TEST_TUBE);
+        assertTrue(scheduledJobSystem.isPaused(TEST_TUBE));
+        scheduledJobSystem.resume(TEST_TUBE);
+        assertFalse(scheduledJobSystem.isPaused(TEST_TUBE));
+    }
+
+    @Test
+    public void testPause(){
+        scheduledJobSystem.schedule(TEST_TUBE, "{hello:delayed}", 10000);
+        // scheduling a "ready" job with a ttl of 0 means that it may come back when we make the call to peekDelayed
+        // unless we force at least a millisecond delay.  Rather than sleep the thread, let's just schedule this to run
+        // sometime in the past, making it "overdue" and thus ready
+        scheduledJobSystem.schedule(TEST_TUBE, "{hello:ready}", -10000);
+
+        List<JobInfo> jobs = scheduledJobSystem.peekDelayed(TEST_TUBE, 0, 10);
+        assertEquals(jobs.get(0).getJobStr(), "{hello:delayed}", "PRE-CONDITION: failed to create 1 delayed job");
+        jobs = scheduledJobSystem.peekReady(TEST_TUBE, 0, 10);
+        assertEquals(jobs.get(0).getJobStr(), "{hello:ready}", "PRE-CONDITION: failed to create 1 ready job");
+
+        scheduledJobSystem.pause(TEST_TUBE);
+
+        assertFalse(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0), "Should not be able to schedule anything when the system is stopped.");
+        JobInfo result = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
+        assertNull(result, "Should not have been able to reserve a job while the system is paused");
+    }
+
+    @Test
+    public void testResume(){
+        scheduledJobSystem.pause(TEST_TUBE);
+        assertFalse(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0), "PRE-CONDITION: system should be stopped.");
+
+        scheduledJobSystem.resume(TEST_TUBE);
+        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:delayed}", 10000), "Failed to schedule a delayed job after starting the system.");
+        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:ready}", -10000), "Failed to schedule a ready job after starting the system.");
+        JobInfo result = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
+        assertNotNull(result, "Should have been able to reserve a job while the system is paused");
+    }
+
 }
