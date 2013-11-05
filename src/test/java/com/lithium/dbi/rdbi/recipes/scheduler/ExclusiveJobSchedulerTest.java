@@ -71,32 +71,32 @@ public class ExclusiveJobSchedulerTest {
         scheduledJobSystem.nukeForTest("mytube");
         scheduledJobSystem.schedule("mytube", "{hello:world}", 1000);
 
-        List<JobInfo> jobInfos = scheduledJobSystem.peakDelayed("mytube", 0, 1 );
+        List<JobInfo> jobInfos = scheduledJobSystem.peekDelayed("mytube", 0, 1);
         assertEquals(jobInfos.get(0).getJobStr(), "{hello:world}");
 
         Thread.sleep(1500);
-        List<JobInfo> jobInfos2 = scheduledJobSystem.peakDelayed("mytube", 0, 1);
+        List<JobInfo> jobInfos2 = scheduledJobSystem.peekDelayed("mytube", 0, 1);
         assertEquals(jobInfos2.size(), 0);
 
-        List<JobInfo> jobInfos3 = scheduledJobSystem.peakReady("mytube", 0, 1);
+        List<JobInfo> jobInfos3 = scheduledJobSystem.peekReady("mytube", 0, 1);
         assertEquals(jobInfos3.get(0).getJobStr(), "{hello:world}");
 
         scheduledJobSystem.reserveSingle("mytube", 1000L);
-        List<JobInfo> jobInfos4 = scheduledJobSystem.peakRunning("mytube", 0, 1);
+        List<JobInfo> jobInfos4 = scheduledJobSystem.peekRunning("mytube", 0, 1);
         assertEquals(jobInfos4.get(0).getJobStr(), "{hello:world}");
 
         Thread.sleep(1500);
-        List<JobInfo> jobInfos6 = scheduledJobSystem.peakRunning("mytube", 0, 1);
+        List<JobInfo> jobInfos6 = scheduledJobSystem.peekRunning("mytube", 0, 1);
         assertEquals(jobInfos6.size(), 0);
 
-        List<JobInfo> jobInfos5 = scheduledJobSystem.peakExpired("mytube", 0, 1);
+        List<JobInfo> jobInfos5 = scheduledJobSystem.peekExpired("mytube", 0, 1);
         assertEquals(jobInfos5.get(0).getJobStr(), "{hello:world}");
 
         scheduledJobSystem.deleteJob("mytube",  "{hello:world}");
-        assertEquals(scheduledJobSystem.peakDelayed("mytube", 1, 0).size(), 0);
-        assertEquals(scheduledJobSystem.peakReady("mytube", 1, 0).size(), 0);
-        assertEquals(scheduledJobSystem.peakRunning("mytube", 1, 0).size(), 0);
-        assertEquals(scheduledJobSystem.peakExpired("mytube", 1, 0).size(), 0);
+        assertEquals(scheduledJobSystem.peekDelayed("mytube", 1, 0).size(), 0);
+        assertEquals(scheduledJobSystem.peekReady("mytube", 1, 0).size(), 0);
+        assertEquals(scheduledJobSystem.peekRunning("mytube", 1, 0).size(), 0);
+        assertEquals(scheduledJobSystem.peekExpired("mytube", 1, 0).size(), 0);
     }
 
     @Test
