@@ -1,5 +1,7 @@
 package com.lithium.dbi.rdbi;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
@@ -13,6 +15,7 @@ public class Handle implements Closeable {
     private final Jedis jedis;
     private JedisWrapperDoNotUse jedisWrapper;
     private boolean closed = false;
+    private static final Logger logger = LoggerFactory.getLogger(Handle.class);
 
     private final ProxyFactory proxyFactory;
 
@@ -36,23 +39,25 @@ public class Handle implements Closeable {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
 
         if (closed) {
             return;
         }
 
+        boolean isBusted;
         try {
-            if (jedisWrapper.__rdbi_isJedisBusted__()) {
-                pool.returnBrokenResource(jedis);
-            } else {
-                pool.returnResource(jedis);
-            }
-        } catch (ClassCastException e) {
-            //internal error
-        } finally {
-            //for indempotency of Closeable interface
-            closed = true;
+            isBusted = jedisWrapper.__rdbi_isJedisBusted__();
+        } catch (Exception e) {
+            logger.error("Exception caught while checking isJedisBusted!", e);
+            isBusted = true;
         }
+
+        if (isBusted) {
+            pool.returnBrokenResource(jedis);
+        } else {
+            pool.returnResource(jedis);
+        }
+        closed = true;
     }
 }

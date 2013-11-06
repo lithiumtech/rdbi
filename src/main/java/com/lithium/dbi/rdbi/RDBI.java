@@ -2,6 +2,8 @@ package com.lithium.dbi.rdbi;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisException;
@@ -15,6 +17,7 @@ import javax.annotation.concurrent.ThreadSafe;
 public class RDBI {
 
     private final JedisPool pool;
+    private static final Logger logger = LoggerFactory.getLogger(RDBI.class);
 
     @VisibleForTesting
     final ProxyFactory proxyFactory;
@@ -22,6 +25,7 @@ public class RDBI {
     public RDBI(JedisPool pool) {
         this.pool = pool;
         this.proxyFactory = new ProxyFactory();
+        logger.info("RDBI created, ready for action.");
     }
 
     public <T> T withHandle(Callback<T> callback) {
@@ -40,7 +44,12 @@ public class RDBI {
     }
 
     public Handle open() {
-        Jedis resource = pool.getResource();
-        return new Handle(pool, resource, proxyFactory);
+        try {
+            Jedis resource = pool.getResource();
+            return new Handle(pool, resource, proxyFactory);
+        } catch (Exception ex) {
+            logger.error("Exception caught during resource create!", ex);
+            throw Throwables.propagate(ex);
+        }
     }
 }
