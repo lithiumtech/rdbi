@@ -13,7 +13,7 @@ import java.util.Set;
 
 /**
  * Implements a scheduled job system that de-duplicates jobs. A job system consists of one or more tubes. Each tube two
- * queue, a ready queue and a running queue. To schedule a job on the ready queue, use schedule( jobStr, ttlInMillis). When the
+ * queue, a ready queue and a running queue. To shedule a job on the ready queue, use schedule( jobStr, ttlInMillis). When the
  * job is ready, you can reserve the job to run via reserve(ttrInMillis). When a job is reserved it has a count down of
  * ttr, once ttr is up, the job is considered expired. Expired jobs can be extracted from the queue via cull(). To cancel
  * a job in the running or ready queue, use delete().
@@ -97,23 +97,23 @@ public class ExclusiveJobScheduler {
         }
     }
 
-    public List<JobInfo> peekDelayed(String tube, int offset, int count) {
-        return peekInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+    public List<JobInfo> peakDelayed(String tube, int offset, int count) {
+        return peakInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
 
-    public List<JobInfo> peekReady(String tube, int offset, int count) {
-        return peekInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+    public List<JobInfo> peakReady(String tube, int offset, int count) {
+        return peakInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
     }
 
-    public List<JobInfo> peekRunning(String tube, int offset, int count) {
-        return peekInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+    public List<JobInfo> peakRunning(String tube, int offset, int count) {
+        return peakInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
 
-    public List<JobInfo> peekExpired(String tube, int offset, int count) {
-        return peekInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+    public List<JobInfo> peakExpired(String tube, int offset, int count) {
+        return peakInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
     }
 
-    private List<JobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
+    private List<JobInfo> peakInternal(String queue, Double min, Double max, int offset, int count) {
 
         List<JobInfo> jobInfos = Lists.newArrayList();
         Handle handle = rdbi.open();
