@@ -93,32 +93,32 @@ public class ExclusiveJobSchedulerTest {
     public void testBasicStates() throws InterruptedException {
         scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 1000);
 
-        List<JobInfo> jobInfos = scheduledJobSystem.peakDelayed(TEST_TUBE, 0, 1 );
+        List<JobInfo> jobInfos = scheduledJobSystem.peekDelayed(TEST_TUBE, 0, 1);
         assertEquals(jobInfos.get(0).getJobStr(), "{hello:world}");
 
         Thread.sleep(1500);
-        List<JobInfo> jobInfos2 = scheduledJobSystem.peakDelayed(TEST_TUBE, 0, 1);
+        List<JobInfo> jobInfos2 = scheduledJobSystem.peekDelayed(TEST_TUBE, 0, 1);
         assertEquals(jobInfos2.size(), 0);
 
-        List<JobInfo> jobInfos3 = scheduledJobSystem.peakReady(TEST_TUBE, 0, 1);
+        List<JobInfo> jobInfos3 = scheduledJobSystem.peekReady(TEST_TUBE, 0, 1);
         assertEquals(jobInfos3.get(0).getJobStr(), "{hello:world}");
 
         scheduledJobSystem.reserveSingle("mytube", 1000L);
-        List<JobInfo> jobInfos4 = scheduledJobSystem.peakRunning(TEST_TUBE, 0, 1);
+        List<JobInfo> jobInfos4 = scheduledJobSystem.peekRunning(TEST_TUBE, 0, 1);
         assertEquals(jobInfos4.get(0).getJobStr(), "{hello:world}");
 
         Thread.sleep(1500);
-        List<JobInfo> jobInfos6 = scheduledJobSystem.peakRunning(TEST_TUBE, 0, 1);
+        List<JobInfo> jobInfos6 = scheduledJobSystem.peekRunning(TEST_TUBE, 0, 1);
         assertEquals(jobInfos6.size(), 0);
 
-        List<JobInfo> jobInfos5 = scheduledJobSystem.peakExpired(TEST_TUBE, 0, 1);
+        List<JobInfo> jobInfos5 = scheduledJobSystem.peekExpired(TEST_TUBE, 0, 1);
         assertEquals(jobInfos5.get(0).getJobStr(), "{hello:world}");
 
         scheduledJobSystem.deleteJob(TEST_TUBE,  "{hello:world}");
-        assertEquals(scheduledJobSystem.peakDelayed(TEST_TUBE, 1, 0).size(), 0);
-        assertEquals(scheduledJobSystem.peakReady(TEST_TUBE, 1, 0).size(), 0);
-        assertEquals(scheduledJobSystem.peakRunning(TEST_TUBE, 1, 0).size(), 0);
-        assertEquals(scheduledJobSystem.peakExpired(TEST_TUBE, 1, 0).size(), 0);
+        assertEquals(scheduledJobSystem.peekDelayed(TEST_TUBE, 1, 0).size(), 0);
+        assertEquals(scheduledJobSystem.peekReady(TEST_TUBE, 1, 0).size(), 0);
+        assertEquals(scheduledJobSystem.peekRunning(TEST_TUBE, 1, 0).size(), 0);
+        assertEquals(scheduledJobSystem.peekExpired(TEST_TUBE, 1, 0).size(), 0);
     }
 
     @Test

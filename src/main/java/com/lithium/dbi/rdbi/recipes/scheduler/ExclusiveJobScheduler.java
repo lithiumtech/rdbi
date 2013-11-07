@@ -136,23 +136,23 @@ public class ExclusiveJobScheduler {
         }
     }
 
-    public List<JobInfo> peakDelayed(String tube, int offset, int count) {
-        return peakInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+    public List<JobInfo> peekDelayed(String tube, int offset, int count) {
+        return peekInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
 
-    public List<JobInfo> peakReady(String tube, int offset, int count) {
-        return peakInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+    public List<JobInfo> peekReady(String tube, int offset, int count) {
+        return peekInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
     }
 
-    public List<JobInfo> peakRunning(String tube, int offset, int count) {
-        return peakInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+    public List<JobInfo> peekRunning(String tube, int offset, int count) {
+        return peekInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
 
-    public List<JobInfo> peakExpired(String tube, int offset, int count) {
-        return peakInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+    public List<JobInfo> peekExpired(String tube, int offset, int count) {
+        return peekInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
     }
 
-    private List<JobInfo> peakInternal(String queue, Double min, Double max, int offset, int count) {
+    private List<JobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
 
         List<JobInfo> jobInfos = Lists.newArrayList();
         Handle handle = rdbi.open();
