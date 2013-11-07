@@ -153,20 +153,16 @@ public class ExclusiveJobSchedulerTest {
 
     @Test
     public void testPause(){
-        scheduledJobSystem.schedule(TEST_TUBE, "{hello:delayed}", 10000);
+        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:delayed}", 10000), "PRE-CONDITION: failed to create 1 delayed job");
         // scheduling a "ready" job with a ttl of 0 means that it may come back when we make the call to peekDelayed
         // unless we force at least a millisecond delay.  Rather than sleep the thread, let's just schedule this to run
         // sometime in the past, making it "overdue" and thus ready
-        scheduledJobSystem.schedule(TEST_TUBE, "{hello:ready}", -10000);
+        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:ready}", -10000), "PRE-CONDITION: failed to create 1 ready job");
 
-        List<JobInfo> jobs = scheduledJobSystem.peekDelayed(TEST_TUBE, 0, 10);
-        assertEquals(jobs.get(0).getJobStr(), "{hello:delayed}", "PRE-CONDITION: failed to create 1 delayed job");
-        jobs = scheduledJobSystem.peekReady(TEST_TUBE, 0, 10);
-        assertEquals(jobs.get(0).getJobStr(), "{hello:ready}", "PRE-CONDITION: failed to create 1 ready job");
 
         scheduledJobSystem.pause(TEST_TUBE);
 
-        assertFalse(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0), "Should not be able to schedule anything when the system is stopped.");
+        assertFalse(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0), "Should not be able to schedule anything when the system is paused.");
         JobInfo result = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
         assertNull(result, "Should not have been able to reserve a job while the system is paused");
     }
@@ -174,11 +170,11 @@ public class ExclusiveJobSchedulerTest {
     @Test
     public void testResume(){
         scheduledJobSystem.pause(TEST_TUBE);
-        assertFalse(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0), "PRE-CONDITION: system should be stopped.");
+        assertTrue(scheduledJobSystem.isPaused(TEST_TUBE), "PRE-CONDITION: system should be paused.");
 
         scheduledJobSystem.resume(TEST_TUBE);
-        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:delayed}", 10000), "Failed to schedule a delayed job after starting the system.");
-        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:ready}", -10000), "Failed to schedule a ready job after starting the system.");
+        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:delayed}", 10000), "Failed to schedule a delayed job after resuming the system.");
+        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:ready}", -10000), "Failed to schedule a ready job after resuming the system.");
         JobInfo result = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
         assertNotNull(result, "Should have been able to reserve a job while the system is paused");
     }
