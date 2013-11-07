@@ -1,7 +1,9 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
 import com.google.common.collect.Lists;
-import com.lithium.dbi.rdbi.*;
+import com.lithium.dbi.rdbi.Callback;
+import com.lithium.dbi.rdbi.Handle;
+import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
 import redis.clients.jedis.Tuple;
 
