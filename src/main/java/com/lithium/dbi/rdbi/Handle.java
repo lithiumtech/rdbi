@@ -39,7 +39,7 @@ public class Handle implements Closeable {
     }
 
     @Override
-    public synchronized void close() {
+    public void close() {
 
         if (closed) {
             return;

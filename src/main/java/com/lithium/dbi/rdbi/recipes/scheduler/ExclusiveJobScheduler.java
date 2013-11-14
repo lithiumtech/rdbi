@@ -1,8 +1,9 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
-import com.lithium.dbi.rdbi.*;
+import com.lithium.dbi.rdbi.Callback;
+import com.lithium.dbi.rdbi.Handle;
+import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
 import redis.clients.jedis.Tuple;
 
@@ -36,15 +37,51 @@ public class ExclusiveJobScheduler {
         this.prefix = redisPrefixKey;
     }
 
+    /**
+     * This will "pause" the system for the specified tube, preventing any new jobs from being scheduled
+     * or reserved.
+     */
+    public void pause(final String tube){
+        rdbi.withHandle(new Callback<Void>() {
+            @Override
+            public Void run(Handle handle) {
+                handle.jedis().set(getPaused(tube), "true");
+                return null;
+            }
+        });
+    }
+
+    public boolean isPaused(final String tube){
+        return isPaused(tube, null);
+    }
+
+    /**
+     * This will resume / un-pause the system for the specified tube, allowing jobs to be scheduled and reserved.
+     *
+     */
+    public void resume(final String tube){
+        rdbi.withHandle(new Callback<Void>() {
+            @Override
+            public Void run(Handle handle) {
+                handle.jedis().del(getPaused(tube));
+                return null;
+            }
+        });
+    }
+
     public boolean schedule(final String tube, final String jobStr, final int ttlInMillis) {
 
         Handle handle = rdbi.open();
         try {
-            return 1 == handle.attach(ExclusiveJobSchedulerDAO.class).scheduleJob(
-                    getReadyQueue(tube),
-                    getRunningQueue(tube),
-                    jobStr,
-                    Instant.now().getMillis() + ttlInMillis);
+            if(isPaused(tube, handle)){
+                return false;
+            } else {
+                return 1 == handle.attach(ExclusiveJobSchedulerDAO.class).scheduleJob(
+                        getReadyQueue(tube),
+                        getRunningQueue(tube),
+                        jobStr,
+                        Instant.now().getMillis() + ttlInMillis);
+            }
         } finally {
             handle.close();
         }
@@ -53,12 +90,16 @@ public class ExclusiveJobScheduler {
     public List<JobInfo> reserveMulti(final String tube, final long ttrInMillis, final int maxNumberOfJobs) {
         Handle handle = rdbi.open();
         try {
-            return handle.attach(ExclusiveJobSchedulerDAO.class).reserveJobs(
-                    getReadyQueue(tube),
-                    getRunningQueue(tube),
-                    maxNumberOfJobs,
-                    Instant.now().getMillis(),
-                    Instant.now().getMillis() + ttrInMillis);
+            if(isPaused(tube, handle)){
+                return null;
+            } else {
+                return handle.attach(ExclusiveJobSchedulerDAO.class).reserveJobs(
+                        getReadyQueue(tube),
+                        getRunningQueue(tube),
+                        maxNumberOfJobs,
+                        Instant.now().getMillis(),
+                        Instant.now().getMillis() + ttrInMillis);
+            }
         } finally {
             handle.close();
         }
@@ -97,23 +138,23 @@ public class ExclusiveJobScheduler {
         }
     }
 
-    public List<JobInfo> peakDelayed(String tube, int offset, int count) {
-        return peakInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+    public List<JobInfo> peekDelayed(String tube, int offset, int count) {
+        return peekInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
 
-    public List<JobInfo> peakReady(String tube, int offset, int count) {
-        return peakInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+    public List<JobInfo> peekReady(String tube, int offset, int count) {
+        return peekInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
     }
 
-    public List<JobInfo> peakRunning(String tube, int offset, int count) {
-        return peakInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+    public List<JobInfo> peekRunning(String tube, int offset, int count) {
+        return peekInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
 
-    public List<JobInfo> peakExpired(String tube, int offset, int count) {
-        return peakInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+    public List<JobInfo> peekExpired(String tube, int offset, int count) {
+        return peekInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
     }
 
-    private List<JobInfo> peakInternal(String queue, Double min, Double max, int offset, int count) {
+    private List<JobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
 
         List<JobInfo> jobInfos = Lists.newArrayList();
         Handle handle = rdbi.open();
@@ -128,22 +169,30 @@ public class ExclusiveJobScheduler {
         }
     }
 
-    private String getRunningQueue(String tube) {
+    protected String getRunningQueue(String tube) {
         return prefix + tube + ":running_queue";
     }
 
-    private String getReadyQueue(String tube) {
+    protected String getReadyQueue(String tube) {
         return prefix + tube + ":ready_queue";
     }
 
-    @VisibleForTesting
-    void nukeForTest(final String tube) {
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().del(getReadyQueue(tube), getRunningQueue(tube));
-                return null;
-            }
-        });
+    protected String getPaused(String tube){
+        return prefix + tube + ":paused";
+    }
+
+    private boolean isPaused(final String tube, Handle handle){
+        if(handle == null) {
+            return rdbi.withHandle(new Callback<Boolean>() {
+                @Override
+                public Boolean run(Handle handle) {
+                    String stopped = handle.jedis().get(getPaused(tube));
+                    return Boolean.valueOf(stopped);
+                }
+            });
+        } else {
+            String stopped = handle.jedis().get(getPaused(tube));
+            return Boolean.valueOf(stopped);
+        }
     }
 }
