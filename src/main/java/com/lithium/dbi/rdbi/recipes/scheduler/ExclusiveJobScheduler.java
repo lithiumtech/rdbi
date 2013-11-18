@@ -52,7 +52,13 @@ public class ExclusiveJobScheduler {
     }
 
     public boolean isPaused(final String tube){
-        return isPaused(tube, null);
+        return rdbi.withHandle(new Callback<Boolean>() {
+            @Override
+            public Boolean run(Handle handle) {
+                String stopped = handle.jedis().get(getPaused(tube));
+                return Boolean.valueOf(stopped);
+            }
+        });
     }
 
     /**
@@ -73,15 +79,12 @@ public class ExclusiveJobScheduler {
 
         Handle handle = rdbi.open();
         try {
-            if(isPaused(tube, handle)){
-                return false;
-            } else {
-                return 1 == handle.attach(ExclusiveJobSchedulerDAO.class).scheduleJob(
-                        getReadyQueue(tube),
-                        getRunningQueue(tube),
-                        jobStr,
-                        Instant.now().getMillis() + ttlInMillis);
-            }
+            return 1 == handle.attach(ExclusiveJobSchedulerDAO.class).scheduleJob(
+                    getReadyQueue(tube),
+                    getRunningQueue(tube),
+                    getPaused(tube),
+                    jobStr,
+                    Instant.now().getMillis() + ttlInMillis);
         } finally {
             handle.close();
         }
@@ -90,16 +93,13 @@ public class ExclusiveJobScheduler {
     public List<JobInfo> reserveMulti(final String tube, final long ttrInMillis, final int maxNumberOfJobs) {
         Handle handle = rdbi.open();
         try {
-            if(isPaused(tube, handle)){
-                return null;
-            } else {
-                return handle.attach(ExclusiveJobSchedulerDAO.class).reserveJobs(
-                        getReadyQueue(tube),
-                        getRunningQueue(tube),
-                        maxNumberOfJobs,
-                        Instant.now().getMillis(),
-                        Instant.now().getMillis() + ttrInMillis);
-            }
+            return handle.attach(ExclusiveJobSchedulerDAO.class).reserveJobs(
+                    getReadyQueue(tube),
+                    getRunningQueue(tube),
+                    getPaused(tube),
+                    maxNumberOfJobs,
+                    Instant.now().getMillis(),
+                    Instant.now().getMillis() + ttrInMillis);
         } finally {
             handle.close();
         }
@@ -181,18 +181,4 @@ public class ExclusiveJobScheduler {
         return prefix + tube + ":paused";
     }
 
-    private boolean isPaused(final String tube, Handle handle){
-        if(handle == null) {
-            return rdbi.withHandle(new Callback<Boolean>() {
-                @Override
-                public Boolean run(Handle handle) {
-                    String stopped = handle.jedis().get(getPaused(tube));
-                    return Boolean.valueOf(stopped);
-                }
-            });
-        } else {
-            String stopped = handle.jedis().get(getPaused(tube));
-            return Boolean.valueOf(stopped);
-        }
-    }
 }

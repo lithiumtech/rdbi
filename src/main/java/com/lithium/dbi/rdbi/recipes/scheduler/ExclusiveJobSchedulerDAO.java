@@ -12,7 +12,8 @@ public interface ExclusiveJobSchedulerDAO {
     @Query(
         "local readyJobScore = redis.call('ZSCORE', $readyQueue$, $jobStr$)\n" +
         "local runningJobScore = redis.call('ZSCORE', $runningQueue$, $jobStr$)\n" +
-        "if not readyJobScore and not runningJobScore then\n" +
+        "local isPaused = redis.call('GET', $pausedTube$) \n" +
+        "if not readyJobScore and not runningJobScore and isPaused ~= 'true' then\n" +
         "   redis.call('ZADD', $readyQueue$, $ttl$, $jobStr$)\n" +
         "   return 1\n" +
         "else\n" +
@@ -22,13 +23,15 @@ public interface ExclusiveJobSchedulerDAO {
     public int scheduleJob(
             @BindKey("readyQueue") String readyQueue,
             @BindKey("runningQueue") String runningQueue,
+            @BindKey("pausedTube") String pausedTube,
             @BindArg("jobStr") String job,
             @BindArg("ttl") long ttlInMillis);
 
     @Mapper(JobInfoListMapper.class)
     @Query(
+        "local isPaused = redis.call('GET', $pausedTube$) \n" +
         "local jobs = redis.call('ZRANGEBYSCORE', $readyQueue$, 0, $now$, 'WITHSCORES', 'LIMIT', 0, $limit$)\n" +
-        "if next(jobs) == nil then\n" +
+        "if isPaused == 'true' or next(jobs) == nil then\n" +
         "    return nil\n" +
         "end\n" +
         "for i=1,2*#jobs,2 do\n" +
@@ -40,6 +43,7 @@ public interface ExclusiveJobSchedulerDAO {
     public List<JobInfo> reserveJobs(
             @BindKey("readyQueue") String readyQueue,
             @BindKey("runningQueue") String runningQueue,
+            @BindKey("pausedTube") String pausedTube,
             @BindArg("limit") int limit,
             @BindArg("now") long now,
             @BindArg("ttr") long ttr);
