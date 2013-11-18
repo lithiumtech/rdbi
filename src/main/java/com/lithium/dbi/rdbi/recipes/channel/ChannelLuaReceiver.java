@@ -60,6 +60,30 @@ public class ChannelLuaReceiver implements ChannelReceiver {
             @BindArg("lastSeenCount") Long lastSeenCount,
             @BindArg("copyDepthToKey") String copyDepthToKey
         );
+
+        @Query(
+            "local current_count = redis.call(\"GET\", $countKey$)\n" +
+            "if not current_count then\n" +
+            "    current_count = 0\n" +
+            "else\n" +
+            "    current_count = tonumber(current_count)\n" +
+            "end\n" +
+            "return current_count"
+        )
+        public Long getDepth(@BindKey("countKey") String countKey);
+
+        @Query(
+            "local current_count = redis.call(\"GET\", $countKey$)\n" +
+            "if not current_count then\n" +
+            "    current_count = 0\n" +
+            "else\n" +
+            "    current_count = tonumber(current_count)\n" +
+            "end\n" +
+            "redis.call(\"SET\", $copyDepthToKey$, current_count)\n" +
+            "return current_count"
+        )
+        public Long getDepth(@BindKey("countKey") String countKey,
+                             @BindKey("copyDepthToKey") String copyDepthToKey);
     }
 
     public static class GetResultMapper implements ResultMapper<GetResult,List<String>> {
@@ -99,6 +123,27 @@ public class ChannelLuaReceiver implements ChannelReceiver {
                         ChannelPublisher.getChannelQueueKey(channel),
                         lastSeenId,
                         copyDepthToKey);
+            }
+        } finally {
+            handle.close();
+        }
+    }
+
+    @Override
+    public Long getDepth(String channel) {
+        return getDepth(channel, null);
+    }
+
+    @Override
+    public Long getDepth(String channel, String copyDepthToKey) {
+        Handle handle = rdbi.open();
+
+        try {
+            DAO dao = handle.attach(DAO.class);
+            if (copyDepthToKey == null) {
+                return dao.getDepth(ChannelPublisher.getChannelDepthKey(channel));
+            } else {
+                return dao.getDepth(ChannelPublisher.getChannelDepthKey(channel), copyDepthToKey);
             }
         } finally {
             handle.close();

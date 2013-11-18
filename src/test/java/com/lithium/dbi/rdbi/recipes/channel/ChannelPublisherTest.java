@@ -131,7 +131,34 @@ public class ChannelPublisherTest {
         }
     }
 
+    @Test
+    public void getDepthTest() {
+        final Set<String> channel = ImmutableSet.of("channel1");
 
+        final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
+        channelPublisher.resetChannels(channel);
+
+        channelPublisher.publish(channel, ImmutableList.of("Hello", "World"));
+
+        final ChannelReceiver receiver = new ChannelLuaReceiver(rdbi);
+        Long result = receiver.getDepth("channel1");
+        assertTrue(result.equals(2L));
+
+        result = receiver.getDepth("channel1", "channel1:processed");
+        assertTrue(result.equals(2L));
+
+        Handle handle = rdbi.open();
+        try {
+            String copiedDepth = handle.jedis().get("channel1:processed");
+            assertNotNull(copiedDepth);
+            assertTrue(Long.valueOf(copiedDepth) == 2L);
+
+            handle.jedis().del("channel1:processed");
+        } finally {
+            handle.close();
+        }
+    }
 
     @Test
     public void testPublishChannelPerformanceTest() throws InterruptedException {
