@@ -45,7 +45,7 @@ public class ExclusiveJobScheduler {
         rdbi.withHandle(new Callback<Void>() {
             @Override
             public Void run(Handle handle) {
-                handle.jedis().set(getPaused(tube), "true");
+                handle.jedis().set(getPaused(tube), String.valueOf(System.currentTimeMillis()/1000));
                 return null;
             }
         });
@@ -55,8 +55,20 @@ public class ExclusiveJobScheduler {
         return rdbi.withHandle(new Callback<Boolean>() {
             @Override
             public Boolean run(Handle handle) {
-                String stopped = handle.jedis().get(getPaused(tube));
-                return Boolean.valueOf(stopped);
+                return handle.jedis().get(getPaused(tube)) != null;
+            }
+        });
+    }
+
+    /**
+     * This returns the value for the pause key. If that value was created through this library
+     * it will be a unix timestamp (seconds since the epoch).
+     */
+    public String getPauseStart(final String tube){
+        return rdbi.withHandle(new Callback<String>() {
+            @Override
+            public String run(Handle handle) {
+                return handle.jedis().get(getPaused(tube));
             }
         });
     }
