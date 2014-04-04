@@ -47,7 +47,11 @@ public class Handle implements Closeable {
 
         boolean isBusted;
         try {
-            isBusted = jedisWrapper.__rdbi_isJedisBusted__();
+            if (jedisWrapper != null) {
+                isBusted = jedisWrapper.__rdbi_isJedisBusted__();
+            } else {
+                isBusted = false;
+            }
         } catch (Exception e) {
             logger.error("Exception caught while checking isJedisBusted!", e);
             isBusted = true;
