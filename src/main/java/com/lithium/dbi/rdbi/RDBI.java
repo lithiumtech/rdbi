@@ -5,8 +5,8 @@ import com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisException;
+import redis.clients.util.Pool;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -16,13 +16,13 @@ import javax.annotation.concurrent.ThreadSafe;
 @ThreadSafe
 public class RDBI {
 
-    private final JedisPool pool;
+    private final Pool<Jedis> pool;
     private static final Logger logger = LoggerFactory.getLogger(RDBI.class);
 
     @VisibleForTesting
     final ProxyFactory proxyFactory;
 
-    public RDBI(JedisPool pool) {
+    public RDBI(Pool<Jedis> pool) {
         this.pool = pool;
         this.proxyFactory = new ProxyFactory();
         logger.info("RDBI created, ready for action.");
