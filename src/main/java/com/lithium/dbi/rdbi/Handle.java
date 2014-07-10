@@ -3,7 +3,7 @@ package com.lithium.dbi.rdbi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
+import redis.clients.util.Pool;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.Closeable;
@@ -11,7 +11,7 @@ import java.io.Closeable;
 @NotThreadSafe
 public class Handle implements Closeable {
 
-    private final JedisPool pool;
+    private final Pool<Jedis> pool;
     private final Jedis jedis;
     private JedisWrapperDoNotUse jedisWrapper;
     private boolean closed = false;
@@ -19,7 +19,7 @@ public class Handle implements Closeable {
 
     private final ProxyFactory proxyFactory;
 
-    public Handle(JedisPool pool, Jedis jedis, ProxyFactory proxyFactory) {
+    public Handle(Pool<Jedis> pool, Jedis jedis, ProxyFactory proxyFactory) {
         this.pool = pool;
         this.jedis = jedis;
         this.proxyFactory = proxyFactory;
