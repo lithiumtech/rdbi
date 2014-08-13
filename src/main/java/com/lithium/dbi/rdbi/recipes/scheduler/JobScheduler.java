@@ -31,8 +31,7 @@ public class JobScheduler {
         this.prefix = redisPrefixKey;
     }
 
-    public boolean schedule(final String tube, final String jobStr, final int millisInFuture) {
-
+    public boolean schedule(final String tube, final String jobStr, final int millisInFuture, final int quiescence) {
         Handle handle = rdbi.open();
         try {
             return 1 == handle
@@ -40,7 +39,8 @@ public class JobScheduler {
                     .scheduleJob(
                             getReadyQueue(tube),
                             jobStr,
-                            Instant.now().getMillis() + millisInFuture);
+                            Instant.now().getMillis() + millisInFuture,
+                            quiescence);
         } finally {
             handle.close();
         }

@@ -13,16 +13,18 @@ public interface JobSchedulerDAO {
      * Adds an item to the readyQueue, which is a sorted set of jobs not yet
      * processed. This set issorted by the provided timestamp. If item already
      * exists in the readyQueue, the timestamp will be updated if it is > the
-     * original timestamp and also within 1 second of the original timestamp.
+     * original timestamp and also within quiescence milliseconds of the
+     * original timestamp.
      *
      * @param readyQueue Sorted set name for items not yet processed.
      * @param job Key for sorted set.
      * @param timestamp Earliest UTC timestamp to process this job.
+     * @param quiescence Maximum forward distance (exclusive) from current timestamp to allow an update if the job already exists.
      * @return 1 if added or updated, 0 otherwise.
      */
     @Query(
             "local readyJobScore = redis.call('ZSCORE', $readyQueue$, $jobStr$)\n" +
-            "if not readyJobScore or ($timestamp$ > readyJobScore and math.abs($timestamp$ - readyJobScore) < 1000) then\n" +
+            "if not readyJobScore or ($timestamp$ > readyJobScore and math.abs($timestamp$ - readyJobScore) < tonumber($quiescence$)) then\n" +
             "    redis.call('ZADD', $readyQueue$, $timestamp$, $jobStr$)\n" +
             "    return 1\n" +
             "else\n" +
@@ -32,7 +34,8 @@ public interface JobSchedulerDAO {
     public int scheduleJob(
             @BindKey("readyQueue") String readyQueue,
             @BindArg("jobStr") String job,
-            @BindArg("timestamp") long timestamp);
+            @BindArg("timestamp") long timestamp,
+            @BindArg("quiescence") int quiescence);
 
     /**
      * Moves items from readyQueue to runningQueue and returns details.
