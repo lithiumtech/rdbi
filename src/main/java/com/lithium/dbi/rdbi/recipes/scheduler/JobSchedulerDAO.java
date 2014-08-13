@@ -10,23 +10,35 @@ import java.util.List;
 public interface JobSchedulerDAO {
 
     /**
-     * Adds an item to the sorted set of jobs not yet processed. The set is sorted by the provided timestamp.
+     * Adds an item to the readyQueue, which is a sorted set of jobs not yet
+     * processed. This set issorted by the provided timestamp. If item already
+     * exists in the readyQueue, the timestamp will be updated if it is > the
+     * original timestamp and also within 1 second of the original timestamp.
      *
      * @param readyQueue Sorted set name for items not yet processed.
      * @param job Key for sorted set.
      * @param timestamp Earliest UTC timestamp to process this job.
-     * @return
+     * @return 1 if added or updated, 0 otherwise.
      */
-    @Query("return redis.call('ZADD', $readyQueue$, $timestamp$, $jobStr$)")
+    @Query(
+            "local readyJobScore = redis.call('ZSCORE', $readyQueue$, $jobStr$)\n" +
+            "if not readyJobScore or ($timestamp$ > readyJobScore and math.abs($timestamp$ - readyJobScore) < 1000) then\n" +
+            "    redis.call('ZADD', $readyQueue$, $timestamp$, $jobStr$)\n" +
+            "    return 1\n" +
+            "else\n" +
+            "    return 0\n" +
+            "end"
+    )
     public int scheduleJob(
             @BindKey("readyQueue") String readyQueue,
             @BindArg("jobStr") String job,
             @BindArg("timestamp") long timestamp);
 
     /**
-     * Moves items from readyQueue to runningQueue and returns details. The caller is taking
-     * responsibility for processing the returned job details and should call
-     * {@link #deleteRunningJob(String, String)} for each job it completes.
+     * Moves items from readyQueue to runningQueue and returns details.
+     * The caller is taking responsibility for processing the returned job
+     * details and should call {@link #deleteRunningJob(String, String)} for
+     * each job it completes.
      *
      * @param readyQueue Sorted set name for items not yet processed.
      * @param runningQueue Sorted set name for items currently being processed.
@@ -74,7 +86,8 @@ public interface JobSchedulerDAO {
     public List<JobInfo> requeueExpiredJobs(@BindKey("readyQueue") String readyQueue, @BindKey("runningQueue") String runningQueue, @BindArg("timestamp") Long timestamp);
 
     /**
-     * Delete a job from the runningQueue. This implies the job is no longer being executed.
+     * Delete a job from the runningQueue. This implies the job is no longer
+     * being executed.
      *
      * @param runningQueue Sorted set name for items currently being processed.
      * @param job

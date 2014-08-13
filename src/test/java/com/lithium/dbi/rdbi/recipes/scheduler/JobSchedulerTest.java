@@ -14,6 +14,8 @@ import java.util.List;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.assertFalse;
 
 @Test(groups = "integration")
 public class JobSchedulerTest {
@@ -42,12 +44,19 @@ public class JobSchedulerTest {
 
     @Test
     public void testBasicSchedule() throws InterruptedException {
-
         scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0);
         JobInfo result2 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
         assertEquals(result2.getJobStr(), "{hello:world}");
         JobInfo result3 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
         assertNull(result3);
+    }
+
+    @Test
+    public void testRepeatSchedule() throws InterruptedException {
+        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0)); // set time to now
+        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 500)); // success ~500ms > original
+        assertFalse(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0)); // fails < original
+        assertFalse(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 1500)); // fails ~1000ms > second
     }
 
     @Test
