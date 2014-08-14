@@ -54,6 +54,22 @@ public class JobSchedulerTest {
     }
 
     @Test
+    public void testDuplicateReserve() throws InterruptedException {
+        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0, QUIESCENCE);
+        JobInfo result2 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
+        assertEquals(result2.getJobStr(), "{hello:world}");
+        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0, QUIESCENCE));
+        // The same case now exists in ready and running.
+        // Reservation should fail...
+        JobInfo result3 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
+        assertNull(result3);
+        // Remove from running & reserve again should succeed
+        scheduledJobSystem.deleteRunningJob(TEST_TUBE, "{hello:world}");
+        JobInfo result4 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
+        assertEquals(result4.getJobStr(), "{hello:world}");
+    }
+
+    @Test
     public void testRepeatSchedule() throws InterruptedException {
         assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0, QUIESCENCE)); // set time to now
         assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 500, QUIESCENCE)); // success ~500ms > original

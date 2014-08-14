@@ -41,7 +41,8 @@ public interface JobSchedulerDAO {
      * Moves items from readyQueue to runningQueue and returns details.
      * The caller is taking responsibility for processing the returned job
      * details and should call {@link #deleteRunningJob(String, String)} for
-     * each job it completes.
+     * each job it completes. If a duplicate job is already in runningQueue,
+     * it will not be removed from readyQueue.
      *
      * @param readyQueue Sorted set name for items not yet processed.
      * @param runningQueue Sorted set name for items currently being processed.
@@ -56,11 +57,19 @@ public interface JobSchedulerDAO {
         "if next(jobs) == nil then\n" +
         "    return nil\n" +
         "end\n" +
+        "local reserved = {}\n" +
+        "local reservedIndex = 1\n" +
         "for i=1,2*#jobs,2 do\n" +
-        "    redis.call('ZREM', $readyQueue$, jobs[i])\n" + //Note: in order to support "limit", we have to loop the delete, perhaps not have limit, 1 at a time?
-        "    redis.call('ZADD', $runningQueue$, $expiration$, jobs[i])\n" +
+        "    local runningJob = redis.call('ZSCORE', $runningQueue$, jobs[i])\n" +
+        "    if not runningJob then\n" +
+        "        reserved[reservedIndex] = jobs[i]\n" +
+        "        reserved[reservedIndex + 1] = jobs[i + 1]\n" +
+        "        reservedIndex = reservedIndex + 2\n" +
+        "        redis.call('ZREM', $readyQueue$, jobs[i])\n" +
+        "        redis.call('ZADD', $runningQueue$, $expiration$, jobs[i])\n" +
+        "    end\n" +
         "end\n" +
-        "return jobs"
+        "return reserved"
     )
     public List<JobInfo> reserveJobs(
             @BindKey("readyQueue") String readyQueue,
