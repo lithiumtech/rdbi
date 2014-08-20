@@ -3,8 +3,11 @@ package com.lithium.dbi.rdbi;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
-import net.sf.cglib.proxy.*;
 import net.sf.cglib.proxy.Callback;
+import net.sf.cglib.proxy.CallbackFilter;
+import net.sf.cglib.proxy.Enhancer;
+import net.sf.cglib.proxy.Factory;
+import net.sf.cglib.proxy.MethodInterceptor;
 import redis.clients.jedis.Jedis;
 
 import java.lang.reflect.Method;
