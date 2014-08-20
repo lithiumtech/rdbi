@@ -3,8 +3,8 @@ package com.lithium.dbi.rdbi;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
-import net.sf.cglib.proxy.Enhancer;
-import net.sf.cglib.proxy.Factory;
+import net.sf.cglib.proxy.*;
+import net.sf.cglib.proxy.Callback;
 import redis.clients.jedis.Jedis;
 
 import java.lang.reflect.Method;
@@ -14,7 +14,17 @@ import java.util.concurrent.ConcurrentMap;
 
 class ProxyFactory {
 
-    //http://www.slideshare.net/osoco/understanding-java-dynamic-proxies-14286900
+    private static final MethodInterceptor NO_OP = new MethodNoOpInterceptor();
+    private static final CallbackFilter FINALIZE_FILTER = new CallbackFilter() {
+        public int accept(Method method) {
+            if (method.getName().equals("finalize") &&
+                    method.getParameterTypes().length == 0 &&
+                    method.getReturnType() == Void.TYPE) {
+                return 0; //the NO_OP method interceptor
+            }
+            return 1; //the everything else method interceptor
+        }
+    };
 
     @VisibleForTesting
     final ConcurrentMap<Class<?>, Factory> factoryCache;
@@ -39,7 +49,7 @@ class ProxyFactory {
 
         Factory factory;
         if (factoryCache.containsKey(t)) {
-            return (T) factoryCache.get(t).newInstance(new MethodContextInterceptor(jedis, methodContextCache.get(t)));
+            return (T) factoryCache.get(t).newInstance(new Callback[]{NO_OP,new MethodContextInterceptor(jedis, methodContextCache.get(t))});
         } else {
 
             try {
@@ -52,11 +62,12 @@ class ProxyFactory {
 
             Enhancer e = new Enhancer();
             e.setSuperclass(t);
-            e.setCallback(new MethodNoOpInterceptor());
+            e.setCallbacks(new Callback[]{NO_OP,NO_OP}); //this will be overriden anyway, we set 2 so that it valid for FINALIZE_FILTER
+            e.setCallbackFilter(FINALIZE_FILTER);
 
             factory = (Factory) e.create();
             factoryCache.putIfAbsent(t, factory);
-            return (T) factory.newInstance(new MethodContextInterceptor(jedis, methodContextCache.get(t)));
+            return (T) factory.newInstance(new Callback[]{NO_OP, new MethodContextInterceptor(jedis, methodContextCache.get(t))});
         }
     }
 
