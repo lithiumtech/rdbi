@@ -19,8 +19,8 @@ public class RedisSemaphore {
     public boolean acquireSemaphore(final Integer semaphoreExpireSeconds) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(RedisSemaphoreDAO.class)
-                         .acquireSemaphore(ImmutableList.of(semaphoreKey),
-                                      ImmutableList.of(ownerId, semaphoreExpireSeconds.toString()));
+                              .acquireSemaphore(ImmutableList.of(semaphoreKey),
+                                                ImmutableList.of(ownerId, semaphoreExpireSeconds.toString()));
         }
     }
 
@@ -28,7 +28,7 @@ public class RedisSemaphore {
         try (Handle handle = rdbi.open()) {
             return Optional.fromNullable(handle.attach(RedisSemaphoreDAO.class)
                                                .releaseSemaphore(ImmutableList.of(semaphoreKey),
-                                                            ImmutableList.of(ownerId)));
+                                                                 ImmutableList.of(ownerId)));
         }
     }
 }

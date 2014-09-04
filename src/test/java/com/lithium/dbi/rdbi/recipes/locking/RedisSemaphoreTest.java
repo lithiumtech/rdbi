@@ -36,8 +36,10 @@ public class RedisSemaphoreTest {
     @Test
     public void testAcquireRelease() {
         assertTrue(semaphore.acquireSemaphore(semaphoreTimeoutInSeconds));
+
+        // Verify that semaphore has been set
         try (Handle handle = rdbi.open()) {
-            assertNotEquals(handle.jedis().setnx(semaphoreKey, ownerId + "New"), 1L);
+            assertNotEquals(handle.jedis().setnx(semaphoreKey, ownerId), 1L);
         }
 
         // Verify that we have deleted the semaphore
