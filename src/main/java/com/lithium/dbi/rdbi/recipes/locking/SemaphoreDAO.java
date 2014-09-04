@@ -6,13 +6,13 @@ import java.util.List;
 
 public interface SemaphoreDAO {
     @Query(
-            "local acquiredLock = redis.call('SETNX', KEYS[1], ARGV[1])\n" +
-            "if acquiredLock == 1 then\n" +
+            "local acquiredSemaphore = redis.call('SETNX', KEYS[1], ARGV[1])\n" +
+            "if acquiredSemaphore == 1 then\n" +
             "   redis.call('EXPIRE', KEYS[1], ARGV[2])\n" +
             "end\n" +
-            "return acquiredLock\n"
+            "return acquiredSemaphore\n"
     )
-    int acquireLock(List<String> keys, List<String> args);
+    int acquireSemaphore(List<String> keys, List<String> args);
 
     @Query(
             "local keyOwner = redis.call('GET', KEYS[1])\n" +
@@ -21,5 +21,5 @@ public interface SemaphoreDAO {
             "end\n" +
             "return keyOwner\n"
     )
-    String releaseLock(List<String> keys, List<String> args);
+    String releaseSemaphore(List<String> keys, List<String> args);
 }

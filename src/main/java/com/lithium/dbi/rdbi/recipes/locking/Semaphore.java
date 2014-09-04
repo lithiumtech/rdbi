@@ -8,26 +8,26 @@ import com.lithium.dbi.rdbi.RDBI;
 public class Semaphore {
     private final RDBI rdbi;
     private final String ownerId;
-    private final String lockKey;
+    private final String semaphoreKey;
 
-    public Semaphore(RDBI rdbi, String ownerId, String lockKey) {
+    public Semaphore(RDBI rdbi, String ownerId, String semaphoreKey) {
         this.rdbi = rdbi;
         this.ownerId = ownerId;
-        this.lockKey = lockKey;
+        this.semaphoreKey = semaphoreKey;
     }
 
-    public boolean acquireLock(final Integer lockExpireSeconds) {
+    public boolean acquireSemaphore(final Integer semaphoreExpireSeconds) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(SemaphoreDAO.class)
-                         .acquireLock(ImmutableList.of(lockKey),
-                                      ImmutableList.of(ownerId, lockExpireSeconds.toString()));
+                         .acquireSemaphore(ImmutableList.of(semaphoreKey),
+                                      ImmutableList.of(ownerId, semaphoreExpireSeconds.toString()));
         }
     }
 
-    public Optional<String> releaseLock() {
+    public Optional<String> releaseSemaphore() {
         try (Handle handle = rdbi.open()) {
             return Optional.fromNullable(handle.attach(SemaphoreDAO.class)
-                                               .releaseLock(ImmutableList.of(lockKey),
+                                               .releaseSemaphore(ImmutableList.of(semaphoreKey),
                                                             ImmutableList.of(ownerId)));
         }
     }
