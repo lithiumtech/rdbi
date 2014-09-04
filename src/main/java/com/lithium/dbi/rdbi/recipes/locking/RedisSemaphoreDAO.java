@@ -4,7 +4,7 @@ import com.lithium.dbi.rdbi.Query;
 
 import java.util.List;
 
-public interface SemaphoreDAO {
+public interface RedisSemaphoreDAO {
     @Query(
             "local acquiredSemaphore = redis.call('SETNX', KEYS[1], ARGV[1])\n" +
             "if acquiredSemaphore == 1 then\n" +

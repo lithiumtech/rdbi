@@ -16,16 +16,16 @@ import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
 @Test(groups = "integration")
-public class SemaphoreTest {
+public class RedisSemaphoreTest {
     private static final RDBI rdbi = new RDBI(new JedisPool("localhost"));
     private static final String ownerId = "ownerSemaphoreTest";
     private static final String semaphoreKey = "semaphoreKeySemaphoreTest";
     private static final Integer semaphoreTimeoutInSeconds = 1;
-    private Semaphore semaphore;
+    private RedisSemaphore semaphore;
 
     @BeforeMethod
     public void beforeTest(){
-        semaphore = new Semaphore(rdbi, ownerId, semaphoreKey);
+        semaphore = new RedisSemaphore(rdbi, ownerId, semaphoreKey);
     }
 
     @AfterMethod
@@ -65,7 +65,7 @@ public class SemaphoreTest {
         assertTrue(semaphore.acquireSemaphore(semaphoreTimeoutInSeconds));
 
         // Acquire a second semaphore
-        Semaphore semaphoreDiffKey = new Semaphore(rdbi, ownerId, semaphoreKey + "diffKey");
+        RedisSemaphore semaphoreDiffKey = new RedisSemaphore(rdbi, ownerId, semaphoreKey + "diffKey");
         assertTrue(semaphoreDiffKey.acquireSemaphore(semaphoreTimeoutInSeconds));
 
         // Verify that we have deleted the semaphore
@@ -112,7 +112,7 @@ public class SemaphoreTest {
         assertTrue(semaphore.acquireSemaphore(semaphoreTimeoutInSeconds));
 
         // Should not be able to acquire another owner's semaphore
-        Semaphore semaphoreNew = new Semaphore(rdbi, ownerId + "Wrong", semaphoreKey);
+        RedisSemaphore semaphoreNew = new RedisSemaphore(rdbi, ownerId + "Wrong", semaphoreKey);
         assertFalse(semaphoreNew.acquireSemaphore(semaphoreTimeoutInSeconds));
 
         // Verify that cannot release another owner's semaphore
