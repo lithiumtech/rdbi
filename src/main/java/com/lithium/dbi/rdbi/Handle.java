@@ -9,7 +9,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.io.Closeable;
 
 @NotThreadSafe
-public class Handle implements Closeable, AutoCloseable {
+public class Handle implements Closeable {
 
     private final Pool<Jedis> pool;
     private final Jedis jedis;

@@ -1,7 +1,6 @@
 package com.lithium.dbi.rdbi.recipes.locking;
 
 import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableList;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 
@@ -19,16 +18,14 @@ public class RedisSemaphore {
     public boolean acquireSemaphore(final Integer semaphoreExpireSeconds) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(RedisSemaphoreDAO.class)
-                              .acquireSemaphore(ImmutableList.of(semaphoreKey),
-                                                ImmutableList.of(ownerId, semaphoreExpireSeconds.toString()));
+                              .acquireSemaphore(semaphoreKey, ownerId, semaphoreExpireSeconds);
         }
     }
 
     public Optional<String> releaseSemaphore() {
         try (Handle handle = rdbi.open()) {
             return Optional.fromNullable(handle.attach(RedisSemaphoreDAO.class)
-                                               .releaseSemaphore(ImmutableList.of(semaphoreKey),
-                                                                 ImmutableList.of(ownerId)));
+                                               .releaseSemaphore(semaphoreKey, ownerId));
         }
     }
 }

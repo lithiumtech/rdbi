@@ -1,26 +1,31 @@
 package com.lithium.dbi.rdbi.recipes.locking;
 
+import com.lithium.dbi.rdbi.BindArg;
+import com.lithium.dbi.rdbi.BindKey;
 import com.lithium.dbi.rdbi.Query;
-
-import java.util.List;
 
 public interface RedisSemaphoreDAO {
     @Query(
-            "local acquiredSemaphore = redis.call('SETNX', KEYS[1], ARGV[1])\n" +
-                    "if acquiredSemaphore == 1 then\n" +
-                    "   redis.call('EXPIRE', KEYS[1], ARGV[2])\n" +
-                    "end\n" +
-                    "return acquiredSemaphore\n"
+            "local acquiredSemaphore = redis.call('SETNX', $semaphoreKey$, $ownerId$)\n" +
+            "if acquiredSemaphore == 1 then\n" +
+            "   redis.call('EXPIRE', $semaphoreKey$, $timeout$)\n" +
+            "end\n" +
+            "return acquiredSemaphore\n"
     )
-    int acquireSemaphore(List<String> keys, List<String> args);
+    int acquireSemaphore(
+            @BindKey("semaphoreKey") String semaphoreKey,
+            @BindArg("ownerId") String ownerId,
+            @BindArg("timeout") Integer timeout);
 
     @Query(
-            "local keyOwner = redis.call('GET', KEYS[1])\n" +
-                    "if keyOwner == ARGV[1] then\n" +
-                    "   redis.call('DEL', KEYS[1])\n" +
-                    "end\n" +
-                    "return keyOwner\n"
+            "local keyOwner = redis.call('GET', $semaphoreKey$)\n" +
+            "if keyOwner == $ownerId$ then\n" +
+            "   redis.call('DEL', $semaphoreKey$)\n" +
+            "end\n" +
+            "return keyOwner\n"
     )
-    String releaseSemaphore(List<String> keys, List<String> args);
+    String releaseSemaphore(
+            @BindKey("semaphoreKey") String semaphoreKey,
+            @BindArg("ownerId") String ownerId);
 }
 
