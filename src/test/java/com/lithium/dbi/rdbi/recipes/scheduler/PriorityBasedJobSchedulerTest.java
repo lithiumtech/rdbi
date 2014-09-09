@@ -15,21 +15,17 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
-import static org.testng.Assert.assertFalse;
 
-@Test(groups = "integration")
-public class JobSchedulerTest {
-
-    private static final int QUIESCENCE = 1000;
+public class PriorityBasedJobSchedulerTest {
 
     private static final RDBI rdbi = new RDBI(new JedisPool("localhost"));
     private static final String TEST_TUBE = "mytube";
 
-    private JobScheduler scheduledJobSystem = null;
+    private PriorityBasedJobScheduler scheduledJobSystem = null;
 
     @BeforeMethod
     public void setup(){
-        scheduledJobSystem  = new JobScheduler(rdbi, "myprefix:");
+        scheduledJobSystem  = new PriorityBasedJobScheduler(rdbi, "myprefix:");
     }
 
     @AfterMethod
@@ -46,7 +42,7 @@ public class JobSchedulerTest {
 
     @Test
     public void testBasicSchedule() throws InterruptedException {
-        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0, QUIESCENCE);
+        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 3.00);
         JobInfo result2 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
         assertEquals(result2.getJobStr(), "{hello:world}");
         JobInfo result3 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
@@ -55,10 +51,10 @@ public class JobSchedulerTest {
 
     @Test
     public void testDuplicateReserve() throws InterruptedException {
-        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0, QUIESCENCE);
+        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 3.00);
         JobInfo result2 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
         assertEquals(result2.getJobStr(), "{hello:world}");
-        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0, QUIESCENCE));
+        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 3.00));
         // The same case now exists in ready and running.
         // Reservation should fail...
         JobInfo result3 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
@@ -70,28 +66,19 @@ public class JobSchedulerTest {
     }
 
     @Test
-    public void testRepeatSchedule() throws InterruptedException {
-        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0, QUIESCENCE)); // set time to now
-        assertTrue(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 500, QUIESCENCE)); // success ~500ms > original
-        assertFalse(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0, QUIESCENCE)); // fails < original
-        assertFalse(scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 1500, QUIESCENCE)); // fails ~1000ms > second
-    }
-
-    @Test
     public void testCull() throws InterruptedException {
-
-        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0, QUIESCENCE);
+        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 3.00);
         JobInfo result3 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
         assertNotNull(result3);
         Thread.sleep(2000);
-        List<JobInfo> infos = scheduledJobSystem.requeueExpired(TEST_TUBE);
+        List<JobInfo> infos = scheduledJobSystem.requeueExpired(TEST_TUBE, 1.00);
         assertEquals(infos.size(), 1);
         assertNotNull(infos.get(0).getTime());
     }
 
     @Test
     public void testDelete() throws InterruptedException {
-        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0, QUIESCENCE);
+        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 3.00);
         JobInfo result2 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
         assertEquals(result2.getJobStr(), "{hello:world}");
 
@@ -99,28 +86,28 @@ public class JobSchedulerTest {
         JobInfo result3 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
         assertNull(result3);
 
-        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 1000, QUIESCENCE);
+        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 3.00);
 
         // Delete only applies to running...
         scheduledJobSystem.deleteRunningJob(TEST_TUBE, "{hello:world}");
 
         Thread.sleep(2000L);
 
-        // So this delete did not do anything
+        // Ensure delete did not do anything
         JobInfo result4 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
         assertEquals(result4.getJobStr(), "{hello:world}");
     }
 
     @Test
     public void testRequeue() throws InterruptedException {
-        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 0, QUIESCENCE);
+        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 3.00);
         JobInfo result2 = scheduledJobSystem.reserveSingle(TEST_TUBE, 0);
         assertEquals(result2.getJobStr(), "{hello:world}");
 
         JobInfo result3 = scheduledJobSystem.reserveSingle(TEST_TUBE, 0);
         assertNull(result3);
 
-        List<JobInfo> requeued = scheduledJobSystem.requeueExpired(TEST_TUBE);
+        List<JobInfo> requeued = scheduledJobSystem.requeueExpired(TEST_TUBE, 1.00);
         assertEquals(requeued.size(), 1);
         assertEquals(requeued.get(0).getJobStr(), "{hello:world}");
 
@@ -129,43 +116,11 @@ public class JobSchedulerTest {
     }
 
     @Test
-    public void testBasicStates() throws InterruptedException {
-        scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 1000, QUIESCENCE);
-
-        List<JobInfo> jobInfos = scheduledJobSystem.peekDelayed(TEST_TUBE, 0, 1);
-        assertEquals(jobInfos.get(0).getJobStr(), "{hello:world}");
-
-        Thread.sleep(1500);
-        List<JobInfo> jobInfos2 = scheduledJobSystem.peekDelayed(TEST_TUBE, 0, 1);
-        assertEquals(jobInfos2.size(), 0);
-
-        List<JobInfo> jobInfos3 = scheduledJobSystem.peekReady(TEST_TUBE, 0, 1);
-        assertEquals(jobInfos3.get(0).getJobStr(), "{hello:world}");
-
-        scheduledJobSystem.reserveSingle("mytube", 1000L);
-        List<JobInfo> jobInfos4 = scheduledJobSystem.peekRunning(TEST_TUBE, 0, 1);
-        assertEquals(jobInfos4.get(0).getJobStr(), "{hello:world}");
-
-        Thread.sleep(1500);
-        List<JobInfo> jobInfos6 = scheduledJobSystem.peekRunning(TEST_TUBE, 0, 1);
-        assertEquals(jobInfos6.size(), 0);
-
-        List<JobInfo> jobInfos5 = scheduledJobSystem.peekExpired(TEST_TUBE, 0, 1);
-        assertEquals(jobInfos5.get(0).getJobStr(), "{hello:world}");
-
-        scheduledJobSystem.deleteRunningJob(TEST_TUBE, "{hello:world}");
-        assertEquals(scheduledJobSystem.peekDelayed(TEST_TUBE, 1, 0).size(), 0);
-        assertEquals(scheduledJobSystem.peekReady(TEST_TUBE, 1, 0).size(), 0);
-        assertEquals(scheduledJobSystem.peekRunning(TEST_TUBE, 1, 0).size(), 0);
-        assertEquals(scheduledJobSystem.peekExpired(TEST_TUBE, 1, 0).size(), 0);
-    }
-
-    @Test
     public void testBasicPerformance() throws InterruptedException {
 
         Instant before = new Instant();
         for ( int i = 0; i < 10000; i++) {
-            scheduledJobSystem.schedule(TEST_TUBE, "{hello:world} " + i, 0, QUIESCENCE);
+            scheduledJobSystem.schedule(TEST_TUBE, "{hello:world} " + i, 3.00);
         }
         Instant after = new Instant();
         System.out.println("final " + after.minus(before.getMillis()).getMillis());
