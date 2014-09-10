@@ -35,7 +35,7 @@ public interface JobSchedulerDAO {
             @BindKey("readyQueue") String readyQueue,
             @BindArg("jobStr") String job,
             @BindArg("timestamp") long timestamp,
-            @BindArg("quiescence") int quiescence);
+            @BindArg("quiescence") long quiescence);
 
     /**
      * Moves items from readyQueue to runningQueue and returns details.
@@ -47,13 +47,14 @@ public interface JobSchedulerDAO {
      * @param readyQueue Sorted set name for items not yet processed.
      * @param runningQueue Sorted set name for items currently being processed.
      * @param limit Maximum number of jobs to accept.
-     * @param timestamp Maximum timestamp for jobs to retrieve items from readyQueue.
+     * @param lowerScore Minimum score for jobs to retrieve from readyQueue
+     * @param upperScore Maximum score for jobs to retrieve from readyQueue.
      * @param expirationTime Timestamp in the future at which the retrieved jobs should be considered expired.
      * @return Jobs that must be processed by the caller.
      */
     @Mapper(JobInfoListMapper.class)
     @Query(
-        "local jobs = redis.call('ZRANGEBYSCORE', $readyQueue$, 0, $now$, 'WITHSCORES', 'LIMIT', 0, $limit$)\n" +
+        "local jobs = redis.call('ZRANGEBYSCORE', $readyQueue$, $lowerScore$, $upperScore$, 'WITHSCORES', 'LIMIT', 0, $limit$)\n" +
         "if next(jobs) == nil then\n" +
         "    return nil\n" +
         "end\n" +
@@ -75,7 +76,8 @@ public interface JobSchedulerDAO {
             @BindKey("readyQueue") String readyQueue,
             @BindKey("runningQueue") String runningQueue,
             @BindArg("limit") int limit,
-            @BindArg("now") long timestamp,
+            @BindArg("lowerScore") long lowerScore,
+            @BindArg("upperScore") long upperScore,
             @BindArg("expiration") long expirationTime);
 
     /**
@@ -90,12 +92,15 @@ public interface JobSchedulerDAO {
     @Query(
         "local expiredJobs = redis.call('ZRANGEBYSCORE', $runningQueue$, 0, $timestamp$, 'WITHSCORES')\n" +
         "for i=1,2*#expiredJobs,2 do\n" +
-        "    redis.call('ZADD', $readyQueue$, $timestamp$, expiredJobs[i])\n" +
+        "    redis.call('ZADD', $readyQueue$, $newScore$, expiredJobs[i])\n" +
         "end\n" +
         "redis.call('ZREMRANGEBYSCORE', $runningQueue$, 0, $timestamp$)\n" +
         "return expiredJobs"
     )
-    public List<JobInfo> requeueExpiredJobs(@BindKey("readyQueue") String readyQueue, @BindKey("runningQueue") String runningQueue, @BindArg("timestamp") Long timestamp);
+    public List<JobInfo> requeueExpiredJobs(@BindKey("readyQueue") String readyQueue,
+                                            @BindKey("runningQueue") String runningQueue,
+                                            @BindArg("timestamp") long timestamp,
+                                            @BindArg("newScore") double newScore);
 
     /**
      * Delete a job from the runningQueue. This implies the job is no longer
