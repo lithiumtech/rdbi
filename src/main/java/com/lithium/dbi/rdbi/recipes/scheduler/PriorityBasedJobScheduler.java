@@ -22,7 +22,7 @@ public class PriorityBasedJobScheduler extends AbstractJobScheduler {
      *
      * @param tube Used in conjunction with the redisPrefixKey (constructor) to make up the full redis key name.
      * @param jobStr A string representation of the job to be scheduled
-     * @param priority The "priority" of the job. The higher the number, the higher the priority.
+     * @param priority The "priority" of the job. The lower the number, the higher the priority.
      * @return true if the job was successfully scheduled
      */
     public boolean schedule(final String tube, final String jobStr, final double priority) {
