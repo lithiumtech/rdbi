@@ -211,12 +211,16 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
 
     @Override
     public ValueType apply(KeyType key) {
-        return get(key);
+        return getUnchecked(key);
     }
 
     @Override
-    public ValueType get(KeyType key) {
-        return getCallback(key).getOrThrowUnchecked();
+    public ValueType get(KeyType key) throws ExecutionException {
+        try {
+            return getCallback(key).getOrThrowUnchecked();
+        } catch (Exception ex) {
+            throw new ExecutionException(ex);
+        }
     }
 
     protected ValueType load(KeyType key) {
@@ -247,7 +251,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
     @Override
     public ValueType getUnchecked(KeyType key) {
         // We don't throw checked exceptions in this class.
-        return get(key);
+        return getCallback(key).getOrThrowUnchecked();
     }
 
     /**

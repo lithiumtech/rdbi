@@ -9,11 +9,13 @@ import redis.clients.jedis.JedisPool;
 import javax.annotation.Nullable;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.testng.Assert.assertTrue;
+import static junit.framework.Assert.assertTrue;
+import static org.testng.Assert.assertNull;
 import static org.testng.AssertJUnit.assertEquals;
 
 @Test(groups = "integration")
@@ -44,7 +46,7 @@ public class RedisCacheTest {
     }
 
     @Test
-    public void sniffTest() {
+    public void sniffTest() throws ExecutionException {
         final SerializationHelper<TestContainer> helper = new SerializationHelper<TestContainer>() {
             @Override
             public TestContainer decode(String string) {
@@ -68,12 +70,16 @@ public class RedisCacheTest {
         final TestContainer tc1 = new TestContainer(UUID.randomUUID());
         final String key2 = "key2";
         final TestContainer tc2 = new TestContainer(UUID.randomUUID());
+        final String barfKey = "barf";
 
         final ImmutableMap<String, TestContainer> mappings = ImmutableMap.of(key1, tc1, key2, tc2);
         final Function<String, TestContainer> loader = new Function<String, TestContainer>() {
             @Nullable
             @Override
             public TestContainer apply(@Nullable String s) {
+                if (barfKey.equals(s)) {
+                    throw new RuntimeException(barfKey);
+                }
                 return mappings.get(s);
             }
         };
@@ -113,17 +119,37 @@ public class RedisCacheTest {
         assertEquals(1, loadSuccess.get());
         assertEquals(0, loadFailure.get());
 
-        boolean thrown = false;
-        try {
-            cache.get("goobagobbanonsense");
-        } catch (Exception ex) {
-            thrown = true;
-        }
-
-        assertTrue(thrown);
+        assertNull(cache.get("goobagobbafake"));
         assertEquals(2, misses.get());
         assertEquals(1, hits.get());
         assertEquals(1, loadSuccess.get());
         assertEquals(1, loadFailure.get());
+
+
+        boolean thrown = false;
+        try {
+            cache.get(barfKey);
+        } catch (ExecutionException ex) {
+            thrown = true;
+            assertEquals(barfKey, ex.getCause().getMessage());
+        }
+        assertTrue(thrown);
+        assertEquals(3, misses.get());
+        assertEquals(1, hits.get());
+        assertEquals(1, loadSuccess.get());
+        assertEquals(2, loadFailure.get());
+
+        thrown = false;
+        try {
+            cache.getUnchecked(barfKey);
+        } catch (Exception ex) {
+            thrown = true;
+            assertEquals(barfKey, ex.getMessage());
+        }
+        assertTrue(thrown);
+        assertEquals(4, misses.get());
+        assertEquals(1, hits.get());
+        assertEquals(1, loadSuccess.get());
+        assertEquals(3, loadFailure.get());
     }
 }
