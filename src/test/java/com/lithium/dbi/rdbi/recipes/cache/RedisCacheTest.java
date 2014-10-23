@@ -1,6 +1,7 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
 import com.google.common.base.Function;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.lithium.dbi.rdbi.RDBI;
@@ -173,7 +174,11 @@ public class RedisCacheTest {
             @Nullable
             @Override
             public TestContainer apply(@Nullable String s) {
-                return queue.poll();
+                try {
+                    return queue.take();
+                } catch (InterruptedException e) {
+                    throw Throwables.propagate(e);
+                }
             }
         };
 
@@ -206,18 +211,22 @@ public class RedisCacheTest {
                                                                          loadFailure);
 
         cache.invalidateAll(ImmutableList.of(key1));
+        cache.releaseLock(key1);
 
         // this call would block if not executed asynchronously
         cache.refresh(key1);
         queue.put(tc1);
+        while (queue.size() > 0 || cache.isLocked(key1)) {
+            Thread.sleep(50);
+        }
         assertEquals(tc1.getUuid(), cache.get(key1).getUuid());
-        assertEquals(1, misses.get());
-        assertEquals(0, hits.get());
+        assertEquals(0, misses.get());
+        assertEquals(1, hits.get());
         assertEquals(1, loadSuccess.get());
         assertEquals(0, loadFailure.get());
         assertEquals(tc1.getUuid(), cache.get(key1).getUuid());
-        assertEquals(1, misses.get());
-        assertEquals(1, hits.get());
+        assertEquals(0, misses.get());
+        assertEquals(2, hits.get());
         assertEquals(1, loadSuccess.get());
         assertEquals(0, loadFailure.get());
     }
