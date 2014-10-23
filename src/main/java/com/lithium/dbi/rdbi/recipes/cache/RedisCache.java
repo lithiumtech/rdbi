@@ -21,7 +21,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, ValueType> {
@@ -84,6 +83,16 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         this.cacheEvictionCount = new AtomicLong();
     }
 
+    protected void markHit() {
+        cacheHitCount.incrementAndGet();
+        hitAction.run();
+    }
+
+    protected void markMiss() {
+        cacheMissCount.incrementAndGet();
+        missAction.run();
+    }
+
     protected void markLoadException(final long loadTime) {
         cacheLoadExceptionCount.incrementAndGet();
         cacheTotalLoadTime.addAndGet(loadTime);
@@ -135,42 +144,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
     }
 
     CallbackResult<ValueType> loadDataSynchronously(final KeyType key) {
-        final String redisKey = generateRedisKey(key);
-        final String redisLockKey = redisLockKey(redisKey);
-        final long start = System.currentTimeMillis();
-
-        return rdbi.withHandle(new Callback<CallbackResult<ValueType>>() {
-            @Override
-            public CallbackResult<ValueType> run(Handle handle) {
-                final Jedis jedis = handle.jedis();
-
-                // Check to see if we are allowed to make the API call
-                if (acquireLock(jedis, redisLockKey)) {
-                    // We are the first to notice that redis is missing this cache.
-                    // Let's fill it in.
-                    try {
-                        final ValueType result = loader.apply(key);
-                        if (result == null) {
-                            markLoadException(System.currentTimeMillis() - start);
-                            return new CallbackResult<>();
-                        }
-                        cacheData(key, jedis, result, valueTtl);
-                        markLoadSuccess(System.currentTimeMillis() - start);
-                        return new CallbackResult<>(result);
-                    } catch (Exception ex) {
-                        markLoadException(System.currentTimeMillis() - start);
-                        return new CallbackResult<>(ex);
-                    } finally {
-                        releaseLock(key, jedis);
-                    }
-                } else {
-                    // Add an error
-                    log.warn("{}: Unable to acquire synchronous cache load lock for {}", cacheName);
-                    markLoadException(System.currentTimeMillis() - start);
-                    return new CallbackResult<>(new TimeoutException("Unable to acquire lock."));
-                }
-            }
-        });
+        return new AsyncCacheRefresher<>(this, rdbi, key).call();
     }
 
     private void releaseLock(final KeyType key, final Jedis jedis) {
@@ -261,14 +235,12 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                 refresh(key);
             }
             // Regardless of expiration, we got some data so return it.
-            cacheHitCount.incrementAndGet();
-            hitAction.run();
+            markHit();
             return new CallbackResult<>(cachedData.getData());
         }
 
         // Bad news friend: we don't have anything in the redis cache. Load data and wait until we get it.
-        cacheMissCount.incrementAndGet();
-        missAction.run();
+        markMiss();
         return loadDataSynchronously(key);
     }
 
@@ -291,7 +263,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
      */
     public CallbackResult<ValueType> getPatiently(KeyType key, long maxWaitMillis) {
         CallbackResult<ValueType> result = getCallback(key);
-        if (result.getError() instanceof TimeoutException) {
+        if (result.getError() instanceof LockUnavailableException) {
             try {
                 long startTime = System.currentTimeMillis();
                 boolean stopTrying = false;
@@ -328,7 +300,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
 
     @Override
     public ConcurrentMap<KeyType, ValueType> asMap() {
-        // Guaranteed to return empty map. Nothing is in memeroy.
+        // Guaranteed to return empty map. Nothing is in memory.
         return Maps.newConcurrentMap();
     }
 
@@ -343,10 +315,9 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         CachedData<ValueType> cachedData = getCachedDataNewJedis(key);
         if (cachedData != null) {
             log.debug("{}: Found cached data: {}", cacheName, key);
-            cacheHitCount.incrementAndGet();
-            return cachedData.getData();
+            markHit();
         }
-        cacheMissCount.incrementAndGet();
+        markMiss();
         return null;
     }
 
@@ -355,25 +326,23 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         CachedData<ValueType> cachedData = getCachedDataNewJedis(key);
         if (cachedData != null) {
             log.debug("{}: Found cached data: {}", cacheName, key);
-            hitAction.run();
-            cacheHitCount.incrementAndGet();
+            markHit();
             return cachedData.getData();
         }
+
+        // this method doesn't acquire the write lock... sort of seems like a bug, but the API is sketchy here...
+        // ideally we'd acquire the lock OR hang around until the value was loaded... something to consider...
+        markMiss();
         long start = System.currentTimeMillis();
         try {
             ValueType result = valueLoader.call();
             put(key, result);
-            cacheLoadSuccessCount.incrementAndGet();
-            loadSuccessAction.run();
+            markLoadSuccess(System.currentTimeMillis() - start);
             return result;
         } catch(Exception e) {
             log.error(cacheName + ": Failed to load for ", e);
-            loadExceptionAction.run();
-            cacheLoadExceptionCount.incrementAndGet();
+            markLoadException(System.currentTimeMillis() - start);
             throw new ExecutionException(e);
-        } finally {
-            long timeToLoad = System.currentTimeMillis() - start;
-            cacheTotalLoadTime.addAndGet(timeToLoad);
         }
     }
 

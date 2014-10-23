@@ -21,7 +21,7 @@ public class AsyncCacheRefresher<KeyType, ValueType> implements Callable<Callbac
     }
 
     @Override
-    public CallbackResult<ValueType> call() throws Exception {
+    public CallbackResult<ValueType> call() {
         final long start = System.currentTimeMillis();
 
         if(!cache.acquireLock(key)) {
@@ -30,11 +30,12 @@ public class AsyncCacheRefresher<KeyType, ValueType> implements Callable<Callbac
             return new CallbackResult<>(new LockUnavailableException());
         }
 
-        log.debug("{}: Attempting to refresh data asynchonously for", cache.getCacheName());
+        log.debug("{}: Attempting to refresh data for", cache.getCacheName());
 
         try {
             final ValueType value = cache.load(key);
             if (value == null) {
+                cache.markLoadException(System.currentTimeMillis() - start);
                 return new CallbackResult<>();
             }
 
