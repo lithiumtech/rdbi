@@ -54,7 +54,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                       String keyPrefix,
                       int valueTtlSecs,
                       long cacheRefreshThresholdSecs,
-                      int lockTimeout,
+                      int lockTimeoutSecs,
                       ExecutorService asyncService,
                       Runnable hitAction,
                       Runnable missAction,
@@ -68,7 +68,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         this.keyPrefix = keyPrefix;
         this.valueTtl = valueTtlSecs;
         this.cacheRefreshThresholdSecs = cacheRefreshThresholdSecs;
-        this.lockTimeout = lockTimeout;
+        this.lockTimeout = lockTimeoutSecs;
         this.hitAction = hitAction;
         this.missAction = missAction;
         this.loadSuccessAction = loadSuccessAction;
@@ -118,7 +118,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                 lockKey,
                 String.valueOf(System.currentTimeMillis()),
                 "NX", // Don't overwrite
-                "EX", // Expire after 60 seconds
+                "EX", // expire after timeout
                 lockTimeout);
         return Objects.equal(lockResponse, "OK");
     }
