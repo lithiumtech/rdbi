@@ -9,12 +9,17 @@ public class CallbackResult<ValueType> {
 
     public CallbackResult(final ValueType value) {
         this.error = null;
-        this.value = Optional.of(value);
+        this.value = Optional.fromNullable(value);
     }
 
     public CallbackResult(final Exception ex) {
-        this.value = Optional.absent();
+        this.value = null;
         this.error = ex;
+    }
+
+    public CallbackResult() {
+        this.value = Optional.absent();
+        this.error = null;
     }
 
     public Optional<ValueType> getValue() {
@@ -25,17 +30,9 @@ public class CallbackResult<ValueType> {
         return error;
     }
 
-    public ValueType getOrThrow() throws Exception {
-        if (value.isPresent()) {
-            return value.get();
-        } else {
-            throw error;
-        }
-    }
-
     public ValueType getOrThrowUnchecked() {
-        if (value.isPresent()) {
-            return value.get();
+        if (value != null) {
+            return value.orNull();
         } else {
             throw Throwables.propagate(error);
         }

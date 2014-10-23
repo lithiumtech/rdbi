@@ -35,14 +35,17 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
     private final int valueTtl;
     private final long cacheRefreshThresholdSecs;
     private final int lockTimeout;
-    private final Runnable hitAction, missAction, loadSuccessAction, loadExceptionAction;
+    private final Runnable hitAction;
+    private final Runnable missAction;
+    private final Runnable loadSuccessAction;
+    private final Runnable loadExceptionAction;
     private final ExecutorService asyncService;
-    private AtomicLong cacheHitCount;
-    private AtomicLong cacheMissCount;
-    private AtomicLong cacheLoadSuccessCount;
-    private AtomicLong cacheLoadExceptionCount;
-    private AtomicLong cacheTotalLoadTime;
     private AtomicLong cacheEvictionCount;
+    private AtomicLong cacheHitCount;
+    private AtomicLong cacheLoadExceptionCount;
+    private AtomicLong cacheLoadSuccessCount;
+    private AtomicLong cacheMissCount;
+    private AtomicLong cacheTotalLoadTime;
 
     public RedisCache(KeyGenerator<KeyType> keyGenerator,
                       SerializationHelper<ValueType> serializationHelper,
@@ -79,6 +82,18 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         this.cacheLoadExceptionCount = new AtomicLong();
         this.cacheTotalLoadTime = new AtomicLong();
         this.cacheEvictionCount = new AtomicLong();
+    }
+
+    protected void markLoadException(final long loadTime) {
+        cacheLoadExceptionCount.incrementAndGet();
+        cacheTotalLoadTime.addAndGet(loadTime);
+        loadExceptionAction.run();
+    }
+
+    protected void markLoadSuccess(final long loadTime) {
+        cacheLoadSuccessCount.incrementAndGet();
+        cacheTotalLoadTime.addAndGet(loadTime);
+        loadSuccessAction.run();
     }
 
     public String getCacheName() {
@@ -122,6 +137,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
     CallbackResult<ValueType> loadDataSynchronously(final KeyType key) {
         final String redisKey = generateRedisKey(key);
         final String redisLockKey = redisLockKey(redisKey);
+        final long start = System.currentTimeMillis();
 
         return rdbi.withHandle(new Callback<CallbackResult<ValueType>>() {
             @Override
@@ -134,15 +150,15 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                     // Let's fill it in.
                     try {
                         final ValueType result = loader.apply(key);
-                        if (result != null) {
-                            cacheLoadSuccessCount.incrementAndGet();
-                            loadSuccessAction.run();
-                            cacheData(key, jedis, result, valueTtl);
+                        if (result == null) {
+                            markLoadException(System.currentTimeMillis() - start);
+                            return new CallbackResult<>();
                         }
+                        cacheData(key, jedis, result, valueTtl);
+                        markLoadSuccess(System.currentTimeMillis() - start);
                         return new CallbackResult<>(result);
                     } catch (Exception ex) {
-                        cacheLoadSuccessCount.incrementAndGet();
-                        loadExceptionAction.run();
+                        markLoadException(System.currentTimeMillis() - start);
                         return new CallbackResult<>(ex);
                     } finally {
                         releaseLock(key, jedis);
@@ -150,7 +166,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                 } else {
                     // Add an error
                     log.warn("{}: Unable to acquire synchronous cache load lock for {}", cacheName);
-                    loadExceptionAction.run();
+                    markLoadException(System.currentTimeMillis() - start);
                     return new CallbackResult<>(new TimeoutException("Unable to acquire lock."));
                 }
             }
@@ -307,44 +323,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
 
     @Override
     public void refresh(final KeyType key) {
-        final String redisKey = generateRedisKey(key);
-        final String redisLockKey = redisLockKey(redisKey);
-        final RedisCache<KeyType, ValueType> cache = this;
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                if (acquireLock(handle.jedis(), redisLockKey)) {
-                    asyncService.submit(new AsyncCacheRefresher<>(cache, rdbi, key));
-                    /*
-                    log.debug("{}: Attempting to refresh data asynchonously for", cacheName);
-                    long start = System.currentTimeMillis();
-                    // We succesfully acquired the exclusive right to asynchronously refresh
-                    // the data for the specified company.
-                    try {
-                        final ValueType value = loader.apply(key);
-                        if (value != null) {
-                            log.info("{}: Async refresh for {}", cacheName);
-                            final Jedis j = handle.jedis();
-                            cacheData(key, j, value, valueTtl);
-                            cacheLoadSuccessCount.incrementAndGet();
-                            loadSuccessAction.run();
-                        }
-                        return null;
-                    } catch (Exception ex) {
-                        cacheLoadExceptionCount.incrementAndGet();
-                        loadExceptionAction.run();
-                    } finally {
-                        handle.jedis().del(redisLockKey);
-                        long timeToLoad = System.currentTimeMillis() - start;
-                        cacheTotalLoadTime.addAndGet(timeToLoad);
-                    }
-                    */
-                } else {
-                    log.debug("{}: Unable to acquire refresh lock for", cacheName);
-                }
-                return null;
-            }
-        });
+        asyncService.submit(new AsyncCacheRefresher<>(this, rdbi, key));
     }
 
     @Override
