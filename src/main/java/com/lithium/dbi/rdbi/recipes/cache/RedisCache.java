@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -35,6 +36,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
     private final long cacheRefreshThresholdSecs;
     private final int lockTimeout;
     private final Runnable hitAction, missAction, loadSuccessAction, loadExceptionAction;
+    private final ExecutorService asyncService;
     private AtomicLong cacheHitCount;
     private AtomicLong cacheMissCount;
     private AtomicLong cacheLoadSuccessCount;
@@ -51,6 +53,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                       int valueTtlSecs,
                       long cacheRefreshThresholdSecs,
                       int lockTimeout,
+                      ExecutorService asyncService,
                       Runnable hitAction,
                       Runnable missAction,
                       Runnable loadSuccessAction,
@@ -68,6 +71,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         this.missAction = missAction;
         this.loadSuccessAction = loadSuccessAction;
         this.loadExceptionAction = loadExceptionAction;
+        this.asyncService = asyncService;
 
         this.cacheHitCount = new AtomicLong();
         this.cacheMissCount = new AtomicLong();
@@ -75,6 +79,10 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         this.cacheLoadExceptionCount = new AtomicLong();
         this.cacheTotalLoadTime = new AtomicLong();
         this.cacheEvictionCount = new AtomicLong();
+    }
+
+    public String getCacheName() {
+        return cacheName;
     }
 
     String redisLockKey(String redisKey) {
@@ -89,6 +97,15 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                 "EX", // Expire after 60 seconds
                 lockTimeout);
         return Objects.equal(lockResponse, "OK");
+    }
+
+    protected boolean acquireLock(final KeyType key) {
+        return rdbi.withHandle(new Callback<Boolean>() {
+            @Override
+            public Boolean run(Handle handle) {
+                return acquireLock(handle.jedis(), redisLockKey(generateRedisKey(key)));
+            }
+        });
     }
 
     boolean isLocked(KeyType key) {
@@ -128,7 +145,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                         loadExceptionAction.run();
                         return new CallbackResult<>(ex);
                     } finally {
-                        jedis.del(redisLockKey);
+                        releaseLock(key, jedis);
                     }
                 } else {
                     // Add an error
@@ -136,6 +153,20 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                     loadExceptionAction.run();
                     return new CallbackResult<>(new TimeoutException("Unable to acquire lock."));
                 }
+            }
+        });
+    }
+
+    private void releaseLock(final KeyType key, final Jedis jedis) {
+        jedis.del(redisLockKey(generateRedisKey(key)));
+    }
+
+    protected void releaseLock(final KeyType key) {
+        rdbi.withHandle(new Callback<Void>() {
+            @Override
+            public Void run(Handle handle) {
+                releaseLock(key, handle.jedis());
+                return null;
             }
         });
     }
@@ -166,7 +197,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         }
     }
 
-    private String generateRedisKey(KeyType key) {
+    protected String generateRedisKey(KeyType key) {
         return keyPrefix + redisKeyGenerator.redisKey(key);
     }
 
@@ -196,6 +227,10 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
     @Override
     public ValueType get(KeyType key) {
         return getCallback(key).getOrThrowUnchecked();
+    }
+
+    protected ValueType load(KeyType key) {
+        return loader.apply(key);
     }
 
     public CallbackResult<ValueType> getCallback(final KeyType key) {
@@ -274,10 +309,13 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
     public void refresh(final KeyType key) {
         final String redisKey = generateRedisKey(key);
         final String redisLockKey = redisLockKey(redisKey);
+        final RedisCache<KeyType, ValueType> cache = this;
         rdbi.withHandle(new Callback<Void>() {
             @Override
             public Void run(Handle handle) {
                 if (acquireLock(handle.jedis(), redisLockKey)) {
+                    asyncService.submit(new AsyncCacheRefresher<>(cache, rdbi, key));
+                    /*
                     log.debug("{}: Attempting to refresh data asynchonously for", cacheName);
                     long start = System.currentTimeMillis();
                     // We succesfully acquired the exclusive right to asynchronously refresh
@@ -300,6 +338,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                         long timeToLoad = System.currentTimeMillis() - start;
                         cacheTotalLoadTime.addAndGet(timeToLoad);
                     }
+                    */
                 } else {
                     log.debug("{}: Unable to acquire refresh lock for", cacheName);
                 }

@@ -8,6 +8,9 @@ import redis.clients.jedis.JedisPool;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.testng.Assert.assertTrue;
@@ -91,6 +94,7 @@ public class RedisCacheTest {
                                                                          120,
                                                                          0,
                                                                          60,
+                                                                         new ThreadPoolExecutor(0, 1, 200L, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(10)),
                                                                          hits,
                                                                          misses,
                                                                          loadSuccess,
