@@ -1,6 +1,7 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
 import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.lithium.dbi.rdbi.RDBI;
 import org.testng.annotations.Test;
@@ -10,6 +11,7 @@ import javax.annotation.Nullable;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -45,27 +47,27 @@ public class RedisCacheTest {
         }
     }
 
+    private final SerializationHelper<TestContainer> helper = new SerializationHelper<TestContainer>() {
+        @Override
+        public TestContainer decode(String string) {
+            return new TestContainer(UUID.fromString(string));
+        }
+
+        @Override
+        public String encode(TestContainer value) {
+            return value.getUuid().toString();
+        }
+    };
+
+    private final KeyGenerator<String> keyGenerator = new KeyGenerator<String>() {
+        @Override
+        public String redisKey(String key) {
+            return "KEY:" + key;
+        }
+    };
+
     @Test
     public void sniffTest() throws ExecutionException {
-        final SerializationHelper<TestContainer> helper = new SerializationHelper<TestContainer>() {
-            @Override
-            public TestContainer decode(String string) {
-                return new TestContainer(UUID.fromString(string));
-            }
-
-            @Override
-            public String encode(TestContainer value) {
-                return value.getUuid().toString();
-            }
-        };
-
-        final KeyGenerator<String> keyGenerator = new KeyGenerator<String>() {
-            @Override
-            public String redisKey(String key) {
-                return "KEY:" + key;
-            }
-        };
-
         final String key1 = "key1";
         final TestContainer tc1 = new TestContainer(UUID.randomUUID());
         final String key2 = "key2";
@@ -91,20 +93,26 @@ public class RedisCacheTest {
         final CounterRunnable loadSuccess = new CounterRunnable();
         final CounterRunnable loadFailure = new CounterRunnable();
 
+        final ExecutorService es = new ThreadPoolExecutor(0,
+                                                          1,
+                                                          200L,
+                                                          TimeUnit.SECONDS,
+                                                          new ArrayBlockingQueue<Runnable>(10));
+
         final RedisCache<String, TestContainer> cache = new RedisCache<>(keyGenerator,
-                                                                         helper,
-                                                                         rdbi,
-                                                                         loader,
-                                                                         "superFancyCache",
-                                                                         "prefix",
-                                                                         120,
-                                                                         0,
-                                                                         60,
-                                                                         new ThreadPoolExecutor(0, 1, 200L, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(10)),
-                                                                         hits,
-                                                                         misses,
-                                                                         loadSuccess,
-                                                                         loadFailure);
+                             helper,
+                             rdbi,
+                             loader,
+                             "superFancyCache",
+                             "prefix",
+                             120,
+                             0,
+                             60,
+                             es,
+                             hits,
+                             misses,
+                             loadSuccess,
+                             loadFailure);
 
         cache.invalidateAll(mappings.keySet());
 
@@ -151,5 +159,66 @@ public class RedisCacheTest {
         assertEquals(1, hits.get());
         assertEquals(1, loadSuccess.get());
         assertEquals(3, loadFailure.get());
+    }
+
+    @Test
+    public void verifyAsyncitude() throws InterruptedException, ExecutionException {
+        // it's a word
+
+        final String key1 = "key1";
+        final TestContainer tc1 = new TestContainer(UUID.randomUUID());
+
+        final ArrayBlockingQueue<TestContainer> queue = new ArrayBlockingQueue<>(1);
+        final Function<String, TestContainer> mrDeadlock = new Function<String, TestContainer>() {
+            @Nullable
+            @Override
+            public TestContainer apply(@Nullable String s) {
+                return queue.poll();
+            }
+        };
+
+        final ExecutorService es = new ThreadPoolExecutor(0,
+                                                          1,
+                                                          200L,
+                                                          TimeUnit.SECONDS,
+                                                          new ArrayBlockingQueue<Runnable>(10));
+
+        final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+
+        final CounterRunnable hits = new CounterRunnable();
+        final CounterRunnable misses = new CounterRunnable();
+        final CounterRunnable loadSuccess = new CounterRunnable();
+        final CounterRunnable loadFailure = new CounterRunnable();
+
+        final RedisCache<String, TestContainer> cache = new RedisCache<>(keyGenerator,
+                                                                         helper,
+                                                                         rdbi,
+                                                                         mrDeadlock,
+                                                                         "superFancierCache",
+                                                                         "prefix",
+                                                                         120,
+                                                                         0,
+                                                                         60,
+                                                                         es,
+                                                                         hits,
+                                                                         misses,
+                                                                         loadSuccess,
+                                                                         loadFailure);
+
+        cache.invalidateAll(ImmutableList.of(key1));
+
+        // this call would block if not executed asynchronously
+        cache.refresh(key1);
+        queue.put(tc1);
+        assertEquals(tc1.getUuid(), cache.get(key1).getUuid());
+        assertEquals(1, misses.get());
+        assertEquals(0, hits.get());
+        assertEquals(1, loadSuccess.get());
+        assertEquals(0, loadFailure.get());
+        assertEquals(tc1.getUuid(), cache.get(key1).getUuid());
+        assertEquals(1, misses.get());
+        assertEquals(1, hits.get());
+        assertEquals(1, loadSuccess.get());
+        assertEquals(0, loadFailure.get());
     }
 }

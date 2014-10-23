@@ -21,6 +21,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, ValueType> {
@@ -33,7 +34,9 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
     private final String keyPrefix;
     private final int valueTtl;
     private final long cacheRefreshThresholdSecs;
-    private final int lockTimeout;
+    private final int lockTimeoutSecs;
+    private final int lockReleaseRetries;
+    private final long lockReleaseRetryWaitMillis;
     private final Runnable hitAction;
     private final Runnable missAction;
     private final Runnable loadSuccessAction;
@@ -68,7 +71,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         this.keyPrefix = keyPrefix;
         this.valueTtl = valueTtlSecs;
         this.cacheRefreshThresholdSecs = cacheRefreshThresholdSecs;
-        this.lockTimeout = lockTimeoutSecs;
+        this.lockTimeoutSecs = lockTimeoutSecs;
         this.hitAction = hitAction;
         this.missAction = missAction;
         this.loadSuccessAction = loadSuccessAction;
@@ -81,6 +84,8 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         this.cacheLoadExceptionCount = new AtomicLong();
         this.cacheTotalLoadTime = new AtomicLong();
         this.cacheEvictionCount = new AtomicLong();
+        lockReleaseRetries = 3;
+        lockReleaseRetryWaitMillis = TimeUnit.MILLISECONDS.convert(1, TimeUnit.SECONDS);
     }
 
     protected void markHit() {
@@ -119,7 +124,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                 String.valueOf(System.currentTimeMillis()),
                 "NX", // Don't overwrite
                 "EX", // expire after timeout
-                lockTimeout);
+                lockTimeoutSecs);
         return Objects.equal(lockResponse, "OK");
     }
 
@@ -148,7 +153,19 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
     }
 
     private void releaseLock(final KeyType key, final Jedis jedis) {
-        jedis.del(redisLockKey(generateRedisKey(key)));
+        for(int i = 0; i < lockReleaseRetries; i++) {
+            try {
+                jedis.del(redisLockKey(generateRedisKey(key)));
+                return;
+            } catch (Exception ex) {
+                log.warn("{}: exception releasing lock, will retry", getCacheName(), ex);
+                try {
+                    Thread.sleep(lockReleaseRetryWaitMillis);
+                } catch (InterruptedException e) {
+                    log.debug("{}, interrupted retrying lock release", getCacheName(), e);
+                }
+            }
+        }
     }
 
     protected void releaseLock(final KeyType key) {
