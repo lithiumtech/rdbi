@@ -116,6 +116,8 @@ public class RedisCacheTest {
                              loadFailure);
 
         cache.invalidateAll(mappings.keySet());
+        cache.releaseLock(key1); // just in case...
+        cache.releaseLock(key2); // just in case...
 
         assertEquals(tc1.getUuid(), cache.get(key1).getUuid());
         assertEquals(1, misses.get());
@@ -211,7 +213,7 @@ public class RedisCacheTest {
                                                                          loadFailure);
 
         cache.invalidateAll(ImmutableList.of(key1));
-        cache.releaseLock(key1);
+        cache.releaseLock(key1); // just in case...
 
         // this call would block if not executed asynchronously
         cache.refresh(key1);

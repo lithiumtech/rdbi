@@ -49,6 +49,24 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
     private AtomicLong cacheMissCount;
     private AtomicLong cacheTotalLoadTime;
 
+    /**
+     * @param keyGenerator - something that will turn your key object into a string redis can use as a key.
+     *                     will be prefixed by the keyPrefix string.
+     * @param serializationHelper - a codec to get your value object to and from a string
+     * @param rdbi
+     * @param loader - function to go get your object
+     * @param cacheName - name of cache, used in log statements
+     * @param keyPrefix - prefix of all keys used by this cache in redis
+     * @param valueTtlSecs - redis entries holding your values will expire after this long
+     * @param cacheRefreshThresholdSecs - if the TTL of the key holding your value in redis is less than this value
+     *                                  upon access, we'll asynchronously refresh the value. set to 0 to disable.
+     * @param lockTimeoutSecs - write locks on a single value in redis will expire after these seconds
+     * @param asyncService - ExecutorService to handle async refreshes
+     * @param hitAction - callback for hits. exceptions are entirely swallowed.
+     * @param missAction - callback for misses. exceptions are entirely swallowed.
+     * @param loadSuccessAction - callback for load successes. exceptions are entirely swallowed.
+     * @param loadExceptionAction - callback for load failures. exceptions are entirely swallowed.
+     */
     public RedisCache(KeyGenerator<KeyType> keyGenerator,
                       SerializationHelper<ValueType> serializationHelper,
                       RDBI rdbi,
@@ -90,24 +108,40 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
 
     protected void markHit() {
         cacheHitCount.incrementAndGet();
-        hitAction.run();
+        try {
+            hitAction.run();
+        } catch (Exception ex) {
+            log.warn("{}: ex in callback", getCacheName(), ex);
+        }
     }
 
     protected void markMiss() {
         cacheMissCount.incrementAndGet();
-        missAction.run();
+        try {
+            missAction.run();
+        } catch (Exception ex) {
+            log.warn("{}: ex in callback", getCacheName(), ex);
+        }
     }
 
     protected void markLoadException(final long loadTime) {
         cacheLoadExceptionCount.incrementAndGet();
         cacheTotalLoadTime.addAndGet(loadTime);
-        loadExceptionAction.run();
+        try {
+            loadExceptionAction.run();
+        } catch (Exception ex) {
+            log.warn("{}: ex in callback", getCacheName(), ex);
+        }
     }
 
     protected void markLoadSuccess(final long loadTime) {
         cacheLoadSuccessCount.incrementAndGet();
         cacheTotalLoadTime.addAndGet(loadTime);
-        loadSuccessAction.run();
+        try {
+            loadSuccessAction.run();
+        } catch (Exception ex) {
+            log.warn("{}: ex in callback", getCacheName(), ex);
+        }
     }
 
     public String getCacheName() {
