@@ -3,6 +3,7 @@ package com.lithium.dbi.rdbi.recipes.cache;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
+import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.cache.CacheStats;
 import com.google.common.cache.LoadingCache;
@@ -41,7 +42,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
     private final Runnable missAction;
     private final Runnable loadSuccessAction;
     private final Runnable loadExceptionAction;
-    private final ExecutorService asyncService;
+    private final Optional<ExecutorService> asyncService;
     private AtomicLong cacheEvictionCount;
     private AtomicLong cacheHitCount;
     private AtomicLong cacheLoadExceptionCount;
@@ -59,9 +60,10 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
      * @param keyPrefix - prefix of all keys used by this cache in redis
      * @param valueTtlSecs - redis entries holding your values will expire after this long
      * @param cacheRefreshThresholdSecs - if the TTL of the key holding your value in redis is less than this value
-     *                                  upon access, we'll asynchronously refresh the value. set to 0 to disable.
+     *                                  upon access, we'll automatically asynchronously refresh the value.
+     *                                  set to 0 to disable.
      * @param lockTimeoutSecs - write locks on a single value in redis will expire after these seconds
-     * @param asyncService - ExecutorService to handle async refreshes
+     * @param asyncService - ExecutorService to handle async refreshes - async refresh behavior is disabled if absent.
      * @param hitAction - callback for hits. exceptions are entirely swallowed.
      * @param missAction - callback for misses. exceptions are entirely swallowed.
      * @param loadSuccessAction - callback for load successes. exceptions are entirely swallowed.
@@ -76,7 +78,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                       int valueTtlSecs,
                       long cacheRefreshThresholdSecs,
                       int lockTimeoutSecs,
-                      ExecutorService asyncService,
+                      Optional<ExecutorService> asyncService,
                       Runnable hitAction,
                       Runnable missAction,
                       Runnable loadSuccessAction,
@@ -350,7 +352,11 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
 
     @Override
     public void refresh(final KeyType key) {
-        asyncService.submit(new AsyncCacheRefresher<>(this, rdbi, key));
+        if(asyncService.isPresent()) {
+            asyncService.get().submit(new AsyncCacheRefresher<>(this, rdbi, key));
+        } else {
+            new AsyncCacheRefresher<>(this, rdbi, key).call();
+        }
     }
 
     @Override
