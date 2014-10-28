@@ -1,6 +1,7 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
 import com.google.common.base.Function;
+import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -109,7 +110,7 @@ public class RedisCacheTest {
                              120,
                              0,
                              60,
-                             es,
+                             Optional.of(es),
                              hits,
                              misses,
                              loadSuccess,
@@ -206,7 +207,7 @@ public class RedisCacheTest {
                                                                          120,
                                                                          0,
                                                                          60,
-                                                                         es,
+                                                                         Optional.of(es),
                                                                          hits,
                                                                          misses,
                                                                          loadSuccess,
