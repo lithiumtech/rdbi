@@ -12,6 +12,7 @@ import com.google.common.collect.Maps;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
+import com.lithium.dbi.rdbi.recipes.locking.RedisSemaphoreDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
@@ -154,21 +155,14 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         return redisKey + ":lock";
     }
 
-    boolean acquireLock(Jedis jedis, String lockKey) {
-        String lockResponse = jedis.set(
-                lockKey,
-                String.valueOf(System.currentTimeMillis()),
-                "NX", // Don't overwrite
-                "EX", // expire after timeout
-                lockTimeoutSecs);
-        return Objects.equal(lockResponse, "OK");
-    }
-
     protected boolean acquireLock(final KeyType key) {
         return rdbi.withHandle(new Callback<Boolean>() {
             @Override
             public Boolean run(Handle handle) {
-                return acquireLock(handle.jedis(), redisLockKey(generateRedisKey(key)));
+                return 1 == handle.attach(RedisSemaphoreDAO.class)
+                                  .acquireSemaphore(redisLockKey(generateRedisKey(key)),
+                                                    String.valueOf(System.currentTimeMillis()),
+                                                    lockTimeoutSecs);
             }
         });
     }
