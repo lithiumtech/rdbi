@@ -13,7 +13,7 @@ public class CallbackResult<ValueType> {
     }
 
     public CallbackResult(final Exception ex) {
-        this.value = null;
+        this.value = Optional.absent();
         this.error = ex;
     }
 
@@ -31,10 +31,10 @@ public class CallbackResult<ValueType> {
     }
 
     public ValueType getOrThrowUnchecked() {
-        if (value != null) {
-            return value.orNull();
-        } else {
+        if (error != null) {
             throw Throwables.propagate(error);
+        } else {
+            return value.orNull();
         }
     }
 }
