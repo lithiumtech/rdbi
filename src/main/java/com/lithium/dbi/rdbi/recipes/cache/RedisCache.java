@@ -2,7 +2,6 @@ package com.lithium.dbi.rdbi.recipes.cache;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
-import com.google.common.base.Objects;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.cache.CacheStats;
@@ -59,7 +58,7 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
      * @param loader - function to go get your object
      * @param cacheName - name of cache, used in log statements
      * @param keyPrefix - prefix of all keys used by this cache in redis
-     * @param valueTtlSecs - redis entries holding your values will expire after this long
+     * @param valueTtlSecs - redis entries holding your values will expire after this many seconds
      * @param cacheRefreshThresholdSecs - if the TTL of the key holding your value in redis is less than this value
      *                                  upon access, we'll automatically asynchronously refresh the value.
      *                                  set to 0 to disable.

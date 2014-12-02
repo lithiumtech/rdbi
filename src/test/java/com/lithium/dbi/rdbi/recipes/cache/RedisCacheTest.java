@@ -10,6 +10,7 @@ import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
 import javax.annotation.Nullable;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutionException;
@@ -34,6 +35,23 @@ public class RedisCacheTest {
         public UUID getUuid() {
             return uuid;
         }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(uuid);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null || getClass() != obj.getClass()) {
+                return false;
+            }
+            final TestContainer other = (TestContainer) obj;
+            return Objects.equals(this.uuid, other.uuid);
+        }
     }
 
     public static class CounterRunnable implements Runnable {
@@ -49,7 +67,7 @@ public class RedisCacheTest {
         }
     }
 
-    private final SerializationHelper<TestContainer> helper = new SerializationHelper<TestContainer>() {
+    public static final SerializationHelper<TestContainer> helper = new SerializationHelper<TestContainer>() {
         @Override
         public TestContainer decode(String string) {
             return new TestContainer(UUID.fromString(string));
@@ -61,7 +79,7 @@ public class RedisCacheTest {
         }
     };
 
-    private final KeyGenerator<String> keyGenerator = new KeyGenerator<String>() {
+    public static final KeyGenerator<String> keyGenerator = new KeyGenerator<String>() {
         @Override
         public String redisKey(String key) {
             return "KEY:" + key;
