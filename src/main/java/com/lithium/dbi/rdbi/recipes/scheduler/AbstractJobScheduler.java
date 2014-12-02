@@ -108,7 +108,7 @@ public abstract class AbstractJobScheduler {
         try (Handle handle = rdbi.open()) {
             Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
             for (Tuple tuple : tupleSet) {
-                jobInfos.add(new JobInfo(tuple.getElement(), new Instant((long) tuple.getScore())));
+                jobInfos.add(new JobInfo(tuple.getElement(), tuple.getScore()));
             }
             return jobInfos;
         }

@@ -86,7 +86,7 @@ public class TimeBasedJobSchedulerTest {
         Thread.sleep(2000);
         List<JobInfo> infos = scheduledJobSystem.requeueExpired(TEST_TUBE);
         assertEquals(infos.size(), 1);
-        assertNotNull(infos.get(0).getTime());
+        assertNotNull(infos.get(0).getJobScore());
     }
 
     @Test

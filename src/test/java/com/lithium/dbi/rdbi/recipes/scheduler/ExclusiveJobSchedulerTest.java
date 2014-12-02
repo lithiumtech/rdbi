@@ -4,8 +4,6 @@ import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
-import static org.testng.Assert.assertFalse;
-import static org.testng.Assert.assertTrue;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -14,8 +12,10 @@ import redis.clients.jedis.JedisPool;
 import java.util.List;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
 
 @Test(groups = "integration")
 public class ExclusiveJobSchedulerTest {
@@ -64,7 +64,7 @@ public class ExclusiveJobSchedulerTest {
         Thread.sleep(2000);
         List<JobInfo> infos = scheduledJobSystem.removeExpiredJobs(TEST_TUBE);
         assertEquals(infos.size(), 1);
-        assertNotNull(infos.get(0).getTime());
+        assertNotNull(infos.get(0).getJobScore());
     }
 
     @Test
