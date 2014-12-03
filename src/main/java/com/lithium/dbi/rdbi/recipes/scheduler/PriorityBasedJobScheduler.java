@@ -76,7 +76,7 @@ public class PriorityBasedJobScheduler extends AbstractJobScheduler<JobInfo> {
     }
 
     @Override
-    protected JobInfo newJobInfo(String jobStr, double jobScore) {
+    protected JobInfo createJobInfo(String jobStr, double jobScore) {
         return new JobInfo(jobStr, jobScore);
     }
 

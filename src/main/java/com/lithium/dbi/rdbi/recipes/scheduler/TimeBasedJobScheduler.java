@@ -143,7 +143,7 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
     }
 
     @Override
-    protected TimeJobInfo newJobInfo(String jobStr, double jobScore) {
+    protected TimeJobInfo createJobInfo(String jobStr, double jobScore) {
         return new TimeJobInfo(jobStr, jobScore);
     }
 
