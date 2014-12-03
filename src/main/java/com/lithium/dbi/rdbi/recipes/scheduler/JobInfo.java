@@ -1,30 +1,28 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
-import org.joda.time.Instant;
-
 public class JobInfo {
 
-    private final String jobStr;
-    private final Instant time;
+    protected final String jobStr;
+    protected final double jobScore;
 
-    JobInfo(String jobStr, Instant time) {
+    JobInfo(String jobStr, double jobScore) {
         this.jobStr = jobStr;
-        this.time = time;
+        this.jobScore = jobScore;
     }
 
     public String getJobStr() {
         return jobStr;
     }
 
-    public Instant getTime() {
-        return time;
+    public double getJobScore() {
+        return jobScore;
     }
 
     @Override
     public String toString() {
         return "JobInfo{" +
                 "jobStr='" + jobStr + '\'' +
-                ", time=" + time +
+                ", jobScore=" + jobScore +
                 '}';
     }
 }

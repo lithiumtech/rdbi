@@ -7,7 +7,7 @@ import org.joda.time.Instant;
 
 import java.util.List;
 
-public class PriorityBasedJobScheduler extends AbstractJobScheduler {
+public class PriorityBasedJobScheduler extends AbstractJobScheduler<JobInfo> {
 
     /**
      * @param rdbi the rdbi driver
@@ -73,6 +73,11 @@ public class PriorityBasedJobScheduler extends AbstractJobScheduler {
                                         Instant.now().getMillis(),
                                         newScore);
         }
+    }
+
+    @Override
+    protected JobInfo createJobInfo(String jobStr, double jobScore) {
+        return new JobInfo(jobStr, jobScore);
     }
 
 }
