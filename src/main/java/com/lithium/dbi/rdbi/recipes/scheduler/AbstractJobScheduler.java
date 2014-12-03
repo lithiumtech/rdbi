@@ -10,7 +10,7 @@ import redis.clients.jedis.Tuple;
 import java.util.List;
 import java.util.Set;
 
-public abstract class AbstractJobScheduler {
+public abstract class AbstractJobScheduler<T extends JobInfo> {
 
     protected final RDBI rdbi;
     protected final String prefix;
@@ -24,7 +24,7 @@ public abstract class AbstractJobScheduler {
         this.prefix = redisPrefixKey;
     }
 
-    public abstract List<JobInfo> reserveMulti(final String tube, final long timeToReserveMillis, final int maxNumberOfJobs);
+    public abstract List<T> reserveMulti(final String tube, final long timeToReserveMillis, final int maxNumberOfJobs);
 
     /**
      * Reserve a single job.
@@ -33,8 +33,8 @@ public abstract class AbstractJobScheduler {
      * @param timeToReserveMillis The duration of the reservation in milliseconds, after which time the job becomes available to be put back into the ready queue again if not deleted first.
      * @return The job that has been reserved
      */
-    public JobInfo reserveSingle(final String tube, final long timeToReserveMillis) {
-        List<JobInfo> jobs = reserveMulti(tube, timeToReserveMillis, 1);
+    public T reserveSingle(final String tube, final long timeToReserveMillis) {
+        List<T> jobs = reserveMulti(tube, timeToReserveMillis, 1);
         if (jobs == null || jobs.isEmpty()) {
             return null;
         } else {
@@ -79,19 +79,19 @@ public abstract class AbstractJobScheduler {
     }
 
 
-    public List<JobInfo> peekDelayed(String tube, int offset, int count) {
+    public List<T> peekDelayed(String tube, int offset, int count) {
         return peekInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
 
-    public List<JobInfo> peekReady(String tube, int offset, int count) {
+    public List<T> peekReady(String tube, int offset, int count) {
         return peekInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
     }
 
-    public List<JobInfo> peekRunning(String tube, int offset, int count) {
+    public List<T> peekRunning(String tube, int offset, int count) {
         return peekInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
 
-    public List<JobInfo> peekExpired(String tube, int offset, int count) {
+    public List<T> peekExpired(String tube, int offset, int count) {
         return peekInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
     }
 
@@ -103,16 +103,18 @@ public abstract class AbstractJobScheduler {
         return prefix + tube + ":ready_queue";
     }
 
-    private List<JobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
-        List<JobInfo> jobInfos = Lists.newArrayList();
+    protected List<T> peekInternal(String queue, Double min, Double max, int offset, int count) {
+        List<T> jobInfos = Lists.newArrayList();
         try (Handle handle = rdbi.open()) {
             Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
             for (Tuple tuple : tupleSet) {
-                jobInfos.add(new JobInfo(tuple.getElement(), tuple.getScore()));
+                jobInfos.add(newJobInfo(tuple.getElement(), tuple.getScore()));
             }
             return jobInfos;
         }
     }
+
+    protected abstract T newJobInfo(String jobStr, double jobScore);
 
     private long getSortedSetSize(final String key) {
         return rdbi.withHandle(new Callback<Long>() {

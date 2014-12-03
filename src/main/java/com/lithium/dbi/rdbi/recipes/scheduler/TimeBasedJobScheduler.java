@@ -1,14 +1,11 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
-import com.google.common.collect.Lists;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
-import redis.clients.jedis.Tuple;
 
 import java.util.List;
-import java.util.Set;
 
 /**
  * Differences between this class and {@link com.lithium.dbi.rdbi.recipes.scheduler.ExclusiveJobScheduler}:
@@ -18,7 +15,7 @@ import java.util.Set;
  *     <li>Expired jobs in the runningQueue are not purged, but instead moved back to the readyQueue.</li>
  * </ul>
  */
-public class TimeBasedJobScheduler extends AbstractJobScheduler {
+public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
 
     /**
      * @param rdbi the rdbi driver
@@ -58,17 +55,18 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler {
      * @return The list of jobs that have been reserved
      */
     @Override
-    public List<JobInfo> reserveMulti(final String tube, final long timeToReserveMillis, final int maxNumberOfJobs) {
+    public List<TimeJobInfo> reserveMulti(final String tube, final long timeToReserveMillis, final int maxNumberOfJobs) {
         try (Handle handle = rdbi.open()) {
-            return handle
-                    .attach(JobSchedulerDAO.class)
-                    .reserveJobs(
-                            getReadyQueue(tube),
-                            getRunningQueue(tube),
-                            maxNumberOfJobs,
-                            0L,
-                            Instant.now().getMillis(),
-                            Instant.now().getMillis() + timeToReserveMillis);
+            final List<JobInfo> jobInfos =
+                    handle.attach(JobSchedulerDAO.class)
+                          .reserveJobs(
+                                  getReadyQueue(tube),
+                                  getRunningQueue(tube),
+                                  maxNumberOfJobs,
+                                  0L,
+                                  Instant.now().getMillis(),
+                                  Instant.now().getMillis() + timeToReserveMillis);
+            return TimeJobInfo.from(jobInfos);
         }
     }
 
@@ -78,14 +76,15 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler {
      * @param tube Used in conjunction with the redisPrefixKey (constructor) to make up the full redis key name.
      * @return The list of jobs that had expired and that have been already moved back into the ready queue.
      */
-    public List<JobInfo> requeueExpired(final String tube) {
+    public List<TimeJobInfo> requeueExpired(final String tube) {
         try (Handle handle = rdbi.open()) {
-            return handle
-                    .attach(JobSchedulerDAO.class)
-                    .requeueExpiredJobs(getReadyQueue(tube),
-                                        getRunningQueue(tube),
-                                        Instant.now().getMillis(),
-                                        Instant.now().getMillis());
+            final List<JobInfo> jobInfos =
+                    handle.attach(JobSchedulerDAO.class)
+                          .requeueExpiredJobs(getReadyQueue(tube),
+                                              getRunningQueue(tube),
+                                              Instant.now().getMillis(),
+                                              Instant.now().getMillis());
+            return TimeJobInfo.from(jobInfos);
         }
     }
 
@@ -110,19 +109,19 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler {
     }
 
 
-    public List<JobInfo> peekDelayed(String tube, int offset, int count) {
+    public List<TimeJobInfo> peekDelayed(String tube, int offset, int count) {
         return peekInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
 
-    public List<JobInfo> peekReady(String tube, int offset, int count) {
+    public List<TimeJobInfo> peekReady(String tube, int offset, int count) {
         return peekInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
     }
 
-    public List<JobInfo> peekRunning(String tube, int offset, int count) {
+    public List<TimeJobInfo> peekRunning(String tube, int offset, int count) {
         return peekInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
 
-    public List<JobInfo> peekExpired(String tube, int offset, int count) {
+    public List<TimeJobInfo> peekExpired(String tube, int offset, int count) {
         return peekInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
     }
 
@@ -134,17 +133,6 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler {
         return prefix + tube + ":ready_queue";
     }
 
-    private List<JobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
-        List<JobInfo> jobInfos = Lists.newArrayList();
-        try (Handle handle = rdbi.open()) {
-            Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
-            for (Tuple tuple : tupleSet) {
-                jobInfos.add(new JobInfo(tuple.getElement(), tuple.getScore()));
-            }
-            return jobInfos;
-        }
-    }
-
     private long getSortedSetSize(final String key) {
         return rdbi.withHandle(new Callback<Long>() {
             @Override
@@ -152,6 +140,11 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler {
                 return handle.jedis().zcount(key, "-inf", "+inf");
             }
         });
+    }
+
+    @Override
+    protected TimeJobInfo newJobInfo(String jobStr, double jobScore) {
+        return new TimeJobInfo(jobStr, jobScore);
     }
 
 }

@@ -2,8 +2,8 @@ package com.lithium.dbi.rdbi.recipes.scheduler;
 
 public class JobInfo {
 
-    private final String jobStr;
-    private final double jobScore;
+    protected final String jobStr;
+    protected final double jobScore;
 
     JobInfo(String jobStr, double jobScore) {
         this.jobStr = jobStr;
