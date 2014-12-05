@@ -89,22 +89,18 @@ public class ExclusiveJobScheduler {
 
     public boolean schedule(final String tube, final String jobStr, final int ttlInMillis) {
 
-        Handle handle = rdbi.open();
-        try {
+        try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(ExclusiveJobSchedulerDAO.class).scheduleJob(
                     getReadyQueue(tube),
                     getRunningQueue(tube),
                     getPaused(tube),
                     jobStr,
                     Instant.now().getMillis() + ttlInMillis);
-        } finally {
-            handle.close();
         }
     }
 
-    public List<JobInfo> reserveMulti(final String tube, final long ttrInMillis, final int maxNumberOfJobs) {
-        Handle handle = rdbi.open();
-        try {
+    public List<TimeJobInfo> reserveMulti(final String tube, final long ttrInMillis, final int maxNumberOfJobs) {
+        try (Handle handle = rdbi.open()) {
             return handle.attach(ExclusiveJobSchedulerDAO.class).reserveJobs(
                     getReadyQueue(tube),
                     getRunningQueue(tube),
@@ -112,14 +108,12 @@ public class ExclusiveJobScheduler {
                     maxNumberOfJobs,
                     Instant.now().getMillis(),
                     Instant.now().getMillis() + ttrInMillis);
-        } finally {
-            handle.close();
         }
     }
 
-    public JobInfo reserveSingle(final String tube, final long ttrInMillis) {
+    public TimeJobInfo reserveSingle(final String tube, final long ttrInMillis) {
 
-        List<JobInfo> jobs = reserveMulti(tube, ttrInMillis, 1);
+        List<TimeJobInfo> jobs = reserveMulti(tube, ttrInMillis, 1);
 
         //todo how shall we handle more than one job error mode?
 
@@ -131,53 +125,44 @@ public class ExclusiveJobScheduler {
     }
 
     public boolean deleteJob(final String tube, String jobStr) {
-        Handle handle = rdbi.open();
-        try {
+        try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(ExclusiveJobSchedulerDAO.class)
                               .deleteJob(getReadyQueue(tube), getRunningQueue(tube), jobStr);
-        } finally {
-            handle.close();
         }
     }
 
-    public List<JobInfo> removeExpiredJobs(String tube) {
-        Handle handle = rdbi.open();
-        try {
+    public List<TimeJobInfo> removeExpiredJobs(String tube) {
+        try (Handle handle = rdbi.open()) {
             return handle.attach(ExclusiveJobSchedulerDAO.class)
                          .removeExpiredJobs(getRunningQueue(tube), Instant.now().getMillis());
-        } finally {
-            handle.close();
         }
     }
 
-    public List<JobInfo> peekDelayed(String tube, int offset, int count) {
+    public List<TimeJobInfo> peekDelayed(String tube, int offset, int count) {
         return peekInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
 
-    public List<JobInfo> peekReady(String tube, int offset, int count) {
+    public List<TimeJobInfo> peekReady(String tube, int offset, int count) {
         return peekInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
     }
 
-    public List<JobInfo> peekRunning(String tube, int offset, int count) {
+    public List<TimeJobInfo> peekRunning(String tube, int offset, int count) {
         return peekInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
 
-    public List<JobInfo> peekExpired(String tube, int offset, int count) {
+    public List<TimeJobInfo> peekExpired(String tube, int offset, int count) {
         return peekInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
     }
 
-    private List<JobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
+    private List<TimeJobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
 
-        List<JobInfo> jobInfos = Lists.newArrayList();
-        Handle handle = rdbi.open();
-        try {
+        final List<TimeJobInfo> jobInfos = Lists.newArrayList();
+        try (Handle handle = rdbi.open()) {
             Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
             for (Tuple tuple : tupleSet) {
-                jobInfos.add(new JobInfo(tuple.getElement(), tuple.getScore()));
+                jobInfos.add(new TimeJobInfo(tuple.getElement(), tuple.getScore()));
             }
             return jobInfos;
-        } finally {
-            handle.close();
         }
     }
 

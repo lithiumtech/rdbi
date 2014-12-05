@@ -27,7 +27,7 @@ public interface ExclusiveJobSchedulerDAO {
             @BindArg("jobStr") String job,
             @BindArg("ttl") long ttlInMillis);
 
-    @Mapper(JobInfoListMapper.class)
+    @Mapper(TimeJobInfoListMapper.class)
     @Query(
         "local isPaused = redis.call('GET', $pausedTube$) \n" +
         "local jobs = redis.call('ZRANGEBYSCORE', $readyQueue$, 0, $now$, 'WITHSCORES', 'LIMIT', 0, $limit$)\n" +
@@ -40,7 +40,7 @@ public interface ExclusiveJobSchedulerDAO {
         "end\n" +
         "return jobs"
     )
-    public List<JobInfo> reserveJobs(
+    public List<TimeJobInfo> reserveJobs(
             @BindKey("readyQueue") String readyQueue,
             @BindKey("runningQueue") String runningQueue,
             @BindKey("pausedTube") String pausedTube,
@@ -48,13 +48,13 @@ public interface ExclusiveJobSchedulerDAO {
             @BindArg("now") long now,
             @BindArg("ttr") long ttr);
 
-    @Mapper(JobInfoListMapper.class)
+    @Mapper(TimeJobInfoListMapper.class)
     @Query(
         "local expiredJob = redis.call('ZRANGEBYSCORE', $runningQueue$, 0, $now$, 'WITHSCORES')\n" +
         "redis.call('ZREMRANGEBYSCORE', $runningQueue$, 0, $now$)\n" +
         "return expiredJob"
     )
-    public List<JobInfo> removeExpiredJobs(@BindKey("runningQueue") String runningQueue, @BindArg("now") Long now);
+    public List<TimeJobInfo> removeExpiredJobs(@BindKey("runningQueue") String runningQueue, @BindArg("now") Long now);
 
     @Query(
         "local deletedFromReadyQueue = redis.call('ZREM', $readyQueue$, $job$)\n" +
