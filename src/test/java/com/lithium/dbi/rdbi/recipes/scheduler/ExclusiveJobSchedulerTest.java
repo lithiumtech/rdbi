@@ -62,7 +62,7 @@ public class ExclusiveJobSchedulerTest {
         JobInfo result3 = scheduledJobSystem.reserveSingle(TEST_TUBE, 1000);
         assertNotNull(result3);
         Thread.sleep(2000);
-        List<JobInfo> infos = scheduledJobSystem.removeExpiredJobs(TEST_TUBE);
+        List<TimeJobInfo> infos = scheduledJobSystem.removeExpiredJobs(TEST_TUBE);
         assertEquals(infos.size(), 1);
         assertNotNull(infos.get(0).getJobScore());
     }
@@ -93,25 +93,25 @@ public class ExclusiveJobSchedulerTest {
     public void testBasicStates() throws InterruptedException {
         scheduledJobSystem.schedule(TEST_TUBE, "{hello:world}", 1000);
 
-        List<JobInfo> jobInfos = scheduledJobSystem.peekDelayed(TEST_TUBE, 0, 1);
+        List<TimeJobInfo> jobInfos = scheduledJobSystem.peekDelayed(TEST_TUBE, 0, 1);
         assertEquals(jobInfos.get(0).getJobStr(), "{hello:world}");
 
         Thread.sleep(1500);
-        List<JobInfo> jobInfos2 = scheduledJobSystem.peekDelayed(TEST_TUBE, 0, 1);
+        List<TimeJobInfo> jobInfos2 = scheduledJobSystem.peekDelayed(TEST_TUBE, 0, 1);
         assertEquals(jobInfos2.size(), 0);
 
-        List<JobInfo> jobInfos3 = scheduledJobSystem.peekReady(TEST_TUBE, 0, 1);
+        List<TimeJobInfo> jobInfos3 = scheduledJobSystem.peekReady(TEST_TUBE, 0, 1);
         assertEquals(jobInfos3.get(0).getJobStr(), "{hello:world}");
 
         scheduledJobSystem.reserveSingle("mytube", 1000L);
-        List<JobInfo> jobInfos4 = scheduledJobSystem.peekRunning(TEST_TUBE, 0, 1);
+        List<TimeJobInfo> jobInfos4 = scheduledJobSystem.peekRunning(TEST_TUBE, 0, 1);
         assertEquals(jobInfos4.get(0).getJobStr(), "{hello:world}");
 
         Thread.sleep(1500);
-        List<JobInfo> jobInfos6 = scheduledJobSystem.peekRunning(TEST_TUBE, 0, 1);
+        List<TimeJobInfo> jobInfos6 = scheduledJobSystem.peekRunning(TEST_TUBE, 0, 1);
         assertEquals(jobInfos6.size(), 0);
 
-        List<JobInfo> jobInfos5 = scheduledJobSystem.peekExpired(TEST_TUBE, 0, 1);
+        List<TimeJobInfo> jobInfos5 = scheduledJobSystem.peekExpired(TEST_TUBE, 0, 1);
         assertEquals(jobInfos5.get(0).getJobStr(), "{hello:world}");
 
         scheduledJobSystem.deleteJob(TEST_TUBE,  "{hello:world}");
