@@ -60,7 +60,12 @@ public class Handle implements Closeable {
         if (isBusted) {
             pool.returnBrokenResource(jedis);
         } else {
-            pool.returnResource(jedis);
+            try {
+                pool.returnResource(jedis);
+            } catch (Exception ex) {
+                logger.error("Exception caught while trying to return to pool. Returning as broken.", ex);
+                pool.returnBrokenResource(jedis);
+            }
         }
         closed = true;
     }
