@@ -24,6 +24,16 @@ public abstract class AbstractJobScheduler<T extends JobInfo> {
         this.prefix = redisPrefixKey;
     }
 
+    /**
+     * Get the redis prefix key for this scheduler.  This is primarily to help facilitate testing if the need ever arises to
+     * verify that the correct queue was chosen based on some business logic.
+     *
+     * @return the prefix key for the job system.
+     */
+    public String getPrefix() {
+        return prefix;
+    }
+
     public abstract List<T> reserveMulti(final String tube, final long timeToReserveMillis, final int maxNumberOfJobs);
 
     /**
