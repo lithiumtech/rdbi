@@ -25,12 +25,12 @@ public class AsyncCacheRefresher<KeyType, ValueType> implements Callable<Callbac
         final long start = System.currentTimeMillis();
 
         if(!cache.acquireLock(key)) {
-            log.debug("{}: Unable to acquire refresh lock for", cache.getCacheName());
+            log.debug("{}: Unable to acquire refresh lock for {}", cache.getCacheName(), key);
             cache.markLoadException(System.currentTimeMillis() - start);
             return new CallbackResult<>(new LockUnavailableException());
         }
 
-        log.debug("{}: Attempting to refresh data for", cache.getCacheName());
+        log.debug("{}: Attempting to refresh data for {}", cache.getCacheName(), key);
 
         try {
             final ValueType value = cache.load(key);
@@ -39,7 +39,7 @@ public class AsyncCacheRefresher<KeyType, ValueType> implements Callable<Callbac
                 return new CallbackResult<>();
             }
 
-            log.info("{}: Async refresh for {}", cache.getCacheName());
+            log.info("{}: Async refresh for {}", cache.getCacheName(), key);
             cache.put(key, value); // this shouldn't throw, the withHandle eats it...
             cache.markLoadSuccess(System.currentTimeMillis() - start);
             return new CallbackResult<>(value);
