@@ -1,4 +1,4 @@
-package com.lithium.dbi.rdbi.recipes.queue;
+package com.lithium.dbi.rdbi.recipes.set;
 
 import com.google.common.collect.ImmutableList;
 import com.lithium.dbi.rdbi.RDBI;
@@ -8,8 +8,9 @@ import redis.clients.jedis.JedisPool;
 
 import java.util.UUID;
 
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 @Test(groups = "integration")
 public class RedisSetTest {
@@ -41,11 +42,11 @@ public class RedisSetTest {
         set.add(UUID.randomUUID());
         set.add(UUID.randomUUID());
 
-        assertEquals(3, set.size());
+        assertEquals(set.size(), 3);
 
         set.clear();
 
-        assertEquals(0, set.size());
+        assertEquals(set.size(), 0);
         assertTrue(set.isEmpty());
     }
 
@@ -64,13 +65,19 @@ public class RedisSetTest {
         set.addAll(ImmutableList.of(first), 9);
         set.addAll(ImmutableList.of(second,third));
 
+        assertTrue(set.containsAll(ImmutableList.of(first, second, third)));
+
         set.remove(second);
 
-        assertEquals(2, set.size());
+        assertFalse(set.contains(second));
+        assertTrue(set.contains(third));
+        assertFalse(set.containsAll(ImmutableList.of(first, second)));
+        assertTrue(set.containsAll(ImmutableList.of(first, third)));
 
-        assertEquals(ImmutableList.of(new RedisSet.ValueWithScore<>(first, 9),
-                                      new RedisSet.ValueWithScore<>(third, 10)),
-                     set.popRange(0, 10));
+        assertEquals(set.size(), 2);
+
+        assertEquals(set.popRange(0, 10), ImmutableList.of(new RedisSet.ValueWithScore<>(first, 9),
+                                                           new RedisSet.ValueWithScore<>(third, 10)));
 
         assertTrue(set.isEmpty());
 
@@ -78,10 +85,10 @@ public class RedisSetTest {
         set.add(third);
         set.addAll(ImmutableList.of(first), 0);
 
-        assertEquals(ImmutableList.of(new RedisSet.ValueWithScore<>(first, 0)),
-                     set.popRange(0, 0));
+        assertEquals(set.popRange(0, 0),
+                     ImmutableList.of(new RedisSet.ValueWithScore<>(first, 0)));
 
-        assertEquals(ImmutableList.of(new RedisSet.ValueWithScore<>(third, 10)),
-                     set.popRange(1, 1));
+        assertEquals(set.popRange(1, 1),
+                     ImmutableList.of(new RedisSet.ValueWithScore<>(third, 10)));
     }
 }

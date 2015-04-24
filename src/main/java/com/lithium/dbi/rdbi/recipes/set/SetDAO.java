@@ -1,4 +1,4 @@
-package com.lithium.dbi.rdbi.recipes.queue;
+package com.lithium.dbi.rdbi.recipes.set;
 
 import com.lithium.dbi.rdbi.BindKey;
 import com.lithium.dbi.rdbi.Query;
