@@ -38,6 +38,9 @@ public class RedisSetTest {
                                                   rdbi,
                                                   10);
 
+        set.clear();
+        assertTrue(set.isEmpty());
+
         set.add(UUID.randomUUID());
         set.add(UUID.randomUUID());
         set.add(UUID.randomUUID());
@@ -57,6 +60,8 @@ public class RedisSetTest {
                                                   setKey,
                                                   rdbi,
                                                   10);
+        set.clear();
+        assertTrue(set.isEmpty());
 
         final UUID first = UUID.randomUUID();
         final UUID second = UUID.randomUUID();
@@ -90,5 +95,8 @@ public class RedisSetTest {
 
         assertEquals(set.popRange(1, 1),
                      ImmutableList.of(new RedisSet.ValueWithScore<>(third, 10)));
+
+        set.clear();
+        assertTrue(set.isEmpty());
     }
 }
