@@ -113,6 +113,10 @@ public class RedisSet<ValueType> implements Set<ValueType> {
      * Asking for more elements than exist in the set will just get you the entire set.
      *
      * (This does a ZRANGE underneath the covers to select the elements, so all the same rules apply.)
+     *
+     * This uses a small Lua snippet atomically get and remove the elements from the set.
+     * Beware that the entirety of the elements to be returned are stored for a short time in a LUA local variable,
+     * so if you ask for a huge huge number of big elements, you could cause problems for yourself on your Redis server.
      * @param lowerRank - start index. lowest-scored element is at 0.
      * @param upperRank - end index. -1 to grab it all.
      * @return Ordered list of the elements popped along with their scores.
