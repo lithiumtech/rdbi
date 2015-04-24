@@ -31,12 +31,54 @@ public class RedisSetTest {
     }
 
     @Test
+    public void getFromEmptyTest() {
+        final RedisSet<UUID> set = new RedisSet<>(new UUIDSerialHelper(),
+                                                  "clearTest",
+                                                  setKey,
+                                                  rdbi,
+                                                  10,
+                                                  100);
+
+        set.clear();
+        assertTrue(set.isEmpty());
+        assertTrue(set.popRange(0, 10).isEmpty());
+        assertTrue(set.isEmpty());
+    }
+
+    @Test
+    public void limitTest() {
+        final RedisSet<UUID> set = new RedisSet<>(new UUIDSerialHelper(),
+                                                  "clearTest",
+                                                  setKey,
+                                                  rdbi,
+                                                  10,
+                                                  2);
+
+        set.clear();
+        assertTrue(set.isEmpty());
+
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+
+        set.addAll(ImmutableList.of(first), 9);
+        set.addAll(ImmutableList.of(second));
+        set.addAll(ImmutableList.of(third), 11);
+
+        assertEquals(set.popRange(0, 10), ImmutableList.of(new RedisSet.ValueWithScore<>(first, 9),
+                                                           new RedisSet.ValueWithScore<>(second, 10)));
+
+        assertEquals(set.popRange(0, 10), ImmutableList.of(new RedisSet.ValueWithScore<>(third, 11)));
+    }
+
+    @Test
     public void clearTest() {
         final RedisSet<UUID> set = new RedisSet<>(new UUIDSerialHelper(),
                                                   "clearTest",
                                                   setKey,
                                                   rdbi,
-                                                  10);
+                                                  10,
+                                                  100);
 
         set.clear();
         assertTrue(set.isEmpty());
@@ -59,7 +101,8 @@ public class RedisSetTest {
                                                   "clearTest",
                                                   setKey,
                                                   rdbi,
-                                                  10);
+                                                  10,
+                                                  100);
         set.clear();
         assertTrue(set.isEmpty());
 

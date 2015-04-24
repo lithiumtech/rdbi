@@ -76,17 +76,20 @@ public class RedisSet<ValueType> implements Set<ValueType> {
     private final String redisSetKey;
     private final RDBI rdbi;
     private final double defaultScore;
+    private final int maxElementsToReturn;
 
     public RedisSet(SerializationHelper<ValueType> serializationHelper,
                     String cacheName,
                     String redisSetKey,
                     RDBI rdbi,
-                    double defaultScore) {
+                    double defaultScore,
+                    int maxElementsToReturn) {
         this.serializationHelper = serializationHelper;
         this.cacheName = cacheName;
         this.redisSetKey = redisSetKey;
         this.rdbi = rdbi;
         this.defaultScore = defaultScore;
+        this.maxElementsToReturn = maxElementsToReturn;
     }
 
     @Override
@@ -124,9 +127,20 @@ public class RedisSet<ValueType> implements Set<ValueType> {
     public List<ValueWithScore<ValueType>> popRange(final long lowerRank, final long upperRank) {
         final ImmutableList.Builder<ValueWithScore<ValueType>> builder = ImmutableList.builder();
 
+        final long upperRankInUse;
+        if ((upperRank - lowerRank + 1) > maxElementsToReturn) {
+            upperRankInUse = lowerRank + maxElementsToReturn - 1;
+            log.debug("requested more than maxElementsToReturn - restricting upper rank to " + upperRankInUse);
+        } else {
+            upperRankInUse = upperRank;
+        }
+
         try (final Handle handle = rdbi.open()) {
             final List<String> elementsWithScores = handle.attach(SetDAO.class)
-                                                          .zPopRangeByRank(redisSetKey, lowerRank, upperRank);
+                                                          .zPopRangeByRank(redisSetKey, lowerRank, upperRankInUse);
+            if (elementsWithScores == null) {
+                return ImmutableList.of();
+            }
             for (int i = 0; i < elementsWithScores.size(); i += 2) {
                 final ValueType value = serializationHelper.decode(elementsWithScores.get(i));
                 final double score = Double.valueOf(elementsWithScores.get(i + 1));
