@@ -3,7 +3,6 @@ package com.lithium.dbi.rdbi.recipes.cache;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
-import com.google.common.cache.CacheStats;
 import com.google.common.collect.ImmutableMap;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
