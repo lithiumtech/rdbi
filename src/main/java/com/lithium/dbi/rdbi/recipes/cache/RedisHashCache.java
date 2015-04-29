@@ -274,10 +274,11 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
 
     @Override
     public void refresh(final KeyType key) {
+        AsyncLockFreeRefresher<KeyType, ValueType> refresher = new AsyncLockFreeRefresher<>(this, key);
         if(asyncService.isPresent()) {
-            asyncService.get().submit(new AsyncLockFreeRefresher<>(this, key));
+            asyncService.get().submit(refresher);
         } else {
-            new AsyncLockFreeRefresher<>(this, key).call();
+            refresher.call();
         }
     }
 
