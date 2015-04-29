@@ -23,12 +23,12 @@ public class AsyncCacheAllRefresher<KeyType, ValueType> implements Callable<Call
         final long start = System.currentTimeMillis();
 
         if(!cache.acquireLock()) {
-            log.debug("{}: Unable to acquire refresh lock for", cache.getCacheName());
+            log.debug("{}: Unable to acquire refresh lock", cache.getCacheName());
             cache.markLoadException(System.currentTimeMillis() - start);
             return new CallbackResult<>(new LockUnavailableException());
         }
 
-        log.debug("{}: Attempting to refresh data for", cache.getCacheName());
+        log.debug("{}: Attempting to refresh data", cache.getCacheName());
 
         try {
             final Collection<ValueType> values = cache.loadAll();
@@ -37,7 +37,7 @@ public class AsyncCacheAllRefresher<KeyType, ValueType> implements Callable<Call
                 return new CallbackResult<>();
             }
 
-            log.info("{}: Async refresh for {}", cache.getCacheName());
+            log.info("{}: Async refresh", cache.getCacheName());
             Map<KeyType, ValueType> valuesMap = new HashMap<>();
             for (ValueType value : values) {
                 valuesMap.put(cache.keyFromValue(value), value);
