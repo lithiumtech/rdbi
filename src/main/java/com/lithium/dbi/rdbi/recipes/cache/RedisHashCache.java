@@ -289,7 +289,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
                 return Futures.immediateFuture(syncResult);
             }
         } else {
-            return Futures.immediateFuture(new CallbackResult<Collection<ValueType>>());
+            return Futures.immediateCancelledFuture();
         }
     }
 
