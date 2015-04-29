@@ -23,7 +23,7 @@ public class AsyncLockFreeRefresher<KeyType, ValueType> implements Callable<Call
     public CallbackResult<ValueType> call() {
         final long start = System.currentTimeMillis();
 
-        log.debug("{}: Attempting to refresh data for", cache.getCacheName());
+        log.debug("{}: Attempting to refresh data lock-free", cache.getCacheName());
 
         try {
             final ValueType value = cache.load(key);
@@ -32,7 +32,7 @@ public class AsyncLockFreeRefresher<KeyType, ValueType> implements Callable<Call
                 return new CallbackResult<>();
             }
 
-            log.info("{}: Async refresh for {}", cache.getCacheName());
+            log.info("{}: Async lock-free refresh", cache.getCacheName());
             cache.put(key, value); // this shouldn't throw, the withHandle eats it...
             cache.markLoadSuccess(System.currentTimeMillis() - start);
             return new CallbackResult<>(value);
