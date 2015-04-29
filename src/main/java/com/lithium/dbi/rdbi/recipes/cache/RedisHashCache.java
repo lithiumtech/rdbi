@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
@@ -279,6 +280,11 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
         return System.currentTimeMillis() - loadTimestamp() > (cacheRefreshThresholdSecs * 1000L);
     }
 
+    /**
+     * Refresh if and only if {@link #needsRefresh()} returns true. If a refresh is not needed,
+     * you will get a canceled future that throws a {@link CancellationException} on {@link Future#get()}
+     * @return
+     */
     public Future<CallbackResult<Collection<ValueType>>> refreshAll() {
         if (needsRefresh()) {
             AsyncCacheAllRefresher asyncCacheAllRefresher = new AsyncCacheAllRefresher<>(this);
