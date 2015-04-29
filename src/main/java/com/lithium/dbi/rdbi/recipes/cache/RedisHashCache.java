@@ -466,7 +466,18 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
 
     @Override
     public void invalidateAll() {
-        log.error("{}: Must provide explicit set of keys", cacheName);
+        rdbi.withHandle(new Callback<Void>() {
+            @Override
+            public Void run(Handle handle) {
+                Pipeline pipeline = handle.jedis().pipelined();
+                pipeline.del(cacheKey);
+                pipeline.del(cacheMissingKey());
+                pipeline.del(cacheLockKey());
+                pipeline.del(cacheLoadTimeKey());
+                pipeline.sync();
+                return null;
+            }
+        });
     }
 
     @Override
