@@ -5,6 +5,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.util.concurrent.Futures;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
@@ -22,10 +23,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, ValueType> implements LoadAllCache<KeyType, ValueType> {
@@ -43,7 +46,6 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
     private final int lockTimeoutSecs;
     private final int lockReleaseRetries;
     private final long lockReleaseRetryWaitMillis;
-
 
     /**
      * @param keyGenerator - something that will turn your key object into a string redis can use as a key.
@@ -99,7 +101,6 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
         lockReleaseRetries = 3;
         lockReleaseRetryWaitMillis = TimeUnit.MILLISECONDS.convert(1, TimeUnit.SECONDS);
     }
-
 
     String cacheLockKey() {
         return cacheKey + ":lock";
@@ -275,17 +276,26 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
         });
     }
 
-    public boolean refreshAll() {
-        if (System.currentTimeMillis() - loadTimestamp() > (cacheRefreshThresholdSecs * 1000L)) {
+    public boolean needsRefresh() {
+        return System.currentTimeMillis() - loadTimestamp() > (cacheRefreshThresholdSecs * 1000L);
+    }
+
+    /**
+     * Refresh if and only if {@link #needsRefresh()} returns true. If a refresh is not needed,
+     * you will get a canceled future that throws a {@link CancellationException} on {@link Future#get()}
+     * @return
+     */
+    public Future<CallbackResult<Collection<ValueType>>> refreshAll() {
+        if (needsRefresh()) {
             AsyncCacheAllRefresher asyncCacheAllRefresher = new AsyncCacheAllRefresher<>(this);
             if(asyncService.isPresent()) {
-                asyncService.get().submit(asyncCacheAllRefresher);
+                return asyncService.get().submit(asyncCacheAllRefresher);
             } else {
-                asyncCacheAllRefresher.call();
+                CallbackResult<Collection<ValueType>> syncResult = asyncCacheAllRefresher.call();
+                return Futures.immediateFuture(syncResult);
             }
-            return true;
         } else {
-            return false;
+            return Futures.immediateCancelledFuture();
         }
     }
 
