@@ -137,7 +137,7 @@ public class RedisHashCacheTest {
     }
 
     @Test
-    public void sniffTest2() throws ExecutionException {
+    public void sniffTest2() throws ExecutionException, InterruptedException {
         final String key1 = "key1";
         final TestContainer tc1 = new TestContainer(key1, UUID.randomUUID());
 
@@ -188,7 +188,8 @@ public class RedisHashCacheTest {
         cache.invalidateAll();
 
         assertEquals(0, cache.size());
-        cache.refreshAll();
+        Collection<TestContainer> refreshedResults = cache.refreshAll().get().getOrThrowUnchecked();
+        assertEquals(3, refreshedResults.size());
 
         assertEquals(3, cache.size());
 
