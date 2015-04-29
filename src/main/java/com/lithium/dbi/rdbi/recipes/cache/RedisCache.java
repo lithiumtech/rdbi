@@ -4,8 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
-import com.google.common.cache.CacheStats;
-import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.lithium.dbi.rdbi.Callback;
@@ -23,32 +21,19 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
-public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, ValueType> {
-    private static final Logger log = LoggerFactory.getLogger(RDBI.class);
+public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, ValueType> implements LockingInstrumentedCache<KeyType, ValueType> {
+
+    private static final Logger log = LoggerFactory.getLogger(RedisCache.class);
+
     private final KeyGenerator<KeyType> redisKeyGenerator;
     private final SerializationHelper<ValueType> serializationHelper;
-    private final Function<KeyType, ValueType> loader;
-    private final RDBI rdbi;
-    private final String cacheName;
     private final String keyPrefix;
     private final int valueTtl;
     private final long cacheRefreshThresholdSecs;
     private final int lockTimeoutSecs;
     private final int lockReleaseRetries;
     private final long lockReleaseRetryWaitMillis;
-    private final Runnable hitAction;
-    private final Runnable missAction;
-    private final Runnable loadSuccessAction;
-    private final Runnable loadExceptionAction;
-    private final Optional<ExecutorService> asyncService;
-    private AtomicLong cacheEvictionCount;
-    private AtomicLong cacheHitCount;
-    private AtomicLong cacheLoadExceptionCount;
-    private AtomicLong cacheLoadSuccessCount;
-    private AtomicLong cacheMissCount;
-    private AtomicLong cacheTotalLoadTime;
 
     /**
      * @param keyGenerator - something that will turn your key object into a string redis can use as a key.
@@ -83,78 +68,23 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
                       Runnable missAction,
                       Runnable loadSuccessAction,
                       Runnable loadExceptionAction) {
+        super(cacheName, loader, rdbi, asyncService, hitAction, missAction, loadSuccessAction, loadExceptionAction);
         this.redisKeyGenerator = keyGenerator;
         this.serializationHelper = serializationHelper;
-        this.loader = loader;
-        this.rdbi = rdbi;
-        this.cacheName = cacheName;
         this.keyPrefix = keyPrefix;
         this.valueTtl = valueTtlSecs;
         this.cacheRefreshThresholdSecs = cacheRefreshThresholdSecs;
         this.lockTimeoutSecs = lockTimeoutSecs;
-        this.hitAction = hitAction;
-        this.missAction = missAction;
-        this.loadSuccessAction = loadSuccessAction;
-        this.loadExceptionAction = loadExceptionAction;
-        this.asyncService = asyncService;
-
-        this.cacheHitCount = new AtomicLong();
-        this.cacheMissCount = new AtomicLong();
-        this.cacheLoadSuccessCount = new AtomicLong();
-        this.cacheLoadExceptionCount = new AtomicLong();
-        this.cacheTotalLoadTime = new AtomicLong();
-        this.cacheEvictionCount = new AtomicLong();
         lockReleaseRetries = 3;
         lockReleaseRetryWaitMillis = TimeUnit.MILLISECONDS.convert(1, TimeUnit.SECONDS);
-    }
-
-    protected void markHit() {
-        cacheHitCount.incrementAndGet();
-        try {
-            hitAction.run();
-        } catch (Exception ex) {
-            log.warn("{}: ex in callback", getCacheName(), ex);
-        }
-    }
-
-    protected void markMiss() {
-        cacheMissCount.incrementAndGet();
-        try {
-            missAction.run();
-        } catch (Exception ex) {
-            log.warn("{}: ex in callback", getCacheName(), ex);
-        }
-    }
-
-    protected void markLoadException(final long loadTime) {
-        cacheLoadExceptionCount.incrementAndGet();
-        cacheTotalLoadTime.addAndGet(loadTime);
-        try {
-            loadExceptionAction.run();
-        } catch (Exception ex) {
-            log.warn("{}: ex in callback", getCacheName(), ex);
-        }
-    }
-
-    protected void markLoadSuccess(final long loadTime) {
-        cacheLoadSuccessCount.incrementAndGet();
-        cacheTotalLoadTime.addAndGet(loadTime);
-        try {
-            loadSuccessAction.run();
-        } catch (Exception ex) {
-            log.warn("{}: ex in callback", getCacheName(), ex);
-        }
-    }
-
-    public String getCacheName() {
-        return cacheName;
     }
 
     String redisLockKey(String redisKey) {
         return redisKey + ":lock";
     }
 
-    protected boolean acquireLock(final KeyType key) {
+    @Override
+    public boolean acquireLock(final KeyType key) {
         return rdbi.withHandle(new Callback<Boolean>() {
             @Override
             public Boolean run(Handle handle) {
@@ -177,8 +107,8 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         });
     }
 
-    CallbackResult<ValueType> loadDataSynchronously(final KeyType key) {
-        return new AsyncCacheRefresher<>(this, rdbi, key).call();
+    private CallbackResult<ValueType> loadDataSynchronously(final KeyType key) {
+        return new AsyncCacheRefresher<>(this, key).call();
     }
 
     private void releaseLock(final KeyType key, final Jedis jedis) {
@@ -197,7 +127,8 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         }
     }
 
-    protected void releaseLock(final KeyType key) {
+    @Override
+    public void releaseLock(final KeyType key) {
         rdbi.withHandle(new Callback<Void>() {
             @Override
             public Void run(Handle handle) {
@@ -256,23 +187,6 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
     }
 
     @Override
-    public ValueType apply(KeyType key) {
-        return getUnchecked(key);
-    }
-
-    @Override
-    public ValueType get(KeyType key) throws ExecutionException {
-        try {
-            return getCallback(key).getOrThrowUnchecked();
-        } catch (Exception ex) {
-            throw new ExecutionException(ex);
-        }
-    }
-
-    protected ValueType load(KeyType key) {
-        return loader.apply(key);
-    }
-
     public CallbackResult<ValueType> getCallback(final KeyType key) {
         // Attempt to load cached data for company from redis. Use new RDBI handle.
         CachedData<ValueType> cachedData = getCachedDataNewJedis(key);
@@ -292,12 +206,6 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         // Bad news friend: we don't have anything in the redis cache. Load data and wait until we get it.
         markMiss();
         return loadDataSynchronously(key);
-    }
-
-    @Override
-    public ValueType getUnchecked(KeyType key) {
-        // We don't throw checked exceptions in this class.
-        return getCallback(key).getOrThrowUnchecked();
     }
 
     /**
@@ -345,10 +253,11 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
 
     @Override
     public void refresh(final KeyType key) {
+        AsyncCacheRefresher<KeyType, ValueType> asyncCacheRefresher = new AsyncCacheRefresher<>(this, key);
         if(asyncService.isPresent()) {
-            asyncService.get().submit(new AsyncCacheRefresher<>(this, rdbi, key));
+            asyncService.get().submit(asyncCacheRefresher);
         } else {
-            new AsyncCacheRefresher<>(this, rdbi, key).call();
+            asyncCacheRefresher.call();
         }
     }
 
@@ -370,6 +279,8 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         if (cachedData != null) {
             log.debug("{}: Found cached data: {}", cacheName, key);
             markHit();
+            // We found some data, so return it!
+            return cachedData.getData();
         }
         markMiss();
         return null;
@@ -464,16 +375,6 @@ public class RedisCache<KeyType, ValueType> implements LoadingCache<KeyType, Val
         return 0;
     }
 
-    @Override
-    public CacheStats stats() {
-        return new CacheStats(
-                cacheHitCount.get(),
-                cacheMissCount.get(),
-                cacheLoadSuccessCount.get(),
-                cacheLoadExceptionCount.get(),
-                cacheTotalLoadTime.get(),
-                cacheEvictionCount.get());
-    }
 
     @Override
     public void cleanUp() {

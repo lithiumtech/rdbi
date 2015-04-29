@@ -3,27 +3,26 @@ package com.lithium.dbi.rdbi.recipes.cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
-public class AsyncCacheRefresher<KeyType, ValueType> implements Callable<CallbackResult<ValueType>> {
+public class AsyncCacheAllRefresher<KeyType, ValueType> implements Callable<CallbackResult<Collection<ValueType>>> {
 
-    private static final Logger log = LoggerFactory.getLogger(AsyncCacheRefresher.class);
+    private static final Logger log = LoggerFactory.getLogger(AsyncCacheAllRefresher.class);
 
-    private final LockingInstrumentedCache<KeyType, ValueType> cache;
-    private final KeyType key;
+    private final LoadAllCache<KeyType, ValueType> cache;
 
-    protected AsyncCacheRefresher(
-            final LockingInstrumentedCache<KeyType, ValueType> cache,
-            final KeyType key) {
+    protected AsyncCacheAllRefresher(final LoadAllCache<KeyType, ValueType> cache) {
         this.cache = cache;
-        this.key = key;
     }
 
     @Override
-    public CallbackResult<ValueType> call() {
+    public CallbackResult<Collection<ValueType>> call() {
         final long start = System.currentTimeMillis();
 
-        if(!cache.acquireLock(key)) {
+        if(!cache.acquireLock()) {
             log.debug("{}: Unable to acquire refresh lock for", cache.getCacheName());
             cache.markLoadException(System.currentTimeMillis() - start);
             return new CallbackResult<>(new LockUnavailableException());
@@ -32,21 +31,26 @@ public class AsyncCacheRefresher<KeyType, ValueType> implements Callable<Callbac
         log.debug("{}: Attempting to refresh data for", cache.getCacheName());
 
         try {
-            final ValueType value = cache.load(key);
-            if (value == null) {
+            final Collection<ValueType> values = cache.loadAll();
+            if (values == null) {
                 cache.markLoadException(System.currentTimeMillis() - start);
                 return new CallbackResult<>();
             }
 
             log.info("{}: Async refresh for {}", cache.getCacheName());
-            cache.put(key, value); // this shouldn't throw, the withHandle eats it...
+            Map<KeyType, ValueType> valuesMap = new HashMap<>();
+            for (ValueType value : values) {
+                valuesMap.put(cache.keyFromValue(value), value);
+            }
+            cache.putAll(valuesMap);
             cache.markLoadSuccess(System.currentTimeMillis() - start);
-            return new CallbackResult<>(value);
+            cache.loadAllComplete();
+            return new CallbackResult<>(values);
         } catch (Exception ex) {
             cache.markLoadException(System.currentTimeMillis() - start);
             return new CallbackResult<>(ex);
         } finally {
-            cache.releaseLock(key);
+            cache.releaseLock();
         }
     }
 }

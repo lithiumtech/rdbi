@@ -5,15 +5,15 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
 
-public class AsyncCacheRefresher<KeyType, ValueType> implements Callable<CallbackResult<ValueType>> {
+public class AsyncLockFreeRefresher<KeyType, ValueType> implements Callable<CallbackResult<ValueType>> {
 
-    private static final Logger log = LoggerFactory.getLogger(AsyncCacheRefresher.class);
+    private static final Logger log = LoggerFactory.getLogger(AsyncLockFreeRefresher.class);
 
-    private final LockingInstrumentedCache<KeyType, ValueType> cache;
+    private final InstrumentedCache<KeyType, ValueType> cache;
     private final KeyType key;
 
-    protected AsyncCacheRefresher(
-            final LockingInstrumentedCache<KeyType, ValueType> cache,
+    protected AsyncLockFreeRefresher(
+            final InstrumentedCache<KeyType, ValueType> cache,
             final KeyType key) {
         this.cache = cache;
         this.key = key;
@@ -22,12 +22,6 @@ public class AsyncCacheRefresher<KeyType, ValueType> implements Callable<Callbac
     @Override
     public CallbackResult<ValueType> call() {
         final long start = System.currentTimeMillis();
-
-        if(!cache.acquireLock(key)) {
-            log.debug("{}: Unable to acquire refresh lock for", cache.getCacheName());
-            cache.markLoadException(System.currentTimeMillis() - start);
-            return new CallbackResult<>(new LockUnavailableException());
-        }
 
         log.debug("{}: Attempting to refresh data for", cache.getCacheName());
 
@@ -45,8 +39,6 @@ public class AsyncCacheRefresher<KeyType, ValueType> implements Callable<Callbac
         } catch (Exception ex) {
             cache.markLoadException(System.currentTimeMillis() - start);
             return new CallbackResult<>(ex);
-        } finally {
-            cache.releaseLock(key);
         }
     }
 }
