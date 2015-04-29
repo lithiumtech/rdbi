@@ -221,6 +221,71 @@ public class RedisHashCacheTest {
     }
 
     @Test
+    public void getAllPresentWorksWithDuplicateKeys() {
+        final String key1 = "key1";
+        final TestContainer tc1 = new TestContainer(key1, UUID.randomUUID());
+
+        final String key2 = "key2";
+        final TestContainer tc2 = new TestContainer(key2, UUID.randomUUID());
+
+        final String key3 = "key3";
+        final TestContainer tc3 = new TestContainer(key3, UUID.randomUUID());
+
+        final Map<String, TestContainer> dataSource = ImmutableMap.of(key1, tc1, key2, tc2, key3, tc3);
+
+        final Function<String, TestContainer> loader = new Function<String, TestContainer>() {
+            @Override
+            public TestContainer apply(@Nullable String s) {
+                return dataSource.get(s);
+            }
+        };
+
+        final Callable<Collection<TestContainer>> loadAll = new Callable<Collection<TestContainer>>() {
+            @Override
+            public Collection<TestContainer> call() throws Exception {
+                return dataSource.values();
+            }
+        };
+
+        final RDBI rdbi = createRdbi();
+
+        final RedisHashCache<String, TestContainer> cache =
+                new RedisHashCache<>(
+                        keyGenerator,
+                        new PassthroughSerializationHelper(),
+                        valueGenerator,
+                        helper,
+                        rdbi,
+                        loader,
+                        loadAll,
+                        "superFancyCache",
+                        "prefix",
+                        120,
+                        0,
+                        Optional.<ExecutorService>absent(), // Force synchronous calls!
+                        NOOP,
+                        NOOP,
+                        NOOP,
+                        NOOP);
+
+        // Clear out any potential preexisting data.
+        cache.invalidateAll();
+
+        assertEquals(0, cache.size());
+        cache.refreshAll();
+
+        Map<String, TestContainer> results = cache.getAllPresent(ImmutableList.of(key1, key1, key2, key3));
+        assertTrue(results.containsKey(key1));
+        assertEquals(tc1, results.get(key1));
+
+        assertTrue(results.containsKey(key2));
+        assertEquals(tc2, results.get(key2));
+
+        assertTrue(results.containsKey(key3));
+        assertEquals(tc3, results.get(key3));
+    }
+
+    @Test
     public void verifyAsyncitude() throws InterruptedException, ExecutionException {
         // it's a word
 

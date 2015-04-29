@@ -17,6 +17,7 @@ import redis.clients.jedis.Pipeline;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -368,14 +369,20 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
                  * 5. Return map
                  */
                 Jedis jedis = handle.jedis();
+                // Prevent duplicate entries using a HashSet
+                Set<KeyType> alreadyAdded = new HashSet<>();
                 List<KeyType> typedKeys = new ArrayList<>();
                 List<String> redisItemKeys = new ArrayList<>();
                 for (Object objKey : keys) {
+                    if (alreadyAdded.contains(objKey)) {
+                        continue;
+                    }
                     KeyType key = (KeyType) objKey;
+                    alreadyAdded.add(key);
                     typedKeys.add(key);
                     redisItemKeys.add(itemKey(key));
                 }
-                // The builk operation HMGET takes a variadic argument for the
+                // The bulk operation HMGET takes a variadic argument for the
                 // list of keys to multi-get. The easiest way for us to call
                 // this to convert our list to String[] and pass that.
                 String[] redisItemKeysArray = new String[redisItemKeys.size()];
