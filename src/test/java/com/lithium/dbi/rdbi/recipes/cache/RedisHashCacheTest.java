@@ -5,6 +5,7 @@ import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.lithium.dbi.rdbi.RDBI;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -15,6 +16,7 @@ import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
@@ -70,7 +72,7 @@ public class RedisHashCacheTest {
         final RedisHashCache<String, TestContainer> cache =
                 new RedisHashCache<>(
                         keyGenerator,
-                        new PassthroughSerializationHelper(),
+                        keyCodec,
                         valueGenerator,
                         helper,
                         rdbi,
@@ -166,7 +168,7 @@ public class RedisHashCacheTest {
         final RedisHashCache<String, TestContainer> cache =
                 new RedisHashCache<>(
                         keyGenerator,
-                        new PassthroughSerializationHelper(),
+                        keyCodec,
                         valueGenerator,
                         helper,
                         rdbi,
@@ -191,6 +193,8 @@ public class RedisHashCacheTest {
         assertEquals(3, cache.size());
 
         cache.invalidate(key1);
+        assertEquals(ImmutableSet.of(key1), cache.getMissing());
+
         // key1/tc1 should no longer be in the cache and getAllPresent does not produce it
         Map<String, TestContainer> dataInRedis = cache.getAllPresent(ImmutableList.of(key1, key2, key3));
         assertEquals(2, dataInRedis.size());
@@ -201,24 +205,34 @@ public class RedisHashCacheTest {
         assertEquals(3, cache.size());
         // Getting key1 should load the value from the data source
         assertEquals(tc1, cache.get(key1));
+        // The missing set should have been cleared out
+        assertEquals(Collections.emptySet(), cache.getMissing());
 
-        // Re-invalidate key1
-        cache.invalidate(key1);
+        // Invalidate key2
+        cache.invalidate(key2);
+        // Missing should contain key2
+        assertEquals(ImmutableSet.of(key2), cache.getMissing());
         // key1/tc1 should no longer be in the cache but getAll should produce it
         Map<String, TestContainer> dataInRedis2 = cache.getAll(ImmutableList.of(key1, key2, key3));
         assertEquals(3, dataInRedis2.size());
         assertTrue(dataInRedis2.containsKey(key1));
         assertTrue(dataInRedis2.containsKey(key2));
         assertTrue(dataInRedis2.containsKey(key3));
+        // Missing should now be empty
+        assertEquals(Collections.emptySet(), cache.getMissing());
 
-        // Re-invalidate key1
-        cache.invalidate(key1);
+        // Re-invalidate key3
+        cache.invalidate(key3);
+        // Missing should contain key3
+        assertEquals(ImmutableSet.of(key3), cache.getMissing());
         // key1/tc1 should no longer be in the cache but asMap should produce it
         Map<String, TestContainer> dataInRedis3 = cache.asMap();
         assertEquals(3, dataInRedis3.size());
         assertTrue(dataInRedis3.containsKey(key1));
         assertTrue(dataInRedis3.containsKey(key2));
         assertTrue(dataInRedis3.containsKey(key3));
+        // Missing should now be empty
+        assertEquals(Collections.emptySet(), cache.getMissing());
     }
 
     @Test
@@ -253,7 +267,7 @@ public class RedisHashCacheTest {
         final RedisHashCache<String, TestContainer> cache =
                 new RedisHashCache<>(
                         keyGenerator,
-                        new PassthroughSerializationHelper(),
+                        keyCodec,
                         valueGenerator,
                         helper,
                         rdbi,
@@ -434,10 +448,22 @@ public class RedisHashCacheTest {
         }
     };
 
+    public static final SerializationHelper<String> keyCodec = new SerializationHelper<String>() {
+        @Override
+        public String decode(String string) {
+            return string.substring("encoded-key:".length());
+        }
+
+        @Override
+        public String encode(String value) {
+            return "encoded-key:" + value;
+        }
+    };
+
     public static final Function<String, String> keyGenerator = new Function<String, String>() {
         @Override
         public String apply(String key) {
-            return key;
+            return "item-key:" + key;
         }
     };
 

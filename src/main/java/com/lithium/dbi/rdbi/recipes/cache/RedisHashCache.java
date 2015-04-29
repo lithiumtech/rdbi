@@ -1,5 +1,6 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
@@ -32,7 +33,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
     private static final Logger log = LoggerFactory.getLogger(RedisHashCache.class);
 
     private final Function<KeyType, String> keyTypeToRedisKey;
-    private final Function<ValueType, KeyType> valueTypeToRedisKey;
+    private final Function<ValueType, KeyType> valueTypeToKeyType;
     private final SerializationHelper<ValueType> valueTypeSerializationHelper;
     private final SerializationHelper<KeyType> keyTypeSerializationHelper;
     private final Callable<Collection<ValueType>> loadAll;
@@ -87,7 +88,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
         this.keyTypeToRedisKey = keyGenerator;
         this.keyTypeSerializationHelper = keyTypeSerializationHelper;
 
-        this.valueTypeToRedisKey = valueKeyGenerator;
+        this.valueTypeToKeyType = valueKeyGenerator;
         this.valueTypeSerializationHelper = valueTypeSerializationHelper;
 
         this.loadAll = loadAll;
@@ -213,17 +214,33 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
 
     @Override
     public KeyType keyFromValue(ValueType value) {
-        return valueTypeToRedisKey.apply(value);
+        return valueTypeToKeyType.apply(value);
     }
 
-    private void cacheDataRaw(Pipeline pipeline, String itemKey, ValueType data) {
+    private void cacheDataRaw(Pipeline pipeline, KeyType key, ValueType data) {
         try {
-            String saveStr = valueTypeSerializationHelper.encode(data);
-            pipeline.hset(cacheKey, itemKey, saveStr);
-            pipeline.srem(cacheMissingKey(), itemKey);
+            // Transform typed key -> redis key (field in redis hash), and encode data -> string
+            pipeline.hset(cacheKey, keyTypeToRedisKey.apply(key), valueTypeSerializationHelper.encode(data));
+            // Encode typed key -> string to remove from missing set.
+            pipeline.srem(cacheMissingKey(), keyTypeSerializationHelper.encode(key));
         } catch(Exception jpe) {
             Throwables.propagate(jpe);
         }
+    }
+
+    @VisibleForTesting
+    Set<KeyType> getMissing() {
+        return rdbi.withHandle(new Callback<Set<KeyType>>() {
+            @Override
+            public Set<KeyType> run(Handle handle) {
+                Set<String> missing = handle.jedis().smembers(cacheMissingKey());
+                Set<KeyType> result = new HashSet<>();
+                for (String rawMissingKey : missing) {
+                    result.add(keyTypeSerializationHelper.decode(rawMissingKey));
+                }
+                return result;
+            }
+        });
     }
 
     @Override
@@ -289,11 +306,12 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
         return rdbi.withHandle(new Callback<ConcurrentMap<KeyType, ValueType>>() {
             @Override
             public ConcurrentMap<KeyType, ValueType> run(Handle handle) {
-                Map<String, String> cachedData = handle.jedis().hgetAll(cacheKey);
+                List<String> cachedData = handle.jedis().hvals(cacheKey);
                 ConcurrentMap<KeyType, ValueType> typedCache = new ConcurrentHashMap<>();
-                for (Map.Entry<String, String> entry : cachedData.entrySet()) {
-                    typedCache.put(keyTypeSerializationHelper.decode(entry.getKey()),
-                                   valueTypeSerializationHelper.decode(entry.getValue()));
+                for (String rawValue : cachedData) {
+                    ValueType value = valueTypeSerializationHelper.decode(rawValue);
+                    KeyType key = keyFromValue(value);
+                    typedCache.put(key, value);
                 }
                 return typedCache;
             }
@@ -408,7 +426,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
             @Override
             public Object run(Handle handle) {
                 Pipeline pipeline = handle.jedis().pipelined();
-                cacheDataRaw(pipeline, itemKey(key), value);
+                cacheDataRaw(pipeline, key, value);
                 pipeline.sync();
                 return null;
             }
@@ -422,7 +440,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
             public Void run(Handle handle) {
                 Pipeline pipeline = handle.jedis().pipelined();
                 for (Map.Entry<? extends KeyType, ? extends ValueType> entry : data.entrySet()) {
-                    cacheDataRaw(pipeline, itemKey(entry.getKey()), entry.getValue());
+                    cacheDataRaw(pipeline, entry.getKey(), entry.getValue());
                 }
                 pipeline.sync();
                 return null;
@@ -502,16 +520,9 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
 
     @Override
     public void cleanUp() {
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                Set<String> missing = handle.jedis().smembers(cacheMissingKey());
-                for (String rawKey : missing) {
-                    KeyType key = keyTypeSerializationHelper.decode(rawKey);
-                    refresh(key);
-                }
-                return null;
-            }
-        });
+        Set<KeyType> missing = getMissing();
+        for (KeyType key : missing) {
+            refresh(key);
+        }
     }
 }
