@@ -222,33 +222,62 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
     public CallbackResult<ValueType> getPatiently(KeyType key, long maxWaitMillis) {
         CallbackResult<ValueType> result = getCallback(key);
         if (result.getError() instanceof LockUnavailableException) {
-            try {
-                long startTime = System.currentTimeMillis();
-                boolean stopTrying = false;
-                while (System.currentTimeMillis() - startTime < maxWaitMillis) {
-                    Thread.sleep(250L);
-                    if (!isLocked(key)) {
-                        // Allow 1 last attempt.
-                        stopTrying = true;
-                    }
-                    CachedData<ValueType> cached = getCachedDataNewJedis(key);
-                    if (cached != null) {
-                        return new CallbackResult<>(cached.getData());
-                    }
-                    if (stopTrying) {
-                        break;
-                    }
-                }
-                // We have exceeded the max time to wait. Fall through to service unavailable.
-            } catch(InterruptedException ie) {
-                log.info("{}: Thread interrupted", cacheName, ie);
-                Thread.currentThread().interrupt();
-                // Fall through to service unavailable.
-            }
-            return new CallbackResult<>(new ServiceUnavailableException());
-        } else {
-            return result;
+            result = getFromCacheOrWait(key, maxWaitMillis);
         }
+        return result;
+    }
+
+
+    /**
+     * Attempts to get cached data normally, but if another thread
+     * has a refresh lock, wait up to maxWaitMillis for the refresh.
+     * This thread will poll every 250ms to see if cached data is
+     * present.
+     *
+     * If we have not acquired the data after maxWaitMillis, then
+     * attempt to load data without write lock.
+     *
+     * @param key
+     * @param maxWaitMillis
+     * @return
+     */
+    public CallbackResult<ValueType> getPatientlyThenForcibly(KeyType key, long maxWaitMillis) {
+        CallbackResult<ValueType> result = getCallback(key);
+        if (result.getError() instanceof LockUnavailableException) {
+            result = getFromCacheOrWait(key, maxWaitMillis);
+            if (result.getError() instanceof ServiceUnavailableException) {
+                result = new AsyncLockFreeRefresher<>(this, key).call();
+            }
+        }
+        return result;
+    }
+
+    private CallbackResult<ValueType> getFromCacheOrWait(KeyType key, long maxWaitMillis) {
+        try {
+            long startTime = System.currentTimeMillis();
+            boolean stopTrying = false;
+            while (System.currentTimeMillis() - startTime < maxWaitMillis) {
+                Thread.sleep(250L);
+                if (!isLocked(key)) {
+                    // Allow 1 last attempt.
+                    stopTrying = true;
+                }
+                CachedData<ValueType> cached = getCachedDataNewJedis(key);
+                if (cached != null) {
+                    return new CallbackResult<>(cached.getData());
+                }
+                if (stopTrying) {
+                    break;
+                }
+            }
+            // We have exceeded the max time to wait. Fall through to service unavailable.
+        } catch(InterruptedException ie) {
+            log.info("{}: Thread interrupted", cacheName, ie);
+            Thread.currentThread().interrupt();
+            // Fall through to service unavailable.
+        }
+        log.warn("{}: Max wait time expired: {}", getCacheName(), maxWaitMillis);
+        return new CallbackResult<>(new ServiceUnavailableException());
     }
 
     @Override
