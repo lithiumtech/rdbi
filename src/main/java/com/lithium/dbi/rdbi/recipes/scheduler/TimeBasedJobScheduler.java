@@ -4,6 +4,7 @@ import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
+import redis.clients.jedis.Pipeline;
 
 import java.util.List;
 
@@ -43,6 +44,32 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
                             jobStr,
                             Instant.now().getMillis() + millisInFuture,
                             quiescence);
+        }
+    }
+
+    /**
+     * Add multiple jobs to the TimeBasedJobScheduler, using a pipeline command to avoid O(n) network round trips.
+     * Note that this implementation does not support quiescence.
+     * @see #schedule(String, String, long, long)
+     *
+     * @param tube Used in conjunction with the redisPrefixKey (constructor) to make up the full redis key name.
+     * @param jobStrs String representations of the jobs to be scheduled
+     * @param millisInFuture The "priority" of the job in terms of the number of millis in the future that this job should become available.
+     * @return number of newly scheduled jobs
+     */
+    public int scheduleMulti(final String tube, final Iterable<String> jobStrs, final long millisInFuture) {
+        try (Handle handle = rdbi.open()) {
+            final Pipeline pl = handle.jedis().pipelined();
+            for (String jobStr : jobStrs) {
+                pl.zadd(getReadyQueue(tube),
+                        Instant.now().getMillis() + millisInFuture,
+                        jobStr);
+            }
+            int numAdded = 0;
+            for (Object rslt : pl.syncAndReturnAll()) {
+                numAdded += (Long) rslt;
+            }
+            return numAdded;
         }
     }
 
