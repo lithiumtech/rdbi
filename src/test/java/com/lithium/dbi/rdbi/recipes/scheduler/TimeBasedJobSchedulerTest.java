@@ -1,5 +1,6 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
+import com.google.common.collect.ImmutableSet;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
@@ -13,10 +14,10 @@ import redis.clients.jedis.JedisPool;
 import java.util.List;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
-import static org.testng.Assert.assertFalse;
 
 @Test(groups = "integration")
 public class TimeBasedJobSchedulerTest {
@@ -181,6 +182,32 @@ public class TimeBasedJobSchedulerTest {
 
         Instant after2 = new Instant();
         System.out.println("final " + after2.minus(before2.getMillis()).getMillis());
+    }
+
+    @Test
+    public void testBasicScheduleMulti() throws InterruptedException {
+        final String payloadFoo = "{hello:foo}";
+        final String payloadBar = "{hello:bar}";
+        final String payloadBaz = "{hello:baz}";
+
+        assertEquals(0, scheduledJobSystem.scheduleMulti(tubeName, ImmutableSet.<String>of(), 0));
+
+        assertEquals(1, scheduledJobSystem.scheduleMulti(tubeName, ImmutableSet.of(payloadFoo), 0));
+        assertEquals(0, scheduledJobSystem.scheduleMulti(tubeName, ImmutableSet.of(payloadFoo), 0));
+
+        assertEquals(2, scheduledJobSystem.scheduleMulti(tubeName, ImmutableSet.of(payloadFoo, payloadBar, payloadBaz, payloadBar, payloadBaz), 0));
+
+        List<TimeJobInfo> jobInfos = scheduledJobSystem.reserveMulti(tubeName, 1000, 5);
+        assertEquals(3, jobInfos.size());
+    }
+
+    @Test
+    public void testScheduleMultiPlaysNicelyWithQuiescence() throws InterruptedException {
+        final String payloadFoo = "{hello:foo}";
+        final String payloadBar = "{hello:bar}";
+        assertEquals(2, scheduledJobSystem.scheduleMulti(tubeName, ImmutableSet.of(payloadFoo, payloadBar), 0));
+        assertFalse(scheduledJobSystem.schedule(tubeName, payloadFoo, 10, 0));
+        assertTrue(scheduledJobSystem.schedule(tubeName, payloadFoo, 10, QUIESCENCE));
     }
 
 }
