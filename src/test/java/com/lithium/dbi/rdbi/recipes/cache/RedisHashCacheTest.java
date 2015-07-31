@@ -6,6 +6,7 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import com.lithium.dbi.rdbi.RDBI;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -371,6 +372,102 @@ public class RedisHashCacheTest {
         assertEquals(2, hits.get());
         assertEquals(1, loadSuccess.get());
         assertEquals(0, loadFailure.get());
+    }
+
+    @Test
+    public void testRemove() throws ExecutionException {
+
+        final String key1 = "key1";
+        final TestContainer originalValueForKey1 = new TestContainer(key1, UUID.randomUUID());
+
+        final String key2 = "key2";
+        final TestContainer originalValueForKey2 = new TestContainer(key1, UUID.randomUUID());
+
+        final Map<String, TestContainer> dataSource = Maps.newHashMap();
+        dataSource.put(key1, originalValueForKey1);
+        dataSource.put(key2, originalValueForKey2);
+
+        final Function<String, TestContainer> loader = new Function<String, TestContainer>() {
+            @Override
+            public TestContainer apply(@Nullable String s) {
+                return dataSource.get(s);
+            }
+        };
+
+        final Callable<Collection<TestContainer>> loadAll = new Callable<Collection<TestContainer>>() {
+            @Override
+            public Collection<TestContainer> call() throws Exception {
+                return dataSource.values();
+            }
+        };
+
+        final RDBI rdbi = createRdbi();
+
+        final RedisHashCache<String, TestContainer> cache =
+                new RedisHashCache<>(
+                        keyGenerator,
+                        new PassthroughSerializationHelper(),
+                        valueGenerator,
+                        helper,
+                        rdbi,
+                        loader,
+                        loadAll,
+                        "testRemoveCache",
+                        "prefix",
+                        120,
+                        0,
+                        Optional.of(es),
+                        NOOP,
+                        NOOP,
+                        NOOP,
+                        NOOP);
+
+        // invalidate (for any prior test run)
+        cache.invalidateAll();
+
+        // cache contains expected keys
+        assertEquals(originalValueForKey1, cache.get(key1));
+        assertEquals(originalValueForKey2, cache.get(key2));
+
+        // manipulate the data source for key1
+        final TestContainer newValueForKey1 = new TestContainer(key1, UUID.randomUUID());
+        dataSource.put(key1, newValueForKey1);
+        assertEquals(originalValueForKey1, cache.get(key1));
+
+        // invalidate the key ... should reload on next request
+        cache.invalidate(key1);
+        assertTrue(cache.getMissing().contains(key1));
+        assertEquals(newValueForKey1, cache.get(key1));
+        assertEquals(originalValueForKey2, cache.get(key2));
+        assertTrue(cache.getMissing().isEmpty());
+
+        // manipulate the data source for key1
+        dataSource.remove(key1);
+        assertEquals(newValueForKey1, cache.get(key1));
+
+        // remove the key from cache
+        assertEquals(2, cache.size());
+        cache.remove(key1);
+        assertTrue(cache.getMissing().isEmpty());
+        assertEquals(null, cache.get(key1));
+        assertEquals(originalValueForKey2, cache.get(key2));
+        assertEquals(1, cache.size());
+
+        // manipulate the data source for key2
+        dataSource.remove(key2);
+        assertEquals(originalValueForKey2, cache.get(key2));
+
+        // remove a previously invalidated key from cache
+        assertEquals(1, cache.size());
+        cache.invalidate(key2);
+        assertTrue(cache.getMissing().contains(key2));
+        cache.remove(key2);
+        assertTrue(cache.getMissing().isEmpty());
+        assertEquals(null, cache.get(key1));
+        assertEquals(null, cache.get(key2));
+
+        // remove a key that doesn't exist
+        cache.remove("not_a_legit_key");
     }
 
     RDBI createRdbi() {
