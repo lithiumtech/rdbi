@@ -56,7 +56,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
      * @param rdbi
      * @param loader - function to go get your object
      * @param loadAll - function to go get ALL relevant values
-     * @param cacheName - name of cache, used in log statementsn
+     * @param cacheName - name of cache, used in log statements
      * @param cacheKey - prefix of all keys used by this cache in redis
      * @param cacheRefreshThresholdSecs - if the TTL of the key holding your value in redis is less than this value
      *                                  upon access, we'll automatically asynchronously refresh the value.
@@ -459,6 +459,33 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
 
     }
 
+    /**
+     * Signals that a (possibly) cached item no longer exists.
+     * @see #invalidate(Object)
+     */
+    public void remove(final KeyType key) {
+        if (key == null) {
+            log.warn("{}: Remove requested for null key", cacheName);
+            return;
+        }
+        rdbi.withHandle(new Callback<Void>() {
+            @Override
+            public Void run(Handle handle) {
+                Pipeline pipeline = handle.jedis().pipelined();
+                // remove the cached value (if any)
+                pipeline.hdel(cacheKey, itemKey(key));
+                // clear out missing cache key (if any)
+                pipeline.srem(cacheMissingKey(), keyTypeSerializationHelper.encode(key));
+                pipeline.sync();
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Removes the cached value for the key, but retains the key for future refresh query.
+     * @see #remove(KeyType)
+     */
     @Override
     public void invalidate(Object objKey) {
         if (objKey == null) {
