@@ -483,6 +483,24 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
     }
 
     /**
+     * Signals that all items in the cache should be removed.
+     * @see #remove(Object)
+     * @see #invalidate(Object)
+     */
+    public void removeAll() {
+        rdbi.withHandle(new Callback<Void>() {
+            @Override
+            public Void run(Handle handle) {
+                Pipeline pipeline = handle.jedis().pipelined();
+                pipeline.del(cacheKey);
+                pipeline.del(cacheMissingKey());
+                pipeline.sync();
+                return null;
+            }
+        });
+    }
+
+    /**
      * Removes the cached value for the key, but retains the key for future refresh query.
      * @see #remove(KeyType)
      */

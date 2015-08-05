@@ -381,7 +381,7 @@ public class RedisHashCacheTest {
         final TestContainer originalValueForKey1 = new TestContainer(key1, UUID.randomUUID());
 
         final String key2 = "key2";
-        final TestContainer originalValueForKey2 = new TestContainer(key1, UUID.randomUUID());
+        final TestContainer originalValueForKey2 = new TestContainer(key2, UUID.randomUUID());
 
         final Map<String, TestContainer> dataSource = Maps.newHashMap();
         dataSource.put(key1, originalValueForKey1);
@@ -468,6 +468,78 @@ public class RedisHashCacheTest {
 
         // remove a key that doesn't exist
         cache.remove("not_a_legit_key");
+    }
+
+    @Test
+    public void testRemoveAll() throws ExecutionException {
+
+        final String key1 = "key1";
+        final TestContainer originalValueForKey1 = new TestContainer(key1, UUID.randomUUID());
+
+        final String key2 = "key2";
+        final TestContainer originalValueForKey2 = new TestContainer(key2, UUID.randomUUID());
+
+        final Map<String, TestContainer> dataSource = Maps.newHashMap();
+        dataSource.put(key1, originalValueForKey1);
+        dataSource.put(key2, originalValueForKey2);
+
+        final Function<String, TestContainer> loader = new Function<String, TestContainer>() {
+            @Override
+            public TestContainer apply(@Nullable String s) {
+                return dataSource.get(s);
+            }
+        };
+
+        final Callable<Collection<TestContainer>> loadAll = new Callable<Collection<TestContainer>>() {
+            @Override
+            public Collection<TestContainer> call() throws Exception {
+                return dataSource.values();
+            }
+        };
+
+        final RDBI rdbi = createRdbi();
+
+        final RedisHashCache<String, TestContainer> cache =
+                new RedisHashCache<>(
+                        keyGenerator,
+                        new PassthroughSerializationHelper(),
+                        valueGenerator,
+                        helper,
+                        rdbi,
+                        loader,
+                        loadAll,
+                        "testRemoveAllCache",
+                        "prefix",
+                        120,
+                        0,
+                        Optional.of(es),
+                        NOOP,
+                        NOOP,
+                        NOOP,
+                        NOOP);
+
+        // invalidate (for any prior test run)
+        cache.invalidateAll();
+
+        // cache contains expected keys
+        assertEquals(originalValueForKey1, cache.get(key1));
+        assertEquals(originalValueForKey2, cache.get(key2));
+
+        // manipulate the data source
+        dataSource.clear();
+
+        // remove all cache entries
+        cache.removeAll();
+        assertNull(cache.get(key1));
+        assertNull(cache.get(key2));
+
+        // subsequent remove all call should not explode
+        cache.removeAll();
+
+        // manipulate the data source
+        final TestContainer newValueForKey1 = new TestContainer(key1, UUID.randomUUID());
+        dataSource.put(key1, newValueForKey1);
+        assertEquals(newValueForKey1, cache.get(key1));
     }
 
     RDBI createRdbi() {
