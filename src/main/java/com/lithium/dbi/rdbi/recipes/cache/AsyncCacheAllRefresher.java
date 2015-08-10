@@ -4,8 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.Callable;
 
 public class AsyncCacheAllRefresher<KeyType, ValueType> implements Callable<CallbackResult<Collection<ValueType>>> {
@@ -31,18 +29,14 @@ public class AsyncCacheAllRefresher<KeyType, ValueType> implements Callable<Call
         log.debug("{}: Attempting to refresh data", cache.getCacheName());
 
         try {
-            final Collection<ValueType> values = cache.loadAll();
+            final Collection<ValueType> values = cache.fetchAll();
             if (values == null) {
                 cache.markLoadException(System.currentTimeMillis() - start);
                 return new CallbackResult<>();
             }
 
             log.info("{}: Async refresh", cache.getCacheName());
-            Map<KeyType, ValueType> valuesMap = new HashMap<>();
-            for (ValueType value : values) {
-                valuesMap.put(cache.keyFromValue(value), value);
-            }
-            cache.putAll(valuesMap);
+            cache.applyFetchAll(values);
             cache.markLoadSuccess(System.currentTimeMillis() - start);
             cache.loadAllComplete();
             return new CallbackResult<>(values);

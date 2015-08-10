@@ -3,8 +3,11 @@ package com.lithium.dbi.rdbi.recipes.cache;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
+import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Futures;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
@@ -245,7 +248,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
     }
 
     @Override
-    public Collection<ValueType> loadAll() throws Exception {
+    public Collection<ValueType> fetchAll() throws Exception {
         return loadAll.call();
     }
 
@@ -316,14 +319,15 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
         return rdbi.withHandle(new Callback<ConcurrentMap<KeyType, ValueType>>() {
             @Override
             public ConcurrentMap<KeyType, ValueType> run(Handle handle) {
-                List<String> cachedData = handle.jedis().hvals(cacheKey);
-                ConcurrentMap<KeyType, ValueType> typedCache = new ConcurrentHashMap<>();
-                for (String rawValue : cachedData) {
-                    ValueType value = valueTypeSerializationHelper.decode(rawValue);
-                    KeyType key = keyFromValue(value);
-                    typedCache.put(key, value);
-                }
-                return typedCache;
+                Iterable<String> cachedData = handle.jedis().hvals(cacheKey);
+                Iterable<ValueType> typedCachedData = Iterables.transform(cachedData, new Function<String, ValueType>() {
+                    @Nullable
+                    @Override
+                    public ValueType apply(String rawValue) {
+                        return valueTypeSerializationHelper.decode(rawValue);
+                    }
+                });
+                return new ConcurrentHashMap<>(uniqueIndex(typedCachedData));
             }
         });
     }
@@ -449,14 +453,17 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
             @Override
             public Void run(Handle handle) {
                 Pipeline pipeline = handle.jedis().pipelined();
-                for (Map.Entry<? extends KeyType, ? extends ValueType> entry : data.entrySet()) {
-                    cacheDataRaw(pipeline, entry.getKey(), entry.getValue());
-                }
+                putAllInternal(data, pipeline);
                 pipeline.sync();
                 return null;
             }
         });
+    }
 
+    private void putAllInternal(final Map<? extends KeyType, ? extends ValueType> data, Pipeline pipeline) {
+        for (Map.Entry<? extends KeyType, ? extends ValueType> entry : data.entrySet()) {
+            cacheDataRaw(pipeline, entry.getKey(), entry.getValue());
+        }
     }
 
     /**
@@ -482,18 +489,35 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
         });
     }
 
-    /**
-     * Signals that all items in the cache should be removed.
-     * @see #remove(Object)
-     * @see #invalidate(Object)
-     */
-    public void removeAll() {
+    private Map<KeyType, ValueType> uniqueIndex(Iterable<ValueType> values) {
+        return FluentIterable.from(values)
+                             .filter(new Predicate<ValueType>() {
+                                 @Override
+                                 public boolean apply(@Nullable ValueType value) {
+                                     if (value == null) {
+                                         log.warn("{}: Omitting a null value from the result set.", cacheName);
+                                     }
+                                     return value != null;
+                                 }
+                             })
+                             .uniqueIndex(new Function<ValueType, KeyType>() {
+                                 @Override
+                                 public KeyType apply(ValueType value) {
+                                     return keyFromValue(value);
+                                 }
+                             });
+    }
+
+    @Override
+    public void applyFetchAll(Collection<ValueType> fetched) {
+        final Map<KeyType, ValueType> fetchedAndIndexed = uniqueIndex(fetched);
+
         rdbi.withHandle(new Callback<Void>() {
             @Override
             public Void run(Handle handle) {
                 Pipeline pipeline = handle.jedis().pipelined();
-                pipeline.del(cacheKey);
-                pipeline.del(cacheMissingKey());
+                removeAllCachedData(pipeline);
+                putAllInternal(fetchedAndIndexed, pipeline);
                 pipeline.sync();
                 return null;
             }
@@ -535,7 +559,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
             @Override
             public Void run(Handle handle) {
                 Pipeline pipeline = handle.jedis().pipelined();
-                for(final Object objKey : keys) {
+                for (final Object objKey : keys) {
                     invalidate(pipeline, (KeyType) objKey);
                 }
                 pipeline.sync();
@@ -550,14 +574,24 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
             @Override
             public Void run(Handle handle) {
                 Pipeline pipeline = handle.jedis().pipelined();
-                pipeline.del(cacheKey);
-                pipeline.del(cacheMissingKey());
+                removeAllCachedData(pipeline);
                 pipeline.del(cacheLockKey());
                 pipeline.del(cacheLoadTimeKey());
                 pipeline.sync();
                 return null;
             }
         });
+    }
+
+    /**
+     * An internal operation that removes only true data points from the cache.
+     * Meta-data for locking and refresh timing are not altered.
+     * @param pipeline
+     * @see #invalidateAll() for the public analog that also alters meta-data
+     */
+    private void removeAllCachedData(Pipeline pipeline) {
+        pipeline.del(cacheKey);
+        pipeline.del(cacheMissingKey());
     }
 
     @Override
