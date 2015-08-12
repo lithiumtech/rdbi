@@ -10,6 +10,7 @@ import com.google.common.collect.Maps;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
+import org.joda.time.Duration;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -25,6 +26,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -745,8 +747,6 @@ public class RedisHashCacheTest {
     @Test
     public void testNeedsRefresh() throws InterruptedException, ExecutionException, TimeoutException {
 
-        final int refreshThresholdSeconds = 1;
-
         final String key = "key";
         final TestContainer value = new TestContainer(key, UUID.randomUUID());
 
@@ -764,7 +764,7 @@ public class RedisHashCacheTest {
                         fetchAllFromMap(dataSource),
                         "testNeedsRefresh",
                         TEST_NAMESPACE,
-                        refreshThresholdSeconds,
+                        Duration.standardMinutes(10).getMillis(),
                         0,
                         Optional.of(es),
                         NOOP,
@@ -772,19 +772,14 @@ public class RedisHashCacheTest {
                         NOOP,
                         NOOP);
 
-        // refresh all, shouldn't need to refresh for another second
-        cache.refreshAll().get(500, TimeUnit.MILLISECONDS);
+        // after refresh all, should not need to refresh again
+        Future<CallbackResult<Collection<TestContainer>>> f = cache.refreshAll();
+        if (!f.isCancelled()) {
+            f.get(500, TimeUnit.MILLISECONDS);
+        }
         assertFalse(cache.needsRefresh());
 
-        // after a second, cache should be considered stale
-        TimeUnit.SECONDS.sleep(1);
-        assertTrue(cache.needsRefresh());
-
-        // refresh all again, shouldn't need to refresh for another second
-        cache.refreshAll().get(2, TimeUnit.SECONDS);
-        assertFalse(cache.needsRefresh());
-
-        // invalidating a single key doesn't mark teh entire cache as stale
+        // invalidating a single key doesn't mark the entire cache as stale
         cache.invalidate(key);
         assertFalse(cache.needsRefresh());
 
