@@ -15,7 +15,6 @@ public interface LoadAllCache<KeyType, ValueType> extends InstrumentedCache<KeyT
      */
     void releaseLock();
 
-
     /**
      * Derive a KeyType from a ValueType.
      * @param value
@@ -24,12 +23,16 @@ public interface LoadAllCache<KeyType, ValueType> extends InstrumentedCache<KeyT
     KeyType keyFromValue(ValueType value);
 
     /**
-     * Load all available data from the original source.
+     * Fetches all available data from the original source.
      * @return
      * @throws Exception
      */
-    Collection<ValueType> loadAll() throws Exception;
+    Collection<ValueType> fetchAll() throws Exception;
 
+    /**
+     * Apply the most recently fetched data. Evicts previously cached, but since deleted keys.
+     */
+    void applyFetchAll(Collection<ValueType> fetched);
 
     /**
      * Perform some cleanup to indicate that all available data has been loaded.

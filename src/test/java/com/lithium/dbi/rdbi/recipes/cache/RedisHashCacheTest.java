@@ -7,6 +7,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import com.lithium.dbi.rdbi.Callback;
+import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -23,6 +25,9 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.testng.Assert.assertEquals;
@@ -33,6 +38,8 @@ import static org.testng.Assert.assertTrue;
 @Test(groups = "integration")
 public class RedisHashCacheTest {
 
+    private static final String TEST_NAMESPACE = RedisHashCacheTest.class.getSimpleName(); 
+    
     private ExecutorService es;
 
     @Test
@@ -62,8 +69,6 @@ public class RedisHashCacheTest {
             }
         };
 
-        final RDBI rdbi = createRdbi();
-
         final CounterRunnable hits = new CounterRunnable();
         final CounterRunnable misses = new CounterRunnable();
         final CounterRunnable loadSuccess = new CounterRunnable();
@@ -75,11 +80,11 @@ public class RedisHashCacheTest {
                         keyCodec,
                         valueGenerator,
                         helper,
-                        rdbi,
+                        createRdbi(),
                         loader,
                         loadAll,
                         "superFancyCache",
-                        "prefix",
+                        TEST_NAMESPACE,
                         120,
                         0,
                         Optional.of(es),
@@ -149,33 +154,17 @@ public class RedisHashCacheTest {
 
         final Map<String, TestContainer> dataSource = ImmutableMap.of(key1, tc1, key2, tc2, key3, tc3);
 
-        final Function<String, TestContainer> loader = new Function<String, TestContainer>() {
-            @Override
-            public TestContainer apply(@Nullable String s) {
-               return dataSource.get(s);
-            }
-        };
-
-        final Callable<Collection<TestContainer>> loadAll = new Callable<Collection<TestContainer>>() {
-            @Override
-            public Collection<TestContainer> call() throws Exception {
-                return dataSource.values();
-            }
-        };
-
-        final RDBI rdbi = createRdbi();
-
         final RedisHashCache<String, TestContainer> cache =
                 new RedisHashCache<>(
                         keyGenerator,
                         keyCodec,
                         valueGenerator,
                         helper,
-                        rdbi,
-                        loader,
-                        loadAll,
+                        createRdbi(),
+                        fetchFromMap(dataSource),
+                        fetchAllFromMap(dataSource),
                         "superFancyCache",
-                        "prefix",
+                        TEST_NAMESPACE,
                         120,
                         0,
                         Optional.<ExecutorService>absent(), // Force synchronous calls!
@@ -263,19 +252,17 @@ public class RedisHashCacheTest {
             }
         };
 
-        final RDBI rdbi = createRdbi();
-
         final RedisHashCache<String, TestContainer> cache =
                 new RedisHashCache<>(
                         keyGenerator,
                         keyCodec,
                         valueGenerator,
                         helper,
-                        rdbi,
+                        createRdbi(),
                         loader,
                         loadAll,
                         "superFancyCache",
-                        "prefix",
+                        TEST_NAMESPACE,
                         120,
                         0,
                         Optional.<ExecutorService>absent(), // Force synchronous calls!
@@ -327,8 +314,6 @@ public class RedisHashCacheTest {
             }
         };
 
-        final RDBI rdbi = createRdbi();
-
         final CounterRunnable hits = new CounterRunnable();
         final CounterRunnable misses = new CounterRunnable();
         final CounterRunnable loadSuccess = new CounterRunnable();
@@ -340,11 +325,11 @@ public class RedisHashCacheTest {
                         new PassthroughSerializationHelper(),
                         valueGenerator,
                         helper,
-                        rdbi,
+                        createRdbi(),
                         mrDeadlock,
                         loadAll,
                         "superFancyCache",
-                        "prefix",
+                        TEST_NAMESPACE,
                         120,
                         0,
                         Optional.of(es),
@@ -387,20 +372,6 @@ public class RedisHashCacheTest {
         dataSource.put(key1, originalValueForKey1);
         dataSource.put(key2, originalValueForKey2);
 
-        final Function<String, TestContainer> loader = new Function<String, TestContainer>() {
-            @Override
-            public TestContainer apply(@Nullable String s) {
-                return dataSource.get(s);
-            }
-        };
-
-        final Callable<Collection<TestContainer>> loadAll = new Callable<Collection<TestContainer>>() {
-            @Override
-            public Collection<TestContainer> call() throws Exception {
-                return dataSource.values();
-            }
-        };
-
         final RDBI rdbi = createRdbi();
 
         final RedisHashCache<String, TestContainer> cache =
@@ -410,11 +381,11 @@ public class RedisHashCacheTest {
                         valueGenerator,
                         helper,
                         rdbi,
-                        loader,
-                        loadAll,
+                        fetchFromMap(dataSource),
+                        fetchAllFromMap(dataSource),
                         "testRemoveCache",
-                        "prefix",
-                        120,
+                        TEST_NAMESPACE,
+                        Integer.MAX_VALUE,
                         0,
                         Optional.of(es),
                         NOOP,
@@ -471,7 +442,7 @@ public class RedisHashCacheTest {
     }
 
     @Test
-    public void testRemoveAll() throws ExecutionException {
+    public void testInvalidateAll() throws ExecutionException {
 
         final String key1 = "key1";
         final TestContainer originalValueForKey1 = new TestContainer(key1, UUID.randomUUID());
@@ -483,33 +454,17 @@ public class RedisHashCacheTest {
         dataSource.put(key1, originalValueForKey1);
         dataSource.put(key2, originalValueForKey2);
 
-        final Function<String, TestContainer> loader = new Function<String, TestContainer>() {
-            @Override
-            public TestContainer apply(@Nullable String s) {
-                return dataSource.get(s);
-            }
-        };
-
-        final Callable<Collection<TestContainer>> loadAll = new Callable<Collection<TestContainer>>() {
-            @Override
-            public Collection<TestContainer> call() throws Exception {
-                return dataSource.values();
-            }
-        };
-
-        final RDBI rdbi = createRdbi();
-
         final RedisHashCache<String, TestContainer> cache =
                 new RedisHashCache<>(
                         keyGenerator,
                         new PassthroughSerializationHelper(),
                         valueGenerator,
                         helper,
-                        rdbi,
-                        loader,
-                        loadAll,
-                        "testRemoveAllCache",
-                        "prefix",
+                        createRdbi(),
+                        fetchFromMap(dataSource),
+                        fetchAllFromMap(dataSource),
+                        "testInvalidateAllCache",
+                        TEST_NAMESPACE,
                         120,
                         0,
                         Optional.of(es),
@@ -529,17 +484,313 @@ public class RedisHashCacheTest {
         dataSource.clear();
 
         // remove all cache entries
-        cache.removeAll();
+        cache.invalidateAll();
         assertNull(cache.get(key1));
         assertNull(cache.get(key2));
 
         // subsequent remove all call should not explode
-        cache.removeAll();
+        cache.invalidateAll();
 
         // manipulate the data source
         final TestContainer newValueForKey1 = new TestContainer(key1, UUID.randomUUID());
         dataSource.put(key1, newValueForKey1);
         assertEquals(newValueForKey1, cache.get(key1));
+    }
+
+    @Test
+    public void testSyncWithDataSource() throws ExecutionException, InterruptedException {
+
+        final String key1 = "key1";
+        final TestContainer key1Value = new TestContainer(key1, UUID.randomUUID());
+
+        final String key2 = "key2";
+        final TestContainer key2Value = new TestContainer(key2, UUID.randomUUID());
+
+        final Map<String, TestContainer> dataSource = Maps.newHashMap();
+        dataSource.put(key1, key1Value);
+        dataSource.put(key2, key2Value);
+
+        final RDBI rdbi = createRdbi();
+
+        final RedisHashCache<String, TestContainer> cache =
+                new RedisHashCache<>(
+                        keyGenerator,
+                        new PassthroughSerializationHelper(),
+                        valueGenerator,
+                        helper,
+                        rdbi,
+                        fetchFromMap(dataSource),
+                        fetchAllFromMap(dataSource),
+                        "testNullValueCache",
+                        TEST_NAMESPACE,
+                        120,
+                        0,
+                        Optional.of(es),
+                        NOOP,
+                        NOOP,
+                        NOOP,
+                        NOOP);
+
+        // invalidate (for any prior test run)
+        cache.invalidateAll();
+
+        // cache contains expected keys
+        assertEquals(key1Value, cache.get(key1));
+        assertEquals(key2Value, cache.get(key2));
+        assertEquals(2, cache.asMap().size());
+
+        // update the data source and invalidate cache
+        dataSource.remove(key1);
+        cache.invalidateAll();
+
+        // cache contains expected keys
+        assertNull(cache.get(key1));
+        assertEquals(key2Value, cache.get(key2));
+        assertEquals(1, cache.asMap().size());
+    }
+
+    @Test
+    public void testNullRefreshDiscarded() throws ExecutionException {
+
+        final String key = "key";
+        final TestContainer value = new TestContainer(key, UUID.randomUUID());
+
+        final Map<String, TestContainer> dataSource = Maps.newHashMap();
+        dataSource.put(key, value);
+
+        final RedisHashCache<String, TestContainer> cache =
+                new RedisHashCache<>(
+                        keyGenerator,
+                        new PassthroughSerializationHelper(),
+                        valueGenerator,
+                        helper,
+                        createRdbi(),
+                        fetchFromMap(dataSource),
+                        fetchAllFromMap(dataSource),
+                        "testNullRefreshDiscarded",
+                        TEST_NAMESPACE,
+                        120,
+                        0,
+                        Optional.of(es),
+                        NOOP,
+                        NOOP,
+                        NOOP,
+                        NOOP);
+
+        // invalidate (for any prior test run)
+        cache.invalidateAll();
+
+        // cache contains expected key
+        assertEquals(value, cache.get(key));
+        assertEquals(1, cache.asMap().size());
+
+        // update the data source and invalidate cache
+        dataSource.put(key, null);
+        cache.invalidateAll();
+
+        // cache reflects new null value
+        assertNull(cache.get(key));
+        assertTrue(cache.asMap().isEmpty());
+
+        // hard refresh the key
+        cache.refresh(key);
+        assertNull(cache.get(key));
+        assertTrue(cache.asMap().isEmpty());
+
+        // hard refresh the entire cache
+        cache.refreshAll();
+        assertNull(cache.get(key));
+        assertTrue(cache.asMap().isEmpty());
+    }
+
+    @Test
+    public void testFetchExceptionDoesNotBurnCache() throws ExecutionException, InterruptedException {
+
+        final String key = "key";
+        final TestContainer value = new TestContainer(key, UUID.randomUUID());
+
+        final Map<String, TestContainer> dataSource = Maps.newHashMap();
+        dataSource.put(key, value);
+
+        final Function<String, TestContainer> fetchOnceFromMap = new Function<String, TestContainer>() {
+            private AtomicBoolean fetched = new AtomicBoolean(false);
+
+            @Override
+            public TestContainer apply(@Nullable String s) {
+                if (fetched.getAndSet(true)) {
+                    throw new RuntimeException("oh-noes");
+                }
+
+                return dataSource.get(s);
+            }
+        };
+
+
+        final Callable<Collection<TestContainer>> fetchAllAlwaysFails = new Callable<Collection<TestContainer>>() {
+            @Override
+            public Collection<TestContainer> call() throws Exception {
+                throw new RuntimeException("oh-noes");
+            }
+        };
+
+        final RedisHashCache<String, TestContainer> cache =
+                new RedisHashCache<>(
+                        keyGenerator,
+                        new PassthroughSerializationHelper(),
+                        valueGenerator,
+                        helper,
+                        createRdbi(),
+                        fetchOnceFromMap,
+                        fetchAllAlwaysFails,
+                        "testFetchExceptionDoesNotBurnCache",
+                        TEST_NAMESPACE,
+                        Integer.MAX_VALUE,
+                        0,
+                        Optional.<ExecutorService>absent(),
+                        NOOP,
+                        NOOP,
+                        NOOP,
+                        NOOP);
+
+        // invalidate (for any prior test run)
+        cache.invalidateAll();
+
+        // spend our one good refresh() operation
+        cache.refresh(key);
+
+        // cache contains expected key
+        assertEquals(value, cache.get(key));
+        assertEquals(value, cache.asMap().get(key));
+        assertEquals(1, cache.asMap().size());
+
+        // update the data source and refresh cache
+        dataSource.put(key, new TestContainer(key, UUID.randomUUID()));
+        cache.refreshAll();
+        cache.refresh(key);
+
+        // old value is still cached
+        assertEquals(value, cache.asMap().get(key));
+        assertEquals(1, cache.asMap().size());
+    }
+
+    @Test
+    public void testFetchNullResultDoesNotBurnCache() throws ExecutionException, InterruptedException {
+
+        final String key = "key";
+        final TestContainer value = new TestContainer(key, UUID.randomUUID());
+
+        final Map<String, TestContainer> dataSource = Maps.newHashMap();
+        dataSource.put(key, value);
+
+        final Function<String, TestContainer> fetchOnceFromMap = new Function<String, TestContainer>() {
+            private AtomicBoolean fetched = new AtomicBoolean(false);
+
+            @Override
+            public TestContainer apply(@Nullable String s) {
+                if (fetched.getAndSet(true)) {
+                    return null;
+                }
+
+                return dataSource.get(s);
+            }
+        };
+
+        final Callable<Collection<TestContainer>> fetchAllAlwaysFails = new Callable<Collection<TestContainer>>() {
+            @Override
+            public Collection<TestContainer> call() throws Exception {
+                return null;
+            }
+        };
+
+        final RedisHashCache<String, TestContainer> cache =
+                new RedisHashCache<>(
+                        keyGenerator,
+                        new PassthroughSerializationHelper(),
+                        valueGenerator,
+                        helper,
+                        createRdbi(),
+                        fetchOnceFromMap,
+                        fetchAllAlwaysFails,
+                        "testFetchNullResultDoesNotBurnCache",
+                        TEST_NAMESPACE,
+                        120,
+                        0,
+                        Optional.<ExecutorService>absent(),
+                        NOOP,
+                        NOOP,
+                        NOOP,
+                        NOOP);
+
+        // invalidate (for any prior test run)
+        cache.invalidateAll();
+
+        // spend our one good refresh() operation
+        cache.refresh(key);
+
+        // cache contains expected key
+        assertEquals(value, cache.get(key));
+        assertEquals(value, cache.asMap().get(key));
+        assertEquals(1, cache.asMap().size());
+
+        // update the data source and refresh cache
+        dataSource.put(key, new TestContainer(key, UUID.randomUUID()));
+        cache.refreshAll();
+        cache.refresh(key);
+
+        // old value is still cached
+        assertEquals(value, cache.get(key));
+        assertEquals(1, cache.asMap().size());
+    }
+
+    @Test
+    public void testNeedsRefresh() throws InterruptedException, ExecutionException, TimeoutException {
+
+        final int refreshThresholdSeconds = 1;
+
+        final String key = "key";
+        final TestContainer value = new TestContainer(key, UUID.randomUUID());
+
+        final Map<String, TestContainer> dataSource = Maps.newHashMap();
+        dataSource.put(key, value);
+
+        final RedisHashCache<String, TestContainer> cache =
+                new RedisHashCache<>(
+                        keyGenerator,
+                        new PassthroughSerializationHelper(),
+                        valueGenerator,
+                        helper,
+                        createRdbi(),
+                        fetchFromMap(dataSource),
+                        fetchAllFromMap(dataSource),
+                        "testNeedsRefresh",
+                        TEST_NAMESPACE,
+                        refreshThresholdSeconds,
+                        0,
+                        Optional.of(es),
+                        NOOP,
+                        NOOP,
+                        NOOP,
+                        NOOP);
+
+        // refresh all, shouldn't need to refresh for another second
+        cache.refreshAll().get(500, TimeUnit.MILLISECONDS);
+        assertFalse(cache.needsRefresh());
+
+        // after a second, cache should be considered stale
+        TimeUnit.SECONDS.sleep(1);
+        assertTrue(cache.needsRefresh());
+
+        // refresh all again, shouldn't need to refresh for another second
+        cache.refreshAll().get(2, TimeUnit.SECONDS);
+        assertFalse(cache.needsRefresh());
+
+        // invalidating a single key doesn't mark teh entire cache as stale
+        cache.invalidate(key);
+        assertFalse(cache.needsRefresh());
+
+        // but now invalidate the cache at large and it should be considered stale
+        cache.invalidateAll();
+        assertTrue(cache.needsRefresh());
     }
 
     RDBI createRdbi() {
@@ -643,9 +894,38 @@ public class RedisHashCacheTest {
         }
     };
 
+    private <T> Function<String, T> fetchFromMap(final Map<String, T> dataSource) {
+        return new Function<String, T>() {
+            @Override
+            public T apply(@Nullable String s) {
+                return dataSource.get(s);
+            }
+        };
+    }
+
+    private <T> Callable<Collection<T>> fetchAllFromMap(final Map<String, T> dataSource) {
+        return new Callable<Collection<T>>() {
+            @Override
+            public Collection<T> call() throws Exception {
+                return dataSource.values();
+            }
+        };
+    }
+
     @BeforeMethod
     public void setupExecutor() {
         this.es = Executors.newSingleThreadExecutor();
+    }
+
+    @BeforeMethod
+    public void clearRedis() {
+        createRdbi().withHandle(new Callback<Void>() {
+            @Override
+            public Void run(Handle handle) {
+                handle.jedis().del(TEST_NAMESPACE);
+                return null;
+            }
+        });
     }
 
     @AfterMethod
