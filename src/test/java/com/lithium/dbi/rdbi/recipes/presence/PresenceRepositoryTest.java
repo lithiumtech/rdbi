@@ -1,6 +1,6 @@
 package com.lithium.dbi.rdbi.recipes.presence;
 
-import com.beust.jcommander.internal.Sets;
+import com.google.common.base.Optional;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
 import org.joda.time.Minutes;
@@ -88,46 +88,28 @@ public class PresenceRepositoryTest {
         presenceRepository.nukeForTest(mytube);
 
         // assert set is empty at start
-        assertTrue(presenceRepository.getPresent(mytube).isEmpty());
+        assertTrue(presenceRepository.getPresent(mytube, Optional.<Integer>absent()).isEmpty());
 
         // put something in and verify we can get it back out
         final String uuid = UUID.randomUUID().toString();
         presenceRepository.addHeartbeat(mytube, uuid, Seconds.seconds(1).toStandardDuration().getMillis());
-        final Set<String> presentSet = presenceRepository.getPresent(mytube);
+        final Set<String> presentSet = presenceRepository.getPresent(mytube, Optional.<Integer>absent());
         assertEquals(uuid, presentSet.iterator().next(), "Expected to have one heartbeat with uuid: " + uuid);
 
         // call cull and verify heart beat is still present
         presenceRepository.cull(mytube);
-        final Set<String> stillpresentSet = presenceRepository.getPresent(mytube);
+        final Set<String> stillpresentSet = presenceRepository.getPresent(mytube, Optional.<Integer>absent());
         assertEquals(stillpresentSet.iterator().next(), uuid, "Expected to still have one heartbeat with uuid: " + uuid);
 
         // wait a second and verify previous heartbeat is expired
         Thread.sleep(Seconds.seconds(1).toStandardDuration().getMillis());
-        assertTrue(presenceRepository.getPresent(mytube).isEmpty());
-    }
+        assertTrue(presenceRepository.getPresent(mytube, Optional.<Integer>absent()).isEmpty());
 
-    @Test
-    public void getPresentWithOffsetTest() {
-        final String tube = "getPresentWithLimitTest";
-        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost")), "myprefix");
-        presenceRepository.nukeForTest(tube);
-
-        final Set<String> uuidSet = Sets.newHashSet();
+        // test with limit will not return full set
         for (int i = 0; i < 100; ++i) {
-            final String uuid = UUID.randomUUID().toString();
-            uuidSet.add(uuid);
-            presenceRepository.addHeartbeat(tube, uuid, Minutes.ONE.toStandardDuration().getMillis());
+            presenceRepository.addHeartbeat(mytube, UUID.randomUUID().toString(), Minutes.ONE.toStandardDuration().getMillis());
         }
-
-        final Set<String> pagedSet = Sets.newHashSet();
-        final Instant now = Instant.now();
-        Set<String> page;
-        int pageOffset = 0;
-        do {
-            page = presenceRepository.getPresentWithOffset(tube, now, 10, pageOffset++);
-            pagedSet.addAll(page);
-        } while (!page.isEmpty());
-
-        assertEquals(pagedSet, uuidSet);
+        assertEquals(100, presenceRepository.getPresent(mytube, Optional.<Integer>absent()).size());
+        assertEquals(10, presenceRepository.getPresent(mytube, Optional.of(10)).size());
     }
 }
