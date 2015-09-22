@@ -101,8 +101,8 @@ public class PresenceRepositoryTest {
         final Set<String> stillpresentSet = presenceRepository.getPresent(mytube, Optional.<Integer>absent());
         assertEquals(stillpresentSet.iterator().next(), uuid, "Expected to still have one heartbeat with uuid: " + uuid);
 
-        // wait a second and verify previous heartbeat is expired
-        Thread.sleep(Seconds.seconds(1).toStandardDuration().getMillis());
+        // wait a couple seconds and verify previous heartbeat is expired
+        Thread.sleep(Seconds.seconds(2).toStandardDuration().getMillis());
         assertTrue(presenceRepository.getPresent(mytube, Optional.<Integer>absent()).isEmpty());
 
         // test with limit will not return full set
