@@ -1,7 +1,7 @@
 package com.lithium.dbi.rdbi.recipes.presence;
 
+import com.beust.jcommander.internal.Sets;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.joda.time.Minutes;
 import org.joda.time.Seconds;
@@ -83,7 +83,7 @@ public class PresenceRepositoryTest {
 
     @Test
     public void getPresentTest() throws InterruptedException {
-        final String mytube = "mytube";
+        final String mytube = "getPresentTest";
         final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost")), "myprefix");
         presenceRepository.nukeForTest(mytube);
 
@@ -104,5 +104,29 @@ public class PresenceRepositoryTest {
         // wait a second and verify previous heartbeat is expired
         Thread.sleep(Seconds.seconds(1).toStandardDuration().getMillis());
         assertTrue(presenceRepository.getPresent(mytube).isEmpty());
+    }
+
+    @Test
+    public void getPresentWithLimitTest() {
+        final String tube = "getPresentWithLimitTest";
+        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost")), "myprefix");
+        presenceRepository.nukeForTest(tube);
+
+        final Set<String> uuidSet = Sets.newHashSet();
+        for (int i = 0; i < 100; ++i) {
+            final String uuid = UUID.randomUUID().toString();
+            uuidSet.add(uuid);
+            presenceRepository.addHeartbeat(tube, uuid, Minutes.ONE.toStandardDuration().getMillis());
+        }
+
+        final Set<String> pagedSet = Sets.newHashSet();
+        Set<String> page;
+        int pageOffset = 0;
+        do {
+            page = presenceRepository.getPresent(tube, 10, pageOffset++);
+            pagedSet.addAll(page);
+        } while (!page.isEmpty());
+
+        assertEquals(pagedSet, uuidSet);
     }
 }
