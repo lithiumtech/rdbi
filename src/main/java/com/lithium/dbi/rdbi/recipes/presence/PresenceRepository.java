@@ -1,10 +1,13 @@
 package com.lithium.dbi.rdbi.recipes.presence;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Optional;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
+
+import java.util.Set;
 
 public class PresenceRepository {
 
@@ -27,6 +30,24 @@ public class PresenceRepository {
             handle.jedis().zadd(getQueue(tube),  now.getMillis() + timeToExpireInMS, id);
         } finally {
             handle.close();
+        }
+    }
+
+    /**
+     * Get all entries that have not expired
+     * @param tube name of the tube
+     * @param limit provide a max number of entries to return, will return all if not provided
+     * @return all entries that have not expired
+     */
+    public Set<String> getPresent(String tube, Optional<Integer> limit) {
+        final Instant now = Instant.now();
+
+        try (final Handle handle = rdbi.open()) {
+            if (limit != null && limit.isPresent()) {
+                return handle.jedis().zrangeByScore(getQueue(tube), Long.toString(now.getMillis()), "+inf", 0, limit.get());
+            } else {
+                return handle.jedis().zrangeByScore(getQueue(tube), Long.toString(now.getMillis()), "+inf");
+            }
         }
     }
 
