@@ -1,10 +1,17 @@
 package com.lithium.dbi.rdbi.recipes.presence;
 
 import com.lithium.dbi.rdbi.RDBI;
+import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.joda.time.Minutes;
+import org.joda.time.Seconds;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
+import java.util.Set;
+import java.util.UUID;
+
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
@@ -72,5 +79,30 @@ public class PresenceRepositoryTest {
         System.out.println("Time for 5000 cull " + Long.toString(after4.getMillis() - before4.getMillis()));
 
         assertTrue(after4.getMillis() - before4.getMillis() < 500L);
+    }
+
+    @Test
+    public void getPresentTest() throws InterruptedException {
+        final String mytube = "mytube";
+        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost")), "myprefix");
+        presenceRepository.nukeForTest(mytube);
+
+        // assert set is empty at start
+        assertTrue(presenceRepository.getPresent(mytube).isEmpty());
+
+        // put something in and verify we can get it back out
+        final String uuid = UUID.randomUUID().toString();
+        presenceRepository.addHeartbeat(mytube, uuid, Seconds.seconds(1).toStandardDuration().getMillis());
+        final Set<String> presentSet = presenceRepository.getPresent(mytube);
+        assertEquals(uuid, presentSet.iterator().next(), "Expected to have one heartbeat with uuid: " + uuid);
+
+        // call cull and verify heart beat is still present
+        presenceRepository.cull(mytube);
+        final Set<String> stillpresentSet = presenceRepository.getPresent(mytube);
+        assertEquals(stillpresentSet.iterator().next(), uuid, "Expected to still have one heartbeat with uuid: " + uuid);
+
+        // wait a second and verify previous heartbeat is expired
+        Thread.sleep(Seconds.seconds(1).toStandardDuration().getMillis());
+        assertTrue(presenceRepository.getPresent(mytube).isEmpty());
     }
 }

@@ -6,6 +6,8 @@ import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
 
+import java.util.Set;
+
 public class PresenceRepository {
 
     private final RDBI rdbi;
@@ -27,6 +29,14 @@ public class PresenceRepository {
             handle.jedis().zadd(getQueue(tube),  now.getMillis() + timeToExpireInMS, id);
         } finally {
             handle.close();
+        }
+    }
+
+    public Set<String> getPresent(String tube) {
+        final Instant now = Instant.now();
+
+        try (final Handle handle = rdbi.open()) {
+            return handle.jedis().zrangeByScore(getQueue(tube), String.valueOf(now.getMillis()), "+inf");
         }
     }
 
