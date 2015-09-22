@@ -40,11 +40,9 @@ public class PresenceRepository {
         }
     }
 
-    public Set<String> getPresent(String tube, int count, int offset) {
-        final Instant now = Instant.now();
-
+    public Set<String> getPresentWithOffset(String tube, Instant startInstant, int count, int offset) {
         try (final Handle handle = rdbi.open()) {
-            return handle.jedis().zrangeByScore(getQueue(tube), Long.toString(now.getMillis()), "+inf", offset, count);
+            return handle.jedis().zrangeByScore(getQueue(tube), Long.toString(startInstant.getMillis()), "+inf", offset, count);
         }
     }
 

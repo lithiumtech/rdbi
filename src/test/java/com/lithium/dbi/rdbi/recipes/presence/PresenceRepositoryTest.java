@@ -107,7 +107,7 @@ public class PresenceRepositoryTest {
     }
 
     @Test
-    public void getPresentWithLimitTest() {
+    public void getPresentWithOffsetTest() {
         final String tube = "getPresentWithLimitTest";
         final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost")), "myprefix");
         presenceRepository.nukeForTest(tube);
@@ -120,10 +120,11 @@ public class PresenceRepositoryTest {
         }
 
         final Set<String> pagedSet = Sets.newHashSet();
+        final Instant now = Instant.now();
         Set<String> page;
         int pageOffset = 0;
         do {
-            page = presenceRepository.getPresent(tube, 10, pageOffset++);
+            page = presenceRepository.getPresentWithOffset(tube, now, 10, pageOffset++);
             pagedSet.addAll(page);
         } while (!page.isEmpty());
 
