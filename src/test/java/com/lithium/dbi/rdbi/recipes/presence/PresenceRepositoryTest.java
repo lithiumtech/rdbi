@@ -2,6 +2,7 @@ package com.lithium.dbi.rdbi.recipes.presence;
 
 import com.google.common.base.Optional;
 import com.lithium.dbi.rdbi.RDBI;
+import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.joda.time.Minutes;
 import org.joda.time.Seconds;
@@ -101,8 +102,14 @@ public class PresenceRepositoryTest {
         final Set<String> stillpresentSet = presenceRepository.getPresent(mytube, Optional.<Integer>absent());
         assertEquals(stillpresentSet.iterator().next(), uuid, "Expected to still have one heartbeat with uuid: " + uuid);
 
-        // wait a couple seconds and verify previous heartbeat is expired
-        Thread.sleep(Seconds.seconds(2).toStandardDuration().getMillis());
+        // wait a second and verify previous heartbeat is expired
+        final Instant beforeSleep = Instant.now();
+        while (true) {
+            Thread.sleep(Duration.standardSeconds(1).getMillis());
+            if (new Duration(beforeSleep, Instant.now()).isLongerThan(Duration.standardSeconds(1))) {
+                break;
+            }
+        }
         assertTrue(presenceRepository.getPresent(mytube, Optional.<Integer>absent()).isEmpty());
 
         // test with limit will not return full set
