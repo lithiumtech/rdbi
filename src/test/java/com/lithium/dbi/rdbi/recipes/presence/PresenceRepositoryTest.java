@@ -47,7 +47,7 @@ public class PresenceRepositoryTest {
 
         Instant before = Instant.now();
         for ( int i = 0; i < 10000; i++ ) {
-            presenceRepository.addHeartbeat("mytube", "id" + i, 10 * 1000L);
+            presenceRepository.addHeartbeat("mytube", "id" + i, Duration.standardSeconds(20).getMillis());
         }
         Instant after = Instant.now();
         System.out.println("Time for 10,000 heartbeats " + Long.toString(after.getMillis() - before.getMillis()));
@@ -62,8 +62,6 @@ public class PresenceRepositoryTest {
         System.out.println("Time for 10,000 expired " + Long.toString(after2.getMillis() - before2.getMillis()));
 
         assertTrue(after2.getMillis() - before2.getMillis() < 2000L);
-
-        Thread.sleep(10 * 1000L);
 
         Instant before3 = Instant.now();
         for ( int i = 0; i < 5000; i++ ) {
