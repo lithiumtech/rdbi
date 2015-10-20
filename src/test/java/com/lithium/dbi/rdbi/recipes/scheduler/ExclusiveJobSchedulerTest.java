@@ -1,5 +1,8 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
+import com.google.common.base.Function;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.Sets;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
@@ -10,6 +13,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 import static org.testng.Assert.assertEquals;
@@ -181,4 +185,55 @@ public class ExclusiveJobSchedulerTest {
         assertNotNull(result, "Should have been able to reserve a job while the system is paused");
     }
 
+    @Test
+    public void testReadyExpiration() throws InterruptedException {
+
+        // Create two jobs that were scheduled to run in the past and have been sitting
+        // around for more than 500 ms.
+        scheduledJobSystem.schedule(tubeName, "{job1}", -1000);
+        scheduledJobSystem.schedule(tubeName, "{job2}", -1500);
+        // Create a job that is ready to run but not considered expired.
+        scheduledJobSystem.schedule(tubeName, "{job3}", 0);
+
+        // Find all expired jobs = jobs that have been sitting in the ready queue for more than 500 millis
+        List<TimeJobInfo> jobInfos = scheduledJobSystem.removeExpiredReadyJobs(tubeName, 500);
+        assertEquals(jobInfos.size(), 2);
+        List<String> jobStrList = FluentIterable.from(jobInfos).transform(new Function<TimeJobInfo, String>() {
+            @Nullable
+            @Override
+            public String apply(TimeJobInfo timeJobInfo) {
+                return timeJobInfo.getJobStr();
+            }
+        }).toList();
+
+        assertTrue(jobStrList.containsAll(Sets.newHashSet("{job1}", "{job2}")));
+
+        // Wait for job3 to become available and confirm its still there.
+        List<TimeJobInfo> reservedList = scheduledJobSystem.reserveMulti(tubeName, 10000, 3);
+        assertEquals(reservedList.size(), 1);
+        assertEquals(reservedList.get(0).getJobStr(), "{job3}");
+    }
+
+    @Test
+    public void testReadyRunningCount() {
+        scheduledJobSystem.schedule(tubeName, "{job1}", 0);
+        scheduledJobSystem.schedule(tubeName, "{job2}", 0);
+        scheduledJobSystem.schedule(tubeName, "{job3}", 0);
+
+        assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 3);
+        assertEquals(scheduledJobSystem.getRunningJobCount(tubeName), 0);
+
+        scheduledJobSystem.reserveSingle(tubeName, 10000);
+
+        assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 2);
+        assertEquals(scheduledJobSystem.getRunningJobCount(tubeName), 1);
+
+        scheduledJobSystem.reserveSingle(tubeName, 10000);
+        assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 1);
+        assertEquals(scheduledJobSystem.getRunningJobCount(tubeName), 2);
+
+        scheduledJobSystem.reserveSingle(tubeName, 10000);
+        assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 0);
+        assertEquals(scheduledJobSystem.getRunningJobCount(tubeName), 3);
+    }
 }

@@ -20,7 +20,7 @@ public interface ExclusiveJobSchedulerDAO {
         "   return 0\n" +
         "end"
     )
-    public int scheduleJob(
+    int scheduleJob(
             @BindKey("readyQueue") String readyQueue,
             @BindKey("runningQueue") String runningQueue,
             @BindKey("pausedTube") String pausedTube,
@@ -40,7 +40,7 @@ public interface ExclusiveJobSchedulerDAO {
         "end\n" +
         "return jobs"
     )
-    public List<TimeJobInfo> reserveJobs(
+    List<TimeJobInfo> reserveJobs(
             @BindKey("readyQueue") String readyQueue,
             @BindKey("runningQueue") String runningQueue,
             @BindKey("pausedTube") String pausedTube,
@@ -48,13 +48,25 @@ public interface ExclusiveJobSchedulerDAO {
             @BindArg("now") long now,
             @BindArg("ttr") long ttr);
 
+    /**
+     * Jobs in the ready queue are scored/sorted by when they should run. A ready job
+     * is considered expired if its score/scheduled run time is less than equal to the
+     * expirationTimeInMillis. As a result expirationTimeInMillis should be set to
+     * now - (the threshold past which a job sitting waiting to be reserved is considered expired).
+     *
+     * Jobs in the running queue are sorted by their time to live (ttl). A running job
+     * is considered expired if the current time is past the ttl. So expirationTimeInMillis
+     * should be set to now.
+     *
+     */
     @Mapper(TimeJobInfoListMapper.class)
     @Query(
-        "local expiredJob = redis.call('ZRANGEBYSCORE', $runningQueue$, 0, $now$, 'WITHSCORES')\n" +
-        "redis.call('ZREMRANGEBYSCORE', $runningQueue$, 0, $now$)\n" +
-        "return expiredJob"
+        "local expiredJobs = redis.call('ZRANGEBYSCORE', $queue$, 0, $expirationTimeInMillis$, 'WITHSCORES')\n" +
+        "redis.call('ZREMRANGEBYSCORE', $queue$, 0, $expirationTimeInMillis$)\n" +
+        "return expiredJobs"
     )
-    public List<TimeJobInfo> removeExpiredJobs(@BindKey("runningQueue") String runningQueue, @BindArg("now") Long now);
+    List<TimeJobInfo> removeExpiredJobs(@BindKey("queue") String queue,
+                                        @BindArg("expirationTimeInMillis") Long expirationTimeInMillis);
 
     @Query(
         "local deletedFromReadyQueue = redis.call('ZREM', $readyQueue$, $job$)\n" +
@@ -65,7 +77,7 @@ public interface ExclusiveJobSchedulerDAO {
         "   return 1\n" +
         "end"
     )
-    public int deleteJob(
+    int deleteJob(
             @BindKey("readyQueue") String readyQueue,
             @BindKey("runningQueue") String runningQueue,
             @BindArg("job") String job);

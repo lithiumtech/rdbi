@@ -138,6 +138,25 @@ public class ExclusiveJobScheduler {
         }
     }
 
+    /**
+     * A job that has been sitting in the ready queue for the last "expirationPeriodInMillis"
+     * is considered expired. Expired jobs are removed from the scheduler and returned to the client.
+     */
+    public List<TimeJobInfo> removeExpiredReadyJobs(String tube, long expirationPeriodInMillis) {
+        try (Handle handle = rdbi.open()) {
+            return handle.attach(ExclusiveJobSchedulerDAO.class)
+                         .removeExpiredJobs(getReadyQueue(tube), Instant.now().minus(expirationPeriodInMillis).getMillis());
+        }
+    }
+
+    public long getReadyJobCount(String tube) {
+        return getJobCount(getReadyQueue(tube));
+    }
+
+    public long getRunningJobCount(String tube) {
+        return getJobCount(getRunningQueue(tube));
+    }
+
     public List<TimeJobInfo> peekDelayed(String tube, int offset, int count) {
         return peekInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
     }
@@ -164,6 +183,15 @@ public class ExclusiveJobScheduler {
             }
             return jobInfos;
         }
+    }
+
+    private long getJobCount(final String queue) {
+        return rdbi.withHandle(new Callback<Long>() {
+            @Override
+            public Long run(Handle handle) {
+                return handle.jedis().zcard(queue);
+            }
+        });
     }
 
     protected String getRunningQueue(String tube) {
