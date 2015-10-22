@@ -95,6 +95,9 @@ public class RedisSemaphoreTest {
         // Verify cannot acquire a second time
         assertFalse(semaphore.acquireSemaphore(semaphoreTimeoutInSeconds));
 
+        // Verify can reacquire
+        assertTrue(semaphore.extendSemaphore(semaphoreTimeoutInSeconds));
+
         // Verify that we have deleted the semaphore
         Optional<String> realOwner = semaphore.releaseSemaphore();
         assertTrue(realOwner.isPresent());
@@ -107,15 +110,22 @@ public class RedisSemaphoreTest {
         // Verify that we cannot delete twice
         realOwner = semaphore.releaseSemaphore();
         assertFalse(realOwner.isPresent());
+
+        // Verify cannot reacquire if already released
+        assertFalse(semaphore.extendSemaphore(semaphoreTimeoutInSeconds));
     }
 
     @Test
     public void testAcquireReleaseDifferentOwner() {
         assertTrue(semaphore.acquireSemaphore(semaphoreTimeoutInSeconds));
 
+        // Verify can reacquire
+        assertTrue(semaphore.extendSemaphore(semaphoreTimeoutInSeconds));
+
         // Should not be able to acquire another owner's semaphore
         RedisSemaphore semaphoreNew = new RedisSemaphore(rdbi, ownerId + "Wrong", semaphoreKey);
         assertFalse(semaphoreNew.acquireSemaphore(semaphoreTimeoutInSeconds));
+        assertFalse(semaphoreNew.extendSemaphore(semaphoreTimeoutInSeconds));
 
         // Verify that cannot release another owner's semaphore
         Optional<String> realOwner = semaphoreNew.releaseSemaphore();
