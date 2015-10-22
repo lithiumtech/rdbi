@@ -27,5 +27,17 @@ public interface RedisSemaphoreDAO {
     String releaseSemaphore(
             @BindKey("semaphoreKey") String semaphoreKey,
             @BindArg("ownerId") String ownerId);
+
+    @Query(
+            "local keyOwner = redis.call('GET', $semaphoreKey$)\n" +
+            "if keyOwner == $ownerId$ then\n" +
+            "   redis.call('EXPIRE', $semaphoreKey$, $timeout$)\n" +
+            "end\n" +
+            "return keyOwner\n"
+    )
+    String reacquireSemaphore(
+            @BindKey("semaphoreKey") String semaphoreKey,
+            @BindArg("ownerId") String ownerId,
+            @BindArg("timeout") Integer timeout);
 }
 

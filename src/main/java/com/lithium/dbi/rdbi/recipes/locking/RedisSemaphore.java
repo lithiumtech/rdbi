@@ -22,6 +22,13 @@ public class RedisSemaphore {
         }
     }
 
+    public boolean extendSemaphore(final Integer semaphoreExpireSeconds) {
+        try (Handle handle = rdbi.open()) {
+            return ownerId.equals(handle.attach(RedisSemaphoreDAO.class)
+                                        .reacquireSemaphore(semaphoreKey, ownerId, semaphoreExpireSeconds));
+        }
+    }
+
     public Optional<String> releaseSemaphore() {
         try (Handle handle = rdbi.open()) {
             return Optional.fromNullable(handle.attach(RedisSemaphoreDAO.class)
