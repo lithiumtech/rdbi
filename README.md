@@ -80,5 +80,5 @@ Jedis provides a basic way of loading a Lua script into Redis and eval the scrip
 
 License
 =======
-Instagram4j is made available publicly under the terms of Apache License v2.0.  See the [LICENSE](LICENSE) file. 
+RDBI is made available publicly under the terms of Apache License v2.0.  See the [LICENSE](LICENSE) file. 
 
