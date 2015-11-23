@@ -74,20 +74,11 @@ Jedis provides a basic way of loading a Lua script into Redis and eval the scrip
 ### Events
 ### Job Scheduler
 ### Presence
-
 ## Redis Sentinel
-
 ## Native support of Sharded Redis Instance
 
-TODO
-----
 
-- ~~Decide if private static versus private for RDBIProxyFactory~~
-- ~~Naming of RDBI package protected classes~~
-- ~~use antlr to clean up usage of lua string; ie. I don't like lua script to have to do KEYS[1] and ARGV[1], I'd like it to look like jdbi :myKey, :myValue~~
-- ~~see if there's something I can do about the handle.jedis() . The .jedis() part annoys me~~
-- ~~performance tests for the cglib usage.~~
-- ~~integration test for the sha1 usage.~~
-- extract recipes from codebase.
-
+License
+=======
+Instagram4j is made available publicly under the terms of Apache License v2.0.  See the [LICENSE](LICENSE) file. 
 

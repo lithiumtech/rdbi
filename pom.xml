@@ -3,13 +3,21 @@
 
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>com.lithium</groupId>
+        <artifactId>lithium-oss-superpom</artifactId>
+        <version>0.9</version>
+    </parent>
+
     <groupId>com.lithium.dbi.rdbi</groupId>
     <artifactId>rdbi-core</artifactId>
     <version>0.45-SNAPSHOT</version>
     <name>rDBI</name>
     <url>https://github.com/lithiumtech/rdbi</url>
     <description>
-        rDBI provides convenience utilites for Jedis, cleaning up some of Jedis's api pitfalls by automatically returning the Jedis resource to the pool. It also has helper utilities for making Lua script calls to Redis easier. rDBI library is inspired by the awesome library jDBI, a convenience library for SQL.
+        rDBI provides convenience utilites for Jedis, cleaning up some of Jedis's api pitfalls by automatically
+        returning the Jedis resource to the pool. It also has helper utilities for making Lua script calls to Redis easier.
+        rDBI library is inspired by the awesome library jDBI, a convenience library for SQL.
     </description>
 
 
@@ -23,7 +31,6 @@
             <id>phutwo</id>
             <email>phutwo@me.com</email>
         </developer>
-        <!-- TODO matt here -->
     </developers>
 
     <scm>
@@ -37,30 +44,6 @@
         <system>GitHub</system>
         <url>https://github.com/lithiumtech/rdbi/issues</url>
     </issueManagement>
-
-    <distributionManagement>
-        <repository>
-            <id>lithium-releases</id>
-            <name>nexus-maven-repo</name>
-            <url>http://nexus.dev.lithium.com/nexus/content/repositories/releases</url>
-        </repository>
-    </distributionManagement>
-    <repositories>
-        <repository>
-            <id>lithium-internal-nexus</id>
-            <name>nexus-maven-repo</name>
-            <url>http://nexus.dev.lithium.com/nexus/content/repositories/releases</url>
-            <snapshots><enabled>false</enabled></snapshots>
-        </repository>
-    </repositories>
-    <pluginRepositories>
-        <pluginRepository>
-            <id>lithium-internal-nexus</id>
-            <name>nexus-maven-repo</name>
-            <url>http://nexus.dev.lithium.com/nexus/content/repositories/releases</url>
-            <snapshots><enabled>false</enabled></snapshots>
-        </pluginRepository>
-    </pluginRepositories>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
