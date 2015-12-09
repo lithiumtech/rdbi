@@ -19,16 +19,16 @@ import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
 @Test(groups = "integration")
-public class DedupJobSchedulerTest {
+public class StateDedupedJobSchedulerTest {
     private static final RDBI rdbi = new RDBI(new JedisPool("localhost"));
     private String tubeName;
 
-    private DedupJobScheduler scheduledJobSystem = null;
+    private StateDedupedJobScheduler scheduledJobSystem = null;
 
     @BeforeMethod
     public void setup(){
         tubeName = TubeUtils.uniqueTubeName();
-        scheduledJobSystem  = new DedupJobScheduler(rdbi, "myprefix:");
+        scheduledJobSystem  = new StateDedupedJobScheduler(rdbi, "myprefix:");
     }
 
     @AfterMethod
@@ -73,7 +73,7 @@ public class DedupJobSchedulerTest {
         // Schedule a job.
         assertTrue(scheduledJobSystem.schedule(tubeName, "{hello:world}", 0));
 
-        // Schedule same job again and verify it fails since the job is already in ready queue.
+        // Schedule same job again and verify it doesn't get scheduled since the job is already in ready queue.
         assertFalse(scheduledJobSystem.schedule(tubeName, "{hello:world}", 0));
     }
 
@@ -100,7 +100,7 @@ public class DedupJobSchedulerTest {
         JobInfo result = scheduledJobSystem.reserveSingle(tubeName, 1000);
         assertNotNull(result);
 
-        // Schedule same job again. Should be able to since the other instance of the job has bee
+        // Schedule same job again. Should be able to since the other instance of the job has been
         // reserved - is in running queue.
         assertTrue(scheduledJobSystem.schedule(tubeName, "{hello:world}", 0));
 
@@ -172,7 +172,7 @@ public class DedupJobSchedulerTest {
         assertTrue(scheduledJobSystem.schedule(tubeName, "job6", -2000));   // Should be able to reserve after job 5 during second iteration
         assertTrue(scheduledJobSystem.schedule(tubeName, "job4", 898789000)); // Not ready to be reserved yet.
 
-        // Reserve 3 jobs. Should return job2, job4 and job7 since they are the next jobs ready to be reserved.
+        // Reserve 3 jobs. Should return job3, job5 and job6 since they are the next jobs ready to be reserved.
         // job1 and job2 can't be reserved since they are in the running queue when this reservation request is made
         List<TimeJobInfo> reservedJobs = scheduledJobSystem.reserveMulti(tubeName, 1000, 3);
 
@@ -224,6 +224,7 @@ public class DedupJobSchedulerTest {
     public void testDelete() throws InterruptedException {
         assertFalse(scheduledJobSystem.deleteJob(tubeName, "{hello:world}"));
 
+        //////////////// Test deleting from the running queue.
         // Schedule and reserve job.
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
         JobInfo result1 = scheduledJobSystem.reserveSingle(tubeName, 1000);
@@ -236,6 +237,8 @@ public class DedupJobSchedulerTest {
         JobInfo result2 = scheduledJobSystem.reserveSingle(tubeName, 1000);
         assertNull(result2);
 
+
+        /////////////// Test deleting from ready queue.
         // Schedule the job again.
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
 
@@ -245,6 +248,31 @@ public class DedupJobSchedulerTest {
         // Try to reserve and shouldn't be able to.
         JobInfo result4 = scheduledJobSystem.reserveSingle(tubeName, 1000);
         assertNull(result4);
+
+        ///////////// Test deleting from the running and ready queue.
+        // Schedule job again.
+        scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
+
+        // Reserve job.
+        JobInfo result5 = scheduledJobSystem.reserveSingle(tubeName, 1000);
+        assertEquals(result5.getJobStr(), "{hello:world}");
+
+        // Schedule job again so its in the ready and running queue at the same time.
+        assertTrue(scheduledJobSystem.schedule(tubeName, "{hello:world}", 0));
+
+        assertTrue(scheduledJobSystem.inReadyQueue(tubeName, "{hello:world}"));
+        assertTrue(scheduledJobSystem.inRunningQueue(tubeName, "{hello:world}"));
+
+        //Delete job while its in the ready and running queue.
+        assertTrue(scheduledJobSystem.deleteJob(tubeName, "{hello:world}"));
+
+        assertFalse(scheduledJobSystem.inReadyQueue(tubeName, "{hello:world}"));
+        assertFalse(scheduledJobSystem.inRunningQueue(tubeName, "{hello:world}"));
+
+        // Try to reserve and shouldn't be able to.
+        JobInfo result6 = scheduledJobSystem.reserveSingle(tubeName, 1000);
+        assertNull(result6);
+
     }
 
     @Test
@@ -290,11 +318,11 @@ public class DedupJobSchedulerTest {
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
 
         // Reserve the job.
-        JobInfo result1 = scheduledJobSystem.reserveSingle(tubeName, 500);
+        JobInfo result1 = scheduledJobSystem.reserveSingle(tubeName, 1);
         assertNotNull(result1);
 
         // Sleep enough time to allow it to expire.
-        Thread.sleep(1000);
+        Thread.sleep(10);
 
         // Verify the job is returned as expired.
         List<TimeJobInfo> infos = scheduledJobSystem.removeExpiredRunningJobs(tubeName);
@@ -308,7 +336,7 @@ public class DedupJobSchedulerTest {
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
 
         // Sleep enough time to allow it to expire.
-        Thread.sleep(1000);
+        Thread.sleep(100);
 
         // Verify the job is returned as expired.
         List<TimeJobInfo> infos = scheduledJobSystem.removeExpiredReadyJobs(tubeName, 10);

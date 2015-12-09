@@ -19,7 +19,7 @@ import java.util.List;
 public class ExclusiveJobScheduler extends AbstractDedupJobScheduler {
 
     /**
-     * @param rdbi           the rdbi driver
+     * @param rdbi the rdbi driver
      * @param redisPrefixKey the prefix key for the job system. All keys the job system uses will have the prefix redisPrefixKey
      */
     public ExclusiveJobScheduler(RDBI rdbi, String redisPrefixKey) {
@@ -28,6 +28,10 @@ public class ExclusiveJobScheduler extends AbstractDedupJobScheduler {
 
     //TODO think about runtime exception, the scheduler should catch all connection based one and handle them
 
+    /**
+     * @return true if the job was scheduled.
+     *         false indicates the job already exists in the ready queue or the running queue.
+     */
     @Override
     public boolean schedule(final String tube, final String jobStr, final int ttlInMillis) {
 

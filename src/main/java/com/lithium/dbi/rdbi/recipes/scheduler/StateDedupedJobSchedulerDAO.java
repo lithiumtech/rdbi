@@ -14,7 +14,7 @@ import java.util.List;
  * Also while reserving jobs, a job is only reserved if the job has no instances in the
  * running queue.
  */
-public interface DedupJobSchedulerDAO {
+public interface StateDedupedJobSchedulerDAO {
     /**
      * When scheduling a job make sure its not already in the ready queue. A job
      * can be scheduled regardless of whether its in the running queue.
@@ -60,9 +60,9 @@ public interface DedupJobSchedulerDAO {
         "      if not inRunningQueue then\n" +
         "          reserved[reservedIndex] = jobs[i]\n" +
         "          reserved[reservedIndex + 1] = jobs[i + 1]\n" +
+        "          redis.call('ZREM', $readyQueue$, reserved[reservedIndex])\n" +
+        "          redis.call('ZADD', $runningQueue$, $ttl$, reserved[reservedIndex])\n" +
         "          reservedIndex = reservedIndex + 2\n" +
-        "          redis.call('ZREM', $readyQueue$, jobs[i])\n" +
-        "          redis.call('ZADD', $runningQueue$, $ttl$, jobs[i])\n" +
         "          nextLimit = nextLimit - 1\n" +
         "      end\n" +
         "   end\n" +
