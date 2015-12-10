@@ -73,6 +73,7 @@ Jedis provides a basic way of loading a Lua script into Redis and eval the scrip
 ## Recipes (TODO, writeup)
 ### Events
 ### Job Scheduler
+The scheduler recipe designs are based on the concepts defined at https://github.com/kr/beanstalkd/blob/master/doc/protocol.txt
 ### Presence
 ## Redis Sentinel
 ## Native support of Sharded Redis Instance

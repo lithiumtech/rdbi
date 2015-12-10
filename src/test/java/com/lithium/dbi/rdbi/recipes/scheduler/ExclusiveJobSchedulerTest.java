@@ -75,19 +75,21 @@ public class ExclusiveJobSchedulerTest {
 
     @Test
     public void testDelete() throws InterruptedException {
+        assertFalse(scheduledJobSystem.deleteJob(tubeName, "{hello:world}"));
+
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
         JobInfo result2 = scheduledJobSystem.reserveSingle(tubeName, 1000);
         assertEquals(result2.getJobStr(), "{hello:world}");
 
         //while in the running queue
-        scheduledJobSystem.deleteJob(tubeName, result2.getJobStr());
+        assertTrue(scheduledJobSystem.deleteJob(tubeName, result2.getJobStr()));
         JobInfo result3 = scheduledJobSystem.reserveSingle(tubeName, 1000);
         assertNull(result3);
 
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 1000);
 
         //while in ready queue
-        scheduledJobSystem.deleteJob(tubeName, "{hello:world}");
+        assertTrue(scheduledJobSystem.deleteJob(tubeName, "{hello:world}"));
 
         Thread.sleep(2000L);
 

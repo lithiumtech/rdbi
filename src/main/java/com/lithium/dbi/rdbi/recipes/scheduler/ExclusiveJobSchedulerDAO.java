@@ -71,7 +71,7 @@ public interface ExclusiveJobSchedulerDAO {
     @Query(
         "local deletedFromReadyQueue = redis.call('ZREM', $readyQueue$, $job$)\n" +
         "local deletedFromRunningQueue = redis.call('ZREM', $runningQueue$, $job$)\n" +
-        "if not deletedFromReadyQueue and not deletedFromRunningQueue then\n" +
+        "if deletedFromReadyQueue == 0 and deletedFromRunningQueue == 0 then\n" +
         "   return 0\n" +
         "else\n" +
         "   return 1\n" +
