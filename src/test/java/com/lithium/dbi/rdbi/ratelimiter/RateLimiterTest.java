@@ -74,7 +74,7 @@ public class RateLimiterTest {
         return new RateLimiter("d:test:rdbi", rdbi, UUID.randomUUID().toString(), permitsPerSecond);
     }
 
-    public double getMeanRate(double rate, long startTime) {
+    private double getMeanRate(double rate, long startTime) {
         if(rate == 0L) {
             return 0.0D;
         } else {
