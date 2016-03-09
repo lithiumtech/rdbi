@@ -34,10 +34,10 @@ public class RateLimiter {
     private final int keyExpiresAfterSeconds;
     private final int allowedPermitsPerExpirationCycle;
 
-    public RateLimiter(RateLimiterConfiguration rateLimiterConfiguration, RDBI rdbi, String key, double permitsPerSecond) {
+    public RateLimiter(String keyPrefix, RDBI rdbi, String key, double permitsPerSecond) {
         this.rdbi = rdbi;
 
-        fullyQualifiedKey = Joiner.on(":").join(rateLimiterConfiguration.getKeyPrefix(), "ratelimit", key);
+        fullyQualifiedKey = Joiner.on(":").join(keyPrefix, "ratelimit", key);
 
         if (permitsPerSecond < 1) {
             // We want less than one permit per second, but redis can only expire a key at second boundaries.

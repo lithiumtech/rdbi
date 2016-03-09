@@ -1,7 +1,5 @@
 package com.lithium.dbi.rdbi.ratelimiter;
 
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.MetricRegistry;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
@@ -13,6 +11,7 @@ import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Protocol;
 
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.testng.Assert.assertTrue;
 
@@ -22,46 +21,41 @@ public class RateLimiterTest {
 
     @Test
     public void testSimpleRateLimitingWithSlowRate() {
-        RateLimiterFactory redisRateLimiterFactory = buildRateLimiterFactory();
-        RateLimiter redisRateLimiter = redisRateLimiterFactory.getInstance(UUID.randomUUID().toString(), 0.75); // 3 requests every 4s
+        RateLimiter redisRateLimiter = buildRateLimiter(0.75); // 3 requests every 4s
 
-        MetricRegistry metricRegistry = new MetricRegistry();
-        Meter callsPerSec = metricRegistry.meter("callspersec");
+        double rate = 0.0;
+        long startTime = System.nanoTime();
         for (int i = 0; i < 4; ++i) {
             redisRateLimiter.acquire(true);
-            callsPerSec.mark();
+            rate++;
             logger.info("Acquired rate limit permit");
         }
-        logger.info("Overall rate limit calls/sec {}", callsPerSec.getMeanRate());
+        double meanRate = getMeanRate(rate, startTime);
+        logger.info("Overall rate limit calls/sec {}", meanRate);
 
         // The rate limiter is a little "fuzzy", so our assertion of "good enough" is also a little fuzzy
-        assertTrue(callsPerSec.getMeanRate() < 1.0 && callsPerSec.getMeanRate() > 0.5);
+        assertTrue(meanRate < 1.0 && meanRate > 0.5);
     }
 
     @Test
     public void testSimpleRateLimitingWithFastRate() {
-        RateLimiterFactory redisRateLimiterFactory = buildRateLimiterFactory();
-        RateLimiter redisRateLimiter = redisRateLimiterFactory.getInstance(UUID.randomUUID().toString(), 10); // 10 requests every sec
+        RateLimiter redisRateLimiter = buildRateLimiter(10); // 10 requests every sec
 
-        MetricRegistry metricRegistry = new MetricRegistry();
-        Meter callsPerSec = metricRegistry.meter("callspersec");
+        double rate = 0.0;
+        long startTime = System.nanoTime();
         for (int i = 0; i < 40; ++i) {
             redisRateLimiter.acquire(true);
-            callsPerSec.mark();
+            rate++;
             logger.info("Acquired rate limit permit");
         }
-        logger.info("Overall rate limit calls/sec {}", callsPerSec.getMeanRate());
+        double meanRate = getMeanRate(rate, startTime);
+        logger.info("Overall rate limit calls/sec {}", meanRate);
 
         // The rate limiter is a little "fuzzy", so our assertion of "good enough" is also a little fuzzy
-        assertTrue(callsPerSec.getMeanRate() < 13.5 && callsPerSec.getMeanRate() > 7.0);
+        assertTrue(meanRate < 13.5 && meanRate > 7.0);
     }
 
-    private RateLimiterFactory buildRateLimiterFactory() {
-        RateLimiterConfiguration rateLimiterConfiguration = new RateLimiterConfiguration();
-        rateLimiterConfiguration.setKeyPrefix("d:test:rdbi");
-        rateLimiterConfiguration.setRedisDb(0);
-        rateLimiterConfiguration.setRedisHostAndPort("localhost:6379");
-
+    private RateLimiter buildRateLimiter(double permitsPerSecond) {
         JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
         jedisPoolConfig.setMaxTotal(30);
         JedisPool jedisPool = new JedisPool(jedisPoolConfig, "localhost", 6379, Protocol.DEFAULT_TIMEOUT);
@@ -77,7 +71,15 @@ public class RateLimiterTest {
             }
         });
 
-        return new RateLimiterFactory(rateLimiterConfiguration, rdbi);
+        return new RateLimiter("d:test:rdbi", rdbi, UUID.randomUUID().toString(), permitsPerSecond);
     }
 
+    public double getMeanRate(double rate, long startTime) {
+        if(rate == 0L) {
+            return 0.0D;
+        } else {
+            double elapsed = (double)(System.nanoTime() - startTime);
+            return rate / elapsed * (double) TimeUnit.SECONDS.toNanos(1L);
+        }
+    }
 }
