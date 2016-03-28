@@ -51,6 +51,18 @@ public class PresenceRepository {
         }
     }
 
+    public Set<String> getExpired(String tube, Optional<Integer> limit) {
+        final Instant now = Instant.now();
+
+        try (final Handle handle = rdbi.open()) {
+            if (limit != null && limit.isPresent()) {
+                return handle.jedis().zrangeByScore(getQueue(tube), "-inf", Long.toString(now.getMillis()), 0, limit.get());
+            } else {
+                return handle.jedis().zrangeByScore(getQueue(tube), "-inf", Long.toString(now.getMillis()));
+            }
+        }
+    }
+
     public boolean expired(String tube, String id) {
 
         Instant now = Instant.now();
