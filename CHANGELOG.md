@@ -1,5 +1,18 @@
 # Change Log
 
+## [rdbi-core-0.53](https://github.com/lithiumtech/rdbi/tree/rdbi-core-0.53) (2016-04-27)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-core-0.52...rdbi-core-0.53)
+
+## [rdbi-core-0.52](https://github.com/lithiumtech/rdbi/tree/rdbi-core-0.52) (2016-04-27)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-core-0.51...rdbi-core-0.52)
+
+## [rdbi-core-0.51](https://github.com/lithiumtech/rdbi/tree/rdbi-core-0.51) (2016-04-27)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-core-0.49...rdbi-core-0.51)
+
+**Merged pull requests:**
+
+- LSTN-547 Updated rate limiter to return time to wait before retry [\#41](https://github.com/lithiumtech/rdbi/pull/41) ([kumarad](https://github.com/kumarad))
+
 ## [rdbi-core-0.49](https://github.com/lithiumtech/rdbi/tree/rdbi-core-0.49) (2016-04-19)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-core-0.48...rdbi-core-0.49)
 
