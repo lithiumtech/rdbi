@@ -62,14 +62,14 @@ public class RateLimiter {
      * @return Whether the permit was acquired or not.
      */
     public boolean acquire(boolean isBlocking) {
-        return !acquireWithRetryInMillis(isBlocking).isPresent();
+        return !getOptionalWaitTimeForPermit(isBlocking).isPresent();
     }
 
     /**
      * @return If absent, the permit has been acquired. If present, indicates the time the client should wait before
      * attempting to acquire permit again.
      */
-    public Optional<Long> acquireWithRetryInMillis(boolean isBlocking) {
+    public Optional<Long> getOptionalWaitTimeForPermit(boolean isBlocking) {
         try (Handle handle = rdbi.open()) {
             final Jedis jedis = handle.jedis();
 
