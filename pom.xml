@@ -11,7 +11,7 @@
 
     <groupId>com.lithium.dbi.rdbi</groupId>
     <artifactId>rdbi-core</artifactId>
-    <version>0.50-SNAPSHOT</version>
+    <version>0.51-SNAPSHOT</version>
     <name>rDBI</name>
     <url>https://github.com/lithiumtech/rdbi</url>
     <description>
