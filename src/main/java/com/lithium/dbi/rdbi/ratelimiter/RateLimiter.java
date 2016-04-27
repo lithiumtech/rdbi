@@ -1,6 +1,7 @@
 package com.lithium.dbi.rdbi.ratelimiter;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
@@ -57,7 +58,18 @@ public class RateLimiter {
         }
     }
 
+    /**
+     * @return Whether the permit was acquired or not.
+     */
     public boolean acquire(boolean isBlocking) {
+        return !getOptionalWaitTimeForPermit(isBlocking).isPresent();
+    }
+
+    /**
+     * @return If absent, the permit has been acquired. If present, indicates the time the client should wait before
+     * attempting to acquire permit again.
+     */
+    public Optional<Long> getOptionalWaitTimeForPermit(boolean isBlocking) {
         try (Handle handle = rdbi.open()) {
             final Jedis jedis = handle.jedis();
 
@@ -78,14 +90,15 @@ public class RateLimiter {
 
                 if (evalResult > 0) {
                     // We are good!
-                    return true;
+                    return Optional.absent();
                 }
 
                 // We are over our allotment. The return value is the negative of the number of seconds we should wait.
+                long retryInMillis = -1 * evalResult * 1000;
                 if (!isBlocking) {
-                    return false;
+                    return Optional.of(retryInMillis);
                 }
-                Thread.sleep(Math.max(100, -1 * evalResult * 1000));
+                Thread.sleep(Math.max(100, retryInMillis));
             }
         } catch (InterruptedException e) {
             throw Throwables.propagate(e);
