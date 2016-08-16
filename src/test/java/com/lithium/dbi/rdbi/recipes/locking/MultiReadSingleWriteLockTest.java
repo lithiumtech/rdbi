@@ -20,7 +20,7 @@ import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertTrue;
 
 @Test(groups = "integration")
-public class MultiReadWriteLockTest {
+public class MultiReadSingleWriteLockTest {
     private static final String REDIS_HOST = "localhost";
     private static final int REDIS_PORT = 6379;
     private final JedisPool jedisPool = new JedisPool(new JedisPoolConfig(), REDIS_HOST, REDIS_PORT, Protocol.DEFAULT_TIMEOUT);
@@ -38,11 +38,11 @@ public class MultiReadWriteLockTest {
 
     @Test
     public void testAcquireWriteLock_simpleAcquireAndRelease() throws Exception {
-        final MultiReadWriteLock lock = new MultiReadWriteLock(rdbi,
-                                                               writeLockKey,
-                                                               readLockKey,
-                                                               (int) TimeUnit.MINUTES.toMillis(1),
-                                                               (int) TimeUnit.MINUTES.toMillis(1));
+        final MultiReadSingleWriteLock lock = new MultiReadSingleWriteLock(rdbi,
+                                                                           writeLockKey,
+                                                                           readLockKey,
+                                                                           (int) TimeUnit.MINUTES.toMillis(1),
+                                                                           (int) TimeUnit.MINUTES.toMillis(1));
 
         final String lockOwnerId = UUID.randomUUID().toString();
         try (Handle handle = rdbi.open()) {
@@ -61,11 +61,11 @@ public class MultiReadWriteLockTest {
 
     @Test
     public void testAcquireWriteLock_writeLockExpiration() throws Exception {
-        final MultiReadWriteLock lock = new MultiReadWriteLock(rdbi,
-                                                               writeLockKey,
-                                                               readLockKey,
-                                                               500,
-                                                               500);
+        final MultiReadSingleWriteLock lock = new MultiReadSingleWriteLock(rdbi,
+                                                                           writeLockKey,
+                                                                           readLockKey,
+                                                                           500,
+                                                                           500);
         final String lockOwnerId = UUID.randomUUID().toString();
         try (Handle handle = rdbi.open()) {
             // start by checking that no one owns lock
@@ -95,11 +95,11 @@ public class MultiReadWriteLockTest {
 
     @Test
     public void testAcquireReadLock_simpleAcquireAndRelease() throws Exception {
-        final MultiReadWriteLock lock = new MultiReadWriteLock(rdbi,
-                                                               writeLockKey,
-                                                               readLockKey,
-                                                               (int) TimeUnit.MINUTES.toMillis(1),
-                                                               (int) TimeUnit.MINUTES.toMillis(1));
+        final MultiReadSingleWriteLock lock = new MultiReadSingleWriteLock(rdbi,
+                                                                           writeLockKey,
+                                                                           readLockKey,
+                                                                           (int) TimeUnit.MINUTES.toMillis(1),
+                                                                           (int) TimeUnit.MINUTES.toMillis(1));
 
         final String lockOwnerId = UUID.randomUUID().toString();
         try (Handle handle = rdbi.open()) {
@@ -142,11 +142,11 @@ public class MultiReadWriteLockTest {
 
     @Test
     public void testAcquireReadLock_readLockExpiration() throws Exception {
-        final MultiReadWriteLock lock = new MultiReadWriteLock(rdbi,
-                                                               writeLockKey,
-                                                               readLockKey,
-                                                               500,
-                                                               500);
+        final MultiReadSingleWriteLock lock = new MultiReadSingleWriteLock(rdbi,
+                                                                           writeLockKey,
+                                                                           readLockKey,
+                                                                           500,
+                                                                           500);
 
         final String lockOwnerId = UUID.randomUUID().toString();
         try (Handle handle = rdbi.open()) {
@@ -173,11 +173,11 @@ public class MultiReadWriteLockTest {
 
     @Test
     public void testAcquireWriteLock_blockedByReads() throws Exception {
-        final MultiReadWriteLock lock = new MultiReadWriteLock(rdbi,
-                                                               writeLockKey,
-                                                               readLockKey,
-                                                               500,
-                                                               500);
+        final MultiReadSingleWriteLock lock = new MultiReadSingleWriteLock(rdbi,
+                                                                           writeLockKey,
+                                                                           readLockKey,
+                                                                           500,
+                                                                           500);
 
         final String readLockOwner = UUID.randomUUID().toString();
         final String writeLockOwner = UUID.randomUUID().toString();
@@ -192,11 +192,11 @@ public class MultiReadWriteLockTest {
 
     @Test
     public void testAcquireReadLock_blockedByWrite() throws Exception {
-        final MultiReadWriteLock lock = new MultiReadWriteLock(rdbi,
-                                                               writeLockKey,
-                                                               readLockKey,
-                                                               500,
-                                                               500);
+        final MultiReadSingleWriteLock lock = new MultiReadSingleWriteLock(rdbi,
+                                                                           writeLockKey,
+                                                                           readLockKey,
+                                                                           500,
+                                                                           500);
 
         final String readLockOwner = UUID.randomUUID().toString();
         final String writeLockOwner = UUID.randomUUID().toString();

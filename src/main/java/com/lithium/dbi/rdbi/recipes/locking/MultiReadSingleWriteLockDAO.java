@@ -4,7 +4,7 @@ import com.lithium.dbi.rdbi.BindArg;
 import com.lithium.dbi.rdbi.BindKey;
 import com.lithium.dbi.rdbi.Query;
 
-public interface MultiReadWriteLockDAO {
+public interface MultiReadSingleWriteLockDAO {
     @Query(
             "local writeLock = redis.call('SETNX', $writeLockKey$, $ownerId$)\n" +
             "if writeLock == 1 then\n" +
