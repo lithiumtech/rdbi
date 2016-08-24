@@ -238,4 +238,24 @@ public class ExclusiveJobSchedulerTest {
         assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 0);
         assertEquals(scheduledJobSystem.getRunningJobCount(tubeName), 3);
     }
+
+    @Test
+    public void testReadyCountWithSomeJobsNotReady() throws Exception {
+        scheduledJobSystem.schedule(tubeName, "{job1}", 0);
+        scheduledJobSystem.schedule(tubeName, "{job2}", 500);
+        scheduledJobSystem.schedule(tubeName, "{job3}", 10000000);
+
+        assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 1);
+
+        scheduledJobSystem.reserveSingle(tubeName, 10000);
+
+        assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 0);
+
+        Thread.sleep(500);
+
+        assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 1);
+
+        scheduledJobSystem.reserveSingle(tubeName, 10000);
+        assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 0);
+    }
 }
