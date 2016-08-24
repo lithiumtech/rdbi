@@ -1,12 +1,11 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
-import com.google.common.collect.Lists;
-import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
 import redis.clients.jedis.Tuple;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -114,7 +113,7 @@ public abstract class AbstractJobScheduler<T extends JobInfo> {
     }
 
     protected List<T> peekInternal(String queue, Double min, Double max, int offset, int count) {
-        List<T> jobInfos = Lists.newArrayList();
+        List<T> jobInfos = new ArrayList<>();
         try (Handle handle = rdbi.open()) {
             Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
             for (Tuple tuple : tupleSet) {
@@ -127,12 +126,7 @@ public abstract class AbstractJobScheduler<T extends JobInfo> {
     protected abstract T createJobInfo(String jobStr, double jobScore);
 
     private long getSortedSetSize(final String key) {
-        return rdbi.withHandle(new Callback<Long>() {
-            @Override
-            public Long run(Handle handle) {
-                return handle.jedis().zcount(key, "-inf", "+inf");
-            }
-        });
+        return rdbi.withHandle(handle -> handle.jedis().zcount(key, "-inf", "+inf"));
     }
 
 }

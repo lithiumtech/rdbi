@@ -1,13 +1,14 @@
 package com.lithium.dbi.rdbi.ratelimiter;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.apache.commons.codec.digest.DigestUtils;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisDataException;
+
+import java.util.Optional;
 
 public class RateLimiter {
 
@@ -90,7 +91,7 @@ public class RateLimiter {
 
                 if (evalResult > 0) {
                     // We are good!
-                    return Optional.absent();
+                    return Optional.empty();
                 }
 
                 // We are over our allotment. The return value is the negative of the number of seconds we should wait.

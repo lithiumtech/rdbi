@@ -1,6 +1,5 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
-import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
@@ -26,12 +25,9 @@ public class PriorityBasedJobScheduler extends AbstractJobScheduler<JobInfo> {
      * @return true if the job was successfully scheduled
      */
     public boolean schedule(final String tube, final String jobStr, final double priority) {
-        return rdbi.withHandle(new Callback<Boolean>() {
-            @Override
-            public Boolean run(Handle handle) {
-                handle.jedis().zadd(getReadyQueue(tube), priority, jobStr);
-                return true;
-            }
+        return rdbi.withHandle(handle -> {
+            handle.jedis().zadd(getReadyQueue(tube), priority, jobStr);
+            return true;
         });
     }
 

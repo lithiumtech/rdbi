@@ -3,8 +3,6 @@ package com.lithium.dbi.rdbi.recipes.scheduler;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Sets;
-import com.lithium.dbi.rdbi.Callback;
-import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import com.lithium.dbi.rdbi.testutil.TubeUtils;
 import org.joda.time.Instant;
@@ -39,13 +37,7 @@ public class ExclusiveJobSchedulerTest {
     @AfterMethod
     public void tearDown(){
         // nuke the queues
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().del(scheduledJobSystem.getReadyQueue(tubeName), scheduledJobSystem.getRunningQueue(tubeName));
-                return null;
-            }
-        });
+        rdbi.consumeHandle(handle -> handle.jedis().del(scheduledJobSystem.getReadyQueue(tubeName), scheduledJobSystem.getRunningQueue(tubeName)));
 
         // ensure system is not paused
         scheduledJobSystem.resume(tubeName);

@@ -25,13 +25,13 @@ public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
 
 
     /**
-     * @param keyGenerator - something that will turn your key object into a string redis can use as a key.
+     * @param redisKeyGenerator - something that will turn your key object into a string redis can use as a key.
      *                     will be prefixed by the keyPrefix string.
      * @param serializationHelper - a codec to get your value object to and from a string
      * @param rdbi
      * @param cacheName - name of cache, used in log statements
      * @param keyPrefix - prefix of all keys used by this cache in redis
-     * @param valueTtlSecs - redis entries holding your values will expire after this many seconds
+     * @param valueTtl - redis entries holding your values will expire after this many seconds
      */
     public RedisMap(KeyGenerator<KeyType> redisKeyGenerator,
                     SerializationHelper<ValueType> serializationHelper,

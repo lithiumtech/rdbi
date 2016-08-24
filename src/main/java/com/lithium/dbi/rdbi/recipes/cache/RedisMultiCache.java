@@ -1,8 +1,5 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
-import com.google.common.base.Function;
-import com.google.common.base.Predicates;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
@@ -17,7 +14,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.MoreObjects.firstNonNull;
 
@@ -71,10 +71,10 @@ public class RedisMultiCache<KeyType, ValueType> {
         try (Handle handle = rdbi.open()) {
             final String[] fields = generateRedisFields(keys);
             final List<String> encodedHits = handle.jedis().hmget(cacheName, fields);
-            return FluentIterable.from(encodedHits)
-                                 .transform(decodeValue())
-                                 .filter(Predicates.notNull())
-                                 .uniqueIndex(valueKeyGenerator);
+            return encodedHits.stream()
+                              .map(decodeValue())
+                              .filter(Objects::nonNull)
+                              .collect(Collectors.toMap(valueKeyGenerator, Function.identity()));
         } catch (Exception ex) {
             log.error("{}: failed to fetch values from cache", cacheName, ex);
             return ImmutableMap.of();
@@ -112,9 +112,10 @@ public class RedisMultiCache<KeyType, ValueType> {
     private Map<KeyType, ValueType> resolveCacheMisses(Set<KeyType> keys) {
         final Map<KeyType, ValueType> resolvedMisses;
         try {
-            resolvedMisses = FluentIterable.from(firstNonNull(loader.apply(keys), ImmutableList.<ValueType>of()))
-                                           .filter(Predicates.notNull())
-                                           .uniqueIndex(valueKeyGenerator);
+            resolvedMisses = firstNonNull(loader.apply(keys), ImmutableList.<ValueType>of())
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toMap(valueKeyGenerator, Function.identity()));
         } catch (Exception ex) {
             log.error("{}: failed to resolve cache misses", cacheName, ex);
             return ImmutableMap.of();

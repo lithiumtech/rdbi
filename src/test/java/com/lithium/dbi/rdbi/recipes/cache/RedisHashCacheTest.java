@@ -1,14 +1,10 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
-import com.google.common.base.Function;
-import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
-import com.lithium.dbi.rdbi.Callback;
-import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Duration;
 import org.testng.annotations.AfterMethod;
@@ -20,6 +16,7 @@ import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
@@ -31,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
@@ -53,23 +51,14 @@ public class RedisHashCacheTest {
         final String barfKey = "barf";
 
         final ImmutableMap<String, TestContainer> mappings = ImmutableMap.of(key1, tc1, key2, tc2);
-        final Function<String, TestContainer> loader = new Function<String, TestContainer>() {
-            @Nullable
-            @Override
-            public TestContainer apply(@Nullable String s) {
-                if (barfKey.equals(s)) {
-                    throw new RuntimeException(barfKey);
-                }
-                return mappings.get(s);
+        final Function<String, TestContainer> loader = (s) -> {
+            if (barfKey.equals(s)) {
+                throw new RuntimeException(barfKey);
             }
+            return mappings.get(s);
         };
 
-        final Callable<Collection<TestContainer>> loadAll = new Callable<Collection<TestContainer>>() {
-            @Override
-            public Collection<TestContainer> call() throws Exception {
-                return mappings.values();
-            }
-        };
+        final Callable<Collection<TestContainer>> loadAll = () -> mappings.values();
 
         final CounterRunnable hits = new CounterRunnable();
         final CounterRunnable misses = new CounterRunnable();
@@ -169,7 +158,7 @@ public class RedisHashCacheTest {
                         TEST_NAMESPACE,
                         120,
                         0,
-                        Optional.<ExecutorService>absent(), // Force synchronous calls!
+                        Optional.<ExecutorService>empty(), // Force synchronous calls!
                         NOOP,
                         NOOP,
                         NOOP,
@@ -267,7 +256,7 @@ public class RedisHashCacheTest {
                         TEST_NAMESPACE,
                         120,
                         0,
-                        Optional.<ExecutorService>absent(), // Force synchronous calls!
+                        Optional.<ExecutorService>empty(), // Force synchronous calls!
                         NOOP,
                         NOOP,
                         NOOP,
@@ -628,11 +617,8 @@ public class RedisHashCacheTest {
         };
 
 
-        final Callable<Collection<TestContainer>> fetchAllAlwaysFails = new Callable<Collection<TestContainer>>() {
-            @Override
-            public Collection<TestContainer> call() throws Exception {
-                throw new RuntimeException("oh-noes");
-            }
+        final Callable<Collection<TestContainer>> fetchAllAlwaysFails = () -> {
+            throw new RuntimeException("oh-noes");
         };
 
         final RedisHashCache<String, TestContainer> cache =
@@ -648,7 +634,7 @@ public class RedisHashCacheTest {
                         TEST_NAMESPACE,
                         Integer.MAX_VALUE,
                         0,
-                        Optional.<ExecutorService>absent(),
+                        Optional.<ExecutorService>empty(),
                         NOOP,
                         NOOP,
                         NOOP,
@@ -717,7 +703,7 @@ public class RedisHashCacheTest {
                         TEST_NAMESPACE,
                         120,
                         0,
-                        Optional.<ExecutorService>absent(),
+                        Optional.<ExecutorService>empty(),
                         NOOP,
                         NOOP,
                         NOOP,
@@ -914,13 +900,7 @@ public class RedisHashCacheTest {
 
     @BeforeMethod
     public void clearRedis() {
-        createRdbi().withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().del(TEST_NAMESPACE);
-                return null;
-            }
-        });
+        createRdbi().consumeHandle(handle -> handle.jedis().del(TEST_NAMESPACE));
     }
 
     @AfterMethod

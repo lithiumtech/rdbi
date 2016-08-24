@@ -1,7 +1,5 @@
 package com.lithium.dbi.rdbi.ratelimiter;
 
-import com.lithium.dbi.rdbi.Callback;
-import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,14 +61,7 @@ public class RateLimiterTest {
         RDBI rdbi = new RDBI(jedisPool);
 
         // Verify our loading of the LUA script upon initial start.
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().scriptFlush();
-                return null;
-            }
-        });
-
+        rdbi.consumeHandle(handle -> handle.jedis().scriptFlush());
         return new RateLimiter("d:test:rdbi", rdbi, UUID.randomUUID().toString(), permitsPerSecond);
     }
 

@@ -9,6 +9,7 @@ import redis.clients.jedis.exceptions.JedisException;
 import redis.clients.util.Pool;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.function.Consumer;
 
 /**
  * Use this class as a manager for jedis and its pool as well as redis lua script loading
@@ -29,17 +30,22 @@ public class RDBI {
     }
 
     public <T> T withHandle(Callback<T> callback) {
-
-        Handle handle = open();
-        try {
-            T result = callback.run(handle);
-            return result;
+        try (Handle handle = open()) {
+            return callback.run(handle);
         } catch (JedisException e) {
             throw Throwables.propagate(e);
         } catch (Exception e) {
             throw Throwables.propagate(e);
-        } finally {
-            handle.close();
+        }
+    }
+
+    public void consumeHandle(Consumer<Handle> consumer) {
+        try (Handle handle = open()) {
+            consumer.accept(handle);
+        } catch (JedisException e) {
+            throw Throwables.propagate(e);
+        } catch (Exception e) {
+            throw Throwables.propagate(e);
         }
     }
 

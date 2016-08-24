@@ -1,10 +1,10 @@
 package com.lithium.dbi.rdbi;
 
-import com.google.common.collect.Sets;
 import org.antlr.stringtemplate.StringTemplate;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.Set;
 
 class LuaContextExtractor {
@@ -15,7 +15,7 @@ class LuaContextExtractor {
 
         Annotation[][] annotationsParams = method.getParameterAnnotations();
         int paramCounter = 0;
-        Set<Integer> keys = Sets.newHashSet();
+        Set<Integer> keys = new HashSet<>();
         int keyCounter = 0;
         int argCounter = 0;
         for ( Annotation[] annotations : annotationsParams) {

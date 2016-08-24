@@ -1,11 +1,11 @@
 package com.lithium.dbi.rdbi;
 
-import com.google.common.collect.Lists;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
 import redis.clients.jedis.Jedis;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -49,8 +49,8 @@ class MethodContextInterceptor implements MethodInterceptor {
 
     private Object callEvalDynamicList(MethodContext context, Object[] objects) {
 
-        List<String> keys = Lists.newArrayList();
-        List<String> argv = Lists.newArrayList();
+        List<String> keys = new ArrayList<>();
+        List<String> argv = new ArrayList<>();
 
         for (int i = 0; i < objects.length; i++) {
             if (context.getLuaContext().isKey(i)) {

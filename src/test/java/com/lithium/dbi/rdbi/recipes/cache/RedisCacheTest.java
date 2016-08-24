@@ -1,7 +1,5 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
-import com.google.common.base.Function;
-import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -9,8 +7,8 @@ import com.lithium.dbi.rdbi.RDBI;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
-import javax.annotation.Nullable;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutionException;
@@ -18,9 +16,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
-import static junit.framework.Assert.assertTrue;
 import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
 import static org.testng.AssertJUnit.assertEquals;
 
 @Test(groups = "integration")
@@ -79,12 +78,7 @@ public class RedisCacheTest {
         }
     };
 
-    public static final KeyGenerator<String> keyGenerator = new KeyGenerator<String>() {
-        @Override
-        public String redisKey(String key) {
-            return "KEY:" + key;
-        }
-    };
+    public static final KeyGenerator<String> keyGenerator = (key) -> "KEY:" + key;
 
     @Test
     public void sniffTest() throws ExecutionException {
@@ -95,15 +89,11 @@ public class RedisCacheTest {
         final String barfKey = "barf";
 
         final ImmutableMap<String, TestContainer> mappings = ImmutableMap.of(key1, tc1, key2, tc2);
-        final Function<String, TestContainer> loader = new Function<String, TestContainer>() {
-            @Nullable
-            @Override
-            public TestContainer apply(@Nullable String s) {
-                if (barfKey.equals(s)) {
-                    throw new RuntimeException(barfKey);
-                }
-                return mappings.get(s);
+        final Function<String, TestContainer> loader = (s) -> {
+            if (barfKey.equals(s)) {
+                throw new RuntimeException(barfKey);
             }
+            return mappings.get(s);
         };
 
         final RDBI rdbi = new RDBI(new JedisPool("localhost"));
@@ -120,19 +110,19 @@ public class RedisCacheTest {
                                                           new ArrayBlockingQueue<Runnable>(10));
 
         final RedisCache<String, TestContainer> cache = new RedisCache<>(keyGenerator,
-                             helper,
-                             rdbi,
-                             loader,
-                             "superFancyCache",
-                             "prefix",
-                             120,
-                             0,
-                             60,
-                             Optional.of(es),
-                             hits,
-                             misses,
-                             loadSuccess,
-                             loadFailure);
+                                                                         helper,
+                                                                         rdbi,
+                                                                         loader,
+                                                                         "superFancyCache",
+                                                                         "prefix",
+                                                                         120,
+                                                                         0,
+                                                                         60,
+                                                                         Optional.of(es),
+                                                                         hits,
+                                                                         misses,
+                                                                         loadSuccess,
+                                                                         loadFailure);
 
         cache.invalidateAll(mappings.keySet());
         cache.releaseLock(key1); // just in case...
@@ -191,15 +181,11 @@ public class RedisCacheTest {
         final TestContainer tc1 = new TestContainer(UUID.randomUUID());
 
         final ArrayBlockingQueue<TestContainer> queue = new ArrayBlockingQueue<>(1);
-        final Function<String, TestContainer> mrDeadlock = new Function<String, TestContainer>() {
-            @Nullable
-            @Override
-            public TestContainer apply(@Nullable String s) {
-                try {
-                    return queue.take();
-                } catch (InterruptedException e) {
-                    throw Throwables.propagate(e);
-                }
+        final Function<String, TestContainer> mrDeadlock = (s) -> {
+            try {
+                return queue.take();
+            } catch (InterruptedException e) {
+                throw Throwables.propagate(e);
             }
         };
 

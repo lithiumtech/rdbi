@@ -1,12 +1,13 @@
 package com.lithium.dbi.rdbi.recipes.locking;
 
-import com.google.common.base.Optional;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
+
+import java.util.Optional;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;

@@ -1,7 +1,6 @@
 package com.lithium.dbi.rdbi.recipes.channel;
 
-import com.google.common.collect.Lists;
-
+import java.util.ArrayList;
 import java.util.List;
 
 public class GetResult {
@@ -17,7 +16,7 @@ public class GetResult {
     }
 
     public GetResult() {
-        this.messages = Lists.newArrayList();
+        this.messages = new ArrayList<>();
         this.depth = 0L;
     }
 

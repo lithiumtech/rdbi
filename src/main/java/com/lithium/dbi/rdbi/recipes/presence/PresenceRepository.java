@@ -1,12 +1,11 @@
 package com.lithium.dbi.rdbi.recipes.presence;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Optional;
-import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
 
+import java.util.Optional;
 import java.util.Set;
 
 public class PresenceRepository {
@@ -110,13 +109,7 @@ public class PresenceRepository {
 
     @VisibleForTesting
     void nukeForTest(final String tube) {
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().del(getQueue(tube));
-                return null;
-            }
-        });
+        rdbi.consumeHandle(handle -> handle.jedis().del(getQueue(tube)));
     }
 
     private String getQueue(String tube) {

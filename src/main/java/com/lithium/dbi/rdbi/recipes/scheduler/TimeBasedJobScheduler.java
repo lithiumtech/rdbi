@@ -1,6 +1,5 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
-import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
@@ -161,12 +160,7 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
     }
 
     private long getSortedSetSize(final String key) {
-        return rdbi.withHandle(new Callback<Long>() {
-            @Override
-            public Long run(Handle handle) {
-                return handle.jedis().zcount(key, "-inf", "+inf");
-            }
-        });
+        return rdbi.withHandle(handle -> handle.jedis().zcount(key, "-inf", "+inf"));
     }
 
     @Override

@@ -1,8 +1,9 @@
 package com.lithium.dbi.rdbi.recipes.locking;
 
-import com.google.common.base.Optional;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
+
+import java.util.Optional;
 
 public class RedisSemaphore {
     private final RDBI rdbi;
@@ -31,8 +32,8 @@ public class RedisSemaphore {
 
     public Optional<String> releaseSemaphore() {
         try (Handle handle = rdbi.open()) {
-            return Optional.fromNullable(handle.attach(RedisSemaphoreDAO.class)
-                                               .releaseSemaphore(semaphoreKey, ownerId));
+            return Optional.ofNullable(handle.attach(RedisSemaphoreDAO.class)
+                                             .releaseSemaphore(semaphoreKey, ownerId));
         }
     }
 }

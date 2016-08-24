@@ -1,12 +1,12 @@
 package com.lithium.dbi.rdbi.recipes.channel;
 
-import java.util.List;
-import java.util.Set;
-
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Transaction;
+
+import java.util.List;
+import java.util.Set;
 
 
 public class ChannelPublisher {

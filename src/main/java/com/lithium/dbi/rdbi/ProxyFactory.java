@@ -57,9 +57,7 @@ class ProxyFactory {
 
             try {
                 buildMethodContext(t, jedis);
-            } catch (IllegalAccessException e) {
-                throw Throwables.propagate(e);
-            } catch (InstantiationException e) {
+            } catch (InstantiationException | IllegalAccessException e) {
                 throw Throwables.propagate(e);
             }
 
