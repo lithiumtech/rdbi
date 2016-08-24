@@ -86,27 +86,40 @@ public abstract class AbstractDedupJobScheduler {
     }
 
     public long getReadyJobCount(String tube) {
-        return getJobCount(getReadyQueue(tube));
+        final String queue = getReadyQueue(tube);
+        final long now = Instant.now().getMillis();
+        return rdbi.withHandle(new Callback<Long>() {
+            @Override
+            public Long run(Handle handle) {
+                return handle.jedis().zcount(queue, 0, now);
+            }
+        });
     }
 
     public long getRunningJobCount(String tube) {
-        return getJobCount(getRunningQueue(tube));
+        final String queue = getRunningQueue(tube);
+        return rdbi.withHandle(new Callback<Long>() {
+            @Override
+            public Long run(Handle handle) {
+                return handle.jedis().zcard(queue);
+            }
+        });
     }
 
     public List<TimeJobInfo> peekDelayed(String tube, int offset, int count) {
-        return peekInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+        return peekInternal(getReadyQueue(tube), (double) Instant.now().getMillis(), Double.MAX_VALUE, offset, count);
     }
 
     public List<TimeJobInfo> peekReady(String tube, int offset, int count) {
-        return peekInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+        return peekInternal(getReadyQueue(tube), 0.0d, (double) Instant.now().getMillis(), offset, count);
     }
 
     public List<TimeJobInfo> peekRunning(String tube, int offset, int count) {
-        return peekInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+        return peekInternal(getRunningQueue(tube), (double) Instant.now().getMillis(), Double.MAX_VALUE, offset, count);
     }
 
     public List<TimeJobInfo> peekExpired(String tube, int offset, int count) {
-        return peekInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+        return peekInternal(getRunningQueue(tube), 0.0d, (double) Instant.now().getMillis(), offset, count);
     }
 
     private List<TimeJobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
@@ -119,15 +132,6 @@ public abstract class AbstractDedupJobScheduler {
             }
             return jobInfos;
         }
-    }
-
-    private long getJobCount(final String queue) {
-        return rdbi.withHandle(new Callback<Long>() {
-            @Override
-            public Long run(Handle handle) {
-                return handle.jedis().zcard(queue);
-            }
-        });
     }
 
     protected String getRunningQueue(String tube) {
