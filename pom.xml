@@ -11,7 +11,7 @@
 
     <groupId>com.lithium.dbi.rdbi</groupId>
     <artifactId>rdbi</artifactId>
-    <version>0.55-SNAPSHOT</version>
+    <version>0.56-SNAPSHOT</version>
     <name>rDBI</name>
     <url>https://github.com/lithiumtech/rdbi</url>
     <packaging>pom</packaging>
