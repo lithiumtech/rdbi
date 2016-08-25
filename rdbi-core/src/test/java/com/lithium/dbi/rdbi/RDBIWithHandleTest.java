@@ -6,13 +6,13 @@ import org.testng.annotations.Test;
 
 import java.util.List;
 
-import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.fail;
+import static org.testng.Assert.assertEquals;
 
 public class RDBIWithHandleTest {
 
-    interface TestDAO {
+    static interface TestDAO {
         @Query(
                 "redis.call('SET',  KEYS[1], ARGV[1]);" +
                         "return 0;"
@@ -31,14 +31,6 @@ public class RDBIWithHandleTest {
                 return null;
             }
         });
-    }
-
-    @Test
-    public void testBasicConsumeHandle() {
-        RDBI rdbi = new RDBI(RDBITest.getJedisPool());
-        rdbi.consumeHandle(handle ->
-                assertEquals(handle.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")),
-                             0));
     }
 
     @Test

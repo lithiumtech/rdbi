@@ -1,6 +1,7 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
 import com.google.common.collect.Lists;
+import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
@@ -27,11 +28,22 @@ public abstract class AbstractDedupJobScheduler {
      * or reserved.
      */
     public void pause(final String tube) {
-        rdbi.consumeHandle(handle -> handle.jedis().set(getPaused(tube), String.valueOf(System.currentTimeMillis() / 1000)));
+        rdbi.withHandle(new Callback<Void>() {
+            @Override
+            public Void run(Handle handle) {
+                handle.jedis().set(getPaused(tube), String.valueOf(System.currentTimeMillis() / 1000));
+                return null;
+            }
+        });
     }
 
     public boolean isPaused(final String tube) {
-        return rdbi.withHandle(handle -> handle.jedis().get(getPaused(tube)) != null);
+        return rdbi.withHandle(new Callback<Boolean>() {
+            @Override
+            public Boolean run(Handle handle) {
+                return handle.jedis().get(getPaused(tube)) != null;
+            }
+        });
     }
 
     /**
@@ -39,14 +51,25 @@ public abstract class AbstractDedupJobScheduler {
      * it will be a unix timestamp (seconds since the epoch).
      */
     public String getPauseStart(final String tube) {
-        return rdbi.withHandle(handle -> handle.jedis().get(getPaused(tube)));
+        return rdbi.withHandle(new Callback<String>() {
+            @Override
+            public String run(Handle handle) {
+                return handle.jedis().get(getPaused(tube));
+            }
+        });
     }
 
     /**
      * This will resume / un-pause the system for the specified tube, allowing jobs to be scheduled and reserved.
      */
     public void resume(final String tube) {
-        rdbi.consumeHandle(handle -> handle.jedis().del(getPaused(tube)));
+        rdbi.withHandle(new Callback<Void>() {
+            @Override
+            public Void run(Handle handle) {
+                handle.jedis().del(getPaused(tube));
+                return null;
+            }
+        });
     }
 
     public TimeJobInfo reserveSingle(final String tube, final long ttrInMillis) {
@@ -65,12 +88,22 @@ public abstract class AbstractDedupJobScheduler {
     public long getReadyJobCount(String tube) {
         final String queue = getReadyQueue(tube);
         final long now = Instant.now().getMillis();
-        return rdbi.withHandle(handle -> handle.jedis().zcount(queue, 0, now));
+        return rdbi.withHandle(new Callback<Long>() {
+            @Override
+            public Long run(Handle handle) {
+                return handle.jedis().zcount(queue, 0, now);
+            }
+        });
     }
 
     public long getRunningJobCount(String tube) {
         final String queue = getRunningQueue(tube);
-        return rdbi.withHandle(handle -> handle.jedis().zcard(queue));
+        return rdbi.withHandle(new Callback<Long>() {
+            @Override
+            public Long run(Handle handle) {
+                return handle.jedis().zcard(queue);
+            }
+        });
     }
 
     public List<TimeJobInfo> peekDelayed(String tube, int offset, int count) {
@@ -90,6 +123,7 @@ public abstract class AbstractDedupJobScheduler {
     }
 
     private List<TimeJobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
+
         final List<TimeJobInfo> jobInfos = Lists.newArrayList();
         try (Handle handle = rdbi.open()) {
             Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
