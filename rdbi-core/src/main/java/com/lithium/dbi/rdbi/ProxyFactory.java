@@ -18,16 +18,7 @@ import java.util.concurrent.ConcurrentMap;
 class ProxyFactory {
 
     private static final MethodInterceptor NO_OP = new MethodNoOpInterceptor();
-    private static final CallbackFilter FINALIZE_FILTER = new CallbackFilter() {
-        public int accept(Method method) {
-            if (method.getName().equals("finalize") &&
-                    method.getParameterTypes().length == 0 &&
-                    method.getReturnType() == Void.TYPE) {
-                return 0; //the NO_OP method interceptor
-            }
-            return 1; //the everything else method interceptor
-        }
-    };
+    private static final CallbackFilter FINALIZE_FILTER = new FinalizeFilter();
 
     @VisibleForTesting
     final ConcurrentMap<Class<?>, Factory> factoryCache;
@@ -115,5 +106,17 @@ class ProxyFactory {
     private boolean isRawMethod(Method method) {
         return (method.getParameterTypes().length == 0)
                 || (method.getParameterTypes()[0] == List.class);
+    }
+
+    private static class FinalizeFilter implements CallbackFilter {
+        @Override
+        public int accept(Method method) {
+            if (method.getName().equals("finalize") &&
+                    method.getParameterTypes().length == 0 &&
+                    method.getReturnType() == Void.TYPE) {
+                return 0; //the NO_OP method interceptor
+            }
+            return 1; //the everything else method interceptor
+        }
     }
 }
