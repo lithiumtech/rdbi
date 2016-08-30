@@ -4,14 +4,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.lithium</groupId>
-        <artifactId>lithium-oss-superpom</artifactId>
-        <version>0.9</version>
+        <groupId>com.lithium.dbi.rdbi</groupId>
+        <artifactId>rdbi-parent</artifactId>
+        <version>0.56-SNAPSHOT</version>
+        <relativePath>rdbi-parent/pom.xml</relativePath>
     </parent>
 
-    <groupId>com.lithium.dbi.rdbi</groupId>
     <artifactId>rdbi</artifactId>
-    <version>0.56-SNAPSHOT</version>
     <name>rDBI</name>
     <url>https://github.com/lithiumtech/rdbi</url>
     <packaging>pom</packaging>
@@ -21,39 +20,16 @@
         rDBI library is inspired by the awesome library jDBI, a convenience library for SQL.
     </description>
 
-
-    <organization>
-        <name>Lithium Technologies</name>
-        <url>http://lithium.com</url>
-    </organization>
-
-    <developers>
-        <developer>
-            <id>phutwo</id>
-            <email>phutwo@me.com</email>
-        </developer>
-    </developers>
-
-    <scm>
-        <url>scm:git:git@github.com:lithiumtech/rdbi.git</url>
-        <connection>scm:git:git@github.com:lithiumtech/rdbi.git</connection>
-        <developerConnection>scm:git:git@github.com:lithiumtech/rdbi.git</developerConnection>
-        <tag>rdbi-core-0.1</tag>
-    </scm>
-
-    <issueManagement>
-        <system>GitHub</system>
-        <url>https://github.com/lithiumtech/rdbi/issues</url>
-    </issueManagement>
-
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <modules>
+        <module>rdbi-parent</module>
         <module>rdbi-core</module>
         <module>rdbi-recipes</module>
         <module>rdbi-recipes-java7</module>
     </modules>
+
 </project>
 

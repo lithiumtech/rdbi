@@ -4,14 +4,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.lithium</groupId>
-        <artifactId>lithium-oss-superpom</artifactId>
-        <version>0.9</version>
+        <groupId>com.lithium.dbi.rdbi</groupId>
+        <artifactId>rdbi-parent</artifactId>
+        <version>0.56-SNAPSHOT</version>
+        <relativePath>../rdbi-parent/pom.xml</relativePath>
     </parent>
 
-    <groupId>com.lithium.dbi.rdbi</groupId>
     <artifactId>rdbi-recipes-java7</artifactId>
-    <version>0.55-SNAPSHOT</version>
     <name>rDBI-recipes-java7</name>
     <url>https://github.com/lithiumtech/rdbi</url>
     <description>
@@ -19,31 +18,6 @@
         returning the Jedis resource to the pool. It also has helper utilities for making Lua script calls to Redis easier.
         rDBI library is inspired by the awesome library jDBI, a convenience library for SQL.
     </description>
-
-
-    <organization>
-        <name>Lithium Technologies</name>
-        <url>http://lithium.com</url>
-    </organization>
-
-    <developers>
-        <developer>
-            <id>phutwo</id>
-            <email>phutwo@me.com</email>
-        </developer>
-    </developers>
-
-    <scm>
-        <url>scm:git:git@github.com:lithiumtech/rdbi.git</url>
-        <connection>scm:git:git@github.com:lithiumtech/rdbi.git</connection>
-        <developerConnection>scm:git:git@github.com:lithiumtech/rdbi.git</developerConnection>
-        <tag>rdbi-core-0.1</tag>
-    </scm>
-
-    <issueManagement>
-        <system>GitHub</system>
-        <url>https://github.com/lithiumtech/rdbi/issues</url>
-    </issueManagement>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -111,62 +85,51 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>19.0</version>
         </dependency>
         <dependency>
             <groupId>cglib</groupId>
             <artifactId>cglib-nodep</artifactId>
-            <version>3.2.4</version>
         </dependency>
         <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
-            <version>2.9.0</version>
         </dependency>
         <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>stringtemplate</artifactId>
             <version>3.2.1</version>
-            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.google.code.findbugs</groupId>
             <artifactId>jsr305</artifactId>
-            <version>2.0.1</version>
         </dependency>
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
-            <version>2.9.4</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.21</version>
         </dependency>
         <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
-            <version>1.10</version>
         </dependency>
 
         <!-- for tests -->
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
-            <version>6.9.10</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
-            <version>1.7.21</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-all</artifactId>
-            <version>1.10.19</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
