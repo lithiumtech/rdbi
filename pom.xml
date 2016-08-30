@@ -12,17 +12,7 @@
 
     <artifactId>rdbi</artifactId>
     <name>rDBI</name>
-    <url>https://github.com/lithiumtech/rdbi</url>
     <packaging>pom</packaging>
-    <description>
-        rDBI provides convenience utilites for Jedis, cleaning up some of Jedis's api pitfalls by automatically
-        returning the Jedis resource to the pool. It also has helper utilities for making Lua script calls to Redis easier.
-        rDBI library is inspired by the awesome library jDBI, a convenience library for SQL.
-    </description>
-
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
 
     <modules>
         <module>rdbi-parent</module>
@@ -30,16 +20,6 @@
         <module>rdbi-recipes</module>
         <module>rdbi-recipes-java7</module>
     </modules>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-release-plugin</artifactId>
-                <version>2.5.3</version>
-            </plugin>
-        </plugins>
-    </build>
 
 </project>
 
