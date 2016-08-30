@@ -12,6 +12,7 @@
 
     <artifactId>rdbi-recipes-java7</artifactId>
     <name>rDBI-recipes-java7</name>
+    <description>Java 7 recipes for rDBI</description>
 
     <dependencies>
         <dependency>

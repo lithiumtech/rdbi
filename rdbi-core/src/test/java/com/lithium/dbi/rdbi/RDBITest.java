@@ -1,22 +1,22 @@
 package com.lithium.dbi.rdbi;
 
-import com.google.common.collect.ImmutableList;
 import org.testng.annotations.Test;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisException;
 
+import java.util.Collections;
 import java.util.List;
 
-import static org.testng.Assert.assertFalse;
-import static org.testng.Assert.fail;
 import static org.mockito.Matchers.anyList;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 public class RDBITest {
 
@@ -116,14 +116,14 @@ public class RDBITest {
 
         Handle handle1 = rdbi.open();
         try {
-            assertEquals(handle1.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
+            assertEquals(handle1.attach(TestDAO.class).testExec(Collections.singletonList("hello"), Collections.singletonList("world")), 0);
         } finally {
             handle1.close();
         }
 
         Handle handle2 = rdbi.open();
         try {
-            assertEquals(handle2.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
+            assertEquals(handle2.attach(TestDAO.class).testExec(Collections.singletonList("hello"), Collections.singletonList("world")), 0);
         } finally {
             handle2.close();
         }
@@ -146,7 +146,7 @@ public class RDBITest {
 
         Handle handle = rdbi.open();
         try {
-            BasicObjectUnderTest dut = handle.attach(TestDAOWithResultSetMapper.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world"));
+            BasicObjectUnderTest dut = handle.attach(TestDAOWithResultSetMapper.class).testExec(Collections.singletonList("hello"), Collections.singletonList("world"));
             assertNotNull(dut);
             assertEquals(dut.getInput(), "0");
         } finally {

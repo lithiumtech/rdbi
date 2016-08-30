@@ -1,7 +1,5 @@
 package com.lithium.dbi.rdbi;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
@@ -19,7 +17,6 @@ public class RDBI {
     private final Pool<Jedis> pool;
     private static final Logger logger = LoggerFactory.getLogger(RDBI.class);
 
-    @VisibleForTesting
     final ProxyFactory proxyFactory;
 
     public RDBI(Pool<Jedis> pool) {
@@ -32,9 +29,9 @@ public class RDBI {
         try (Handle handle = open()) {
             return callback.run(handle);
         } catch (JedisException e) {
-            throw Throwables.propagate(e);
+            throw new RuntimeException(e);
         } catch (Exception e) {
-            throw Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -42,9 +39,9 @@ public class RDBI {
         try (Handle handle = open()) {
             consumer.accept(handle);
         } catch (JedisException e) {
-            throw Throwables.propagate(e);
+            throw new RuntimeException(e);
         } catch (Exception e) {
-            throw Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -54,7 +51,7 @@ public class RDBI {
             return new Handle(pool, resource, proxyFactory);
         } catch (Exception ex) {
             logger.error("Exception caught during resource create!", ex);
-            throw Throwables.propagate(ex);
+            throw new RuntimeException(ex);
         }
     }
 }

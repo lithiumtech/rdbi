@@ -1,14 +1,14 @@
 package com.lithium.dbi.rdbi;
 
 
-import com.google.common.collect.ImmutableList;
 import org.testng.annotations.Test;
 
+import java.util.Collections;
 import java.util.List;
 
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.fail;
-import static org.testng.Assert.assertEquals;
 
 public class RDBIWithHandleTest {
 
@@ -27,7 +27,7 @@ public class RDBIWithHandleTest {
         rdbi.withHandle(new Callback<Object>() {
             @Override
             public Object run(Handle handle) {
-                assertEquals(handle.attach(TestDAO.class).testExec(ImmutableList.of("hello"), ImmutableList.of("world")), 0);
+                assertEquals(handle.attach(TestDAO.class).testExec(Collections.singletonList("hello"), Collections.singletonList("world")), 0);
                 return null;
             }
         });

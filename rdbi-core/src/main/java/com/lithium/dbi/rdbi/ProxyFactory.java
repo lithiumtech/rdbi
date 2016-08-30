@@ -1,8 +1,5 @@
 package com.lithium.dbi.rdbi;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Throwables;
-import com.google.common.collect.Maps;
 import net.sf.cglib.proxy.Callback;
 import net.sf.cglib.proxy.CallbackFilter;
 import net.sf.cglib.proxy.Enhancer;
@@ -11,8 +8,10 @@ import net.sf.cglib.proxy.MethodInterceptor;
 import redis.clients.jedis.Jedis;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 class ProxyFactory {
@@ -20,17 +19,15 @@ class ProxyFactory {
     private static final MethodInterceptor NO_OP = new MethodNoOpInterceptor();
     private static final CallbackFilter FINALIZE_FILTER = new FinalizeFilter();
 
-    @VisibleForTesting
     final ConcurrentMap<Class<?>, Factory> factoryCache;
 
-    @VisibleForTesting
     final ConcurrentMap<Class<?>, Map<Method, MethodContext>> methodContextCache;
 
     private final Factory jedisInterceptorFactory;
 
     ProxyFactory() {
-        factoryCache = Maps.newConcurrentMap();
-        methodContextCache =  Maps.newConcurrentMap();
+        factoryCache = new ConcurrentHashMap<>();
+        methodContextCache =  new ConcurrentHashMap<>();
         jedisInterceptorFactory = JedisWrapperMethodInterceptor.newFactory();
     }
 
@@ -49,7 +46,7 @@ class ProxyFactory {
             try {
                 buildMethodContext(t, jedis);
             } catch (InstantiationException | IllegalAccessException e) {
-                throw Throwables.propagate(e);
+                throw new RuntimeException(e);
             }
 
             Enhancer e = new Enhancer();
@@ -69,7 +66,7 @@ class ProxyFactory {
             return;
         }
 
-        Map<Method, MethodContext> contexts = Maps.newHashMap();
+        Map<Method, MethodContext> contexts = new HashMap<>();
 
         for (Method method : t.getDeclaredMethods()) {
 
