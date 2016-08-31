@@ -175,6 +175,18 @@
                     <artifactId>maven-source-plugin</artifactId>
                     <version>3.0.1</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>animal-sniffer-maven-plugin</artifactId>
+                    <version>1.15</version>
+                    <configuration>
+                        <signature>
+                            <groupId>org.codehaus.mojo.signature</groupId>
+                            <artifactId>java17</artifactId>
+                            <version>1.0</version>
+                        </signature>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
