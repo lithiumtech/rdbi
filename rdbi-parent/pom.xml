@@ -7,12 +7,12 @@
         <groupId>com.lithium</groupId>
         <artifactId>lithium-oss-superpom</artifactId>
         <version>0.9</version>
-        <relativePath></relativePath>
+        <relativePath />
     </parent>
 
     <groupId>com.lithium.dbi.rdbi</groupId>
     <artifactId>rdbi-parent</artifactId>
-    <version>0.56-SNAPSHOT</version>
+    <version>0.56</version>
     <name>rDBI parent</name>
     <url>https://github.com/lithiumtech/rdbi</url>
     <packaging>pom</packaging>
@@ -252,5 +252,9 @@
             </plugin>
         </plugins>
     </build>
+
+  <scm>
+    <tag>rdbi-0.56</tag>
+  </scm>
 </project>
 
