@@ -1,5 +1,29 @@
 # Change Log
 
+## [rdbi-0.56](https://github.com/lithiumtech/rdbi/tree/rdbi-0.56) (2016-08-31)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.9...rdbi-0.56)
+
+## [rdbi-0.9](https://github.com/lithiumtech/rdbi/tree/rdbi-0.9) (2016-08-31)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-core-0.55...rdbi-0.9)
+
+**Merged pull requests:**
+
+- Split into multi-module project [\#44](https://github.com/lithiumtech/rdbi/pull/44) ([cschellenger](https://github.com/cschellenger))
+
+## [rdbi-core-0.55](https://github.com/lithiumtech/rdbi/tree/rdbi-core-0.55) (2016-08-24)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-core-0.54...rdbi-core-0.55)
+
+**Merged pull requests:**
+
+- METRO-306 Updated getReadyJobCount to properly report a number of job… [\#43](https://github.com/lithiumtech/rdbi/pull/43) ([kukido](https://github.com/kukido))
+
+## [rdbi-core-0.54](https://github.com/lithiumtech/rdbi/tree/rdbi-core-0.54) (2016-08-17)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-core-0.53...rdbi-core-0.54)
+
+**Merged pull requests:**
+
+- nuc-165 move lock implementation from gopher into rdbi [\#42](https://github.com/lithiumtech/rdbi/pull/42) ([KhaiNguyen](https://github.com/KhaiNguyen))
+
 ## [rdbi-core-0.53](https://github.com/lithiumtech/rdbi/tree/rdbi-core-0.53) (2016-04-27)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-core-0.52...rdbi-core-0.53)
 
