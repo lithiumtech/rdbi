@@ -4,10 +4,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.lithium.dbi.rdbi</groupId>
-        <artifactId>rdbi-parent</artifactId>
-        <version>0.56-SNAPSHOT</version>
-        <relativePath>rdbi-parent/pom.xml</relativePath>
+        <groupId>com.lithium</groupId>
+        <artifactId>lithium-oss-superpom</artifactId>
+        <version>0.9</version>
     </parent>
 
     <artifactId>rdbi</artifactId>
