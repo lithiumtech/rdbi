@@ -12,7 +12,7 @@ public interface JobSchedulerDAO {
     /**
      * Adds an item to the readyQueue, which is a sorted set of jobs not yet
      * processed. This set issorted by the provided timestamp. If item already
-     * exists in the readyQueue, the timestamp will be updated if it is > the
+     * exists in the readyQueue, the timestamp will be updated if it is &gt; the
      * original timestamp and also within quiescence milliseconds of the
      * original timestamp.
      *
@@ -86,6 +86,7 @@ public interface JobSchedulerDAO {
      * @param readyQueue Sorted set name for items not yet processed.
      * @param runningQueue Sorted set name for items currently being processed.
      * @param timestamp Expiration time. Generally this should be the current time in milliseconds.
+     * @param newScore the new score to apply to moved jobs.
      * @return Jobs moved back to readyQueue.
      */
     @Mapper(JobInfoListMapper.class)
@@ -107,7 +108,7 @@ public interface JobSchedulerDAO {
      * being executed.
      *
      * @param runningQueue Sorted set name for items currently being processed.
-     * @param job
+     * @param job the string value of a running job.
      * @return 1 if successful, or 0 if unsuccessful.
      */
     @Query("return redis.call('ZREM', $runningQueue$, $job$)")

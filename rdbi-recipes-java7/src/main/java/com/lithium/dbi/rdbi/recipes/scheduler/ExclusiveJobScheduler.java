@@ -77,6 +77,9 @@ public class ExclusiveJobScheduler extends AbstractDedupJobScheduler {
     /**
      * A job that has been sitting in the ready queue for the last "expirationPeriodInMillis"
      * is considered expired. Expired jobs are removed from the scheduler and returned to the client.
+     * @param tube the name of a tube for related jobs
+     * @param expirationPeriodInMillis the age in milliseconds beyond which a job is considered expired.
+     * @return list of removed jobs
      */
     public List<TimeJobInfo> removeExpiredReadyJobs(String tube, long expirationPeriodInMillis) {
         try (Handle handle = rdbi.open()) {

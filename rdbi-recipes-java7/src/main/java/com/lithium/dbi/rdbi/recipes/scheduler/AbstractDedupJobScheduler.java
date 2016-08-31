@@ -26,6 +26,7 @@ public abstract class AbstractDedupJobScheduler {
     /**
      * This will "pause" the system for the specified tube, preventing any new jobs from being scheduled
      * or reserved.
+     * @param tube the name of related jobs
      */
     public void pause(final String tube) {
         rdbi.withHandle(new Callback<Void>() {
@@ -49,6 +50,8 @@ public abstract class AbstractDedupJobScheduler {
     /**
      * This returns the value for the pause key. If that value was created through this library
      * it will be a unix timestamp (seconds since the epoch).
+     * @param tube the name of related jobs
+     * @return the time in epoch seconds the tube was paused.
      */
     public String getPauseStart(final String tube) {
         return rdbi.withHandle(new Callback<String>() {
@@ -61,6 +64,7 @@ public abstract class AbstractDedupJobScheduler {
 
     /**
      * This will resume / un-pause the system for the specified tube, allowing jobs to be scheduled and reserved.
+     * @param tube the name of related jobs
      */
     public void resume(final String tube) {
         rdbi.withHandle(new Callback<Void>() {

@@ -62,6 +62,7 @@ public class PriorityBasedJobScheduler extends AbstractJobScheduler<JobInfo> {
      * Move any jobs whose reservations have expired back into the ready queue.
      *
      * @param tube Used in conjunction with the redisPrefixKey (constructor) to make up the full redis key name.
+     * @param newScore the score to use when moving the jobs from running to ready.
      * @return The list of jobs that had expired and that have been already moved back into the ready queue.
      */
     public List<JobInfo> requeueExpired(final String tube, final double newScore) {

@@ -39,7 +39,7 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
      * @param keyGenerator - something that will turn your key object into a string redis can use as a key.
      *                     will be prefixed by the keyPrefix string.
      * @param serializationHelper - a codec to get your value object to and from a string
-     * @param rdbi
+     * @param rdbi - an RDBI instance
      * @param loader - function to go get your object
      * @param cacheName - name of cache, used in log statements
      * @param keyPrefix - prefix of all keys used by this cache in redis
@@ -215,9 +215,9 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
      * present.
      *
      * to complete.
-     * @param key
-     * @param maxWaitMillis
-     * @return
+     * @param key Key to load a value for.
+     * @param maxWaitMillis max time in milliseconds to wait if another thread is loading the value.
+     * @return a result for the value associated with the key.
      */
     public CallbackResult<ValueType> getPatiently(KeyType key, long maxWaitMillis) {
         CallbackResult<ValueType> result = getCallback(key);
@@ -237,9 +237,9 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
      * If we have not acquired the data after maxWaitMillis, then
      * attempt to load data without write lock.
      *
-     * @param key
-     * @param maxWaitMillis
-     * @return
+     * @param key key to load a value for.
+     * @param maxWaitMillis max time in milliseconds to wait if another thread is loading the value.
+     * @return a result for the value associated with the key.
      */
     public CallbackResult<ValueType> getPatientlyThenForcibly(KeyType key, long maxWaitMillis) {
         CallbackResult<ValueType> result = getCallback(key);

@@ -18,6 +18,11 @@ public interface StateDedupedJobSchedulerDAO {
     /**
      * When scheduling a job make sure its not already in the ready queue. A job
      * can be scheduled regardless of whether its in the running queue.
+     * @param readyQueue the name of the ready queue
+     * @param pausedTube the name of the paused tube
+     * @param job the string representation of a job to schedule
+     * @param runInMillis the timestamp in milliseconds when the job should be run.
+     * @return 1 if job was scheduled or 0 otherwise.
      */
     @Query(
         "local readyJobScore = redis.call('ZSCORE', $readyQueue$, $jobStr$)\n" +
@@ -39,6 +44,13 @@ public interface StateDedupedJobSchedulerDAO {
      * When reserving jobs reserve jobs that are currently in ready queue but not in the running queue.
      * If the job is in running queue need to wait till the running instance of the job has completed before
      * we allow another reservation of the job from the ready queue.
+     * @param readyQueue the ready queue name
+     * @param runningQueue the running queue name
+     * @param pausedTube the paused queue tube name
+     * @param limit max number of jobs to start
+     * @param now current timestamp
+     * @param ttl time to live for scheduled jobs
+     * @return the list of jobs successfully scheduled.
      */
     @Mapper(TimeJobInfoListMapper.class)
     @Query(
@@ -87,6 +99,9 @@ public interface StateDedupedJobSchedulerDAO {
      * Jobs in the running queue are sorted by their time to live (ttl). A running job
      * is considered expired if the current time is past the ttl. So expirationTimeInMillis
      * should be set to now.
+     * @param queue queue name.
+     * @param expirationTimeInMillis boundary in milliseconds for expired jobs.
+     * @return list of jobs that were removed.
      */
     @Mapper(TimeJobInfoListMapper.class)
     @Query(
@@ -99,6 +114,10 @@ public interface StateDedupedJobSchedulerDAO {
 
     /**
      * Deleting a job deletes it from the scheduler in its entirety.
+     * @param readyQueue the ready queue name
+     * @param runningQueue the running queue name
+     * @param job the string representation of a job.
+     * @return 1 if the scheduled job was deleted or 0 otherwise.
      */
     @Query(
         "local deletedFromReadyQueue = redis.call('ZREM', $readyQueue$, $job$)\n" +
@@ -118,6 +137,9 @@ public interface StateDedupedJobSchedulerDAO {
      * Ack indicates we are done with a reserved job that is in the running queue.
      * Another instance of that job might already be queued up in the ready queue waiting
      * to be reserved.
+     * @param runningQueue the running queue name
+     * @param job the string representation of a scheduled job.
+     * @return 1 if the job is currently in the running queue or 0 otherwise.
      */
     @Query(
         "return redis.call('ZREM', $runningQueue$, $job$)"

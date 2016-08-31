@@ -59,6 +59,7 @@ public class RateLimiter {
     }
 
     /**
+     * @param isBlocking whether or not to block
      * @return Whether the permit was acquired or not.
      */
     public boolean acquire(boolean isBlocking) {
@@ -66,6 +67,7 @@ public class RateLimiter {
     }
 
     /**
+     * @param isBlocking whether or not to block
      * @return If absent, the permit has been acquired. If present, indicates the time the client should wait before
      * attempting to acquire permit again.
      */

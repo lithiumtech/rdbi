@@ -9,7 +9,7 @@ import java.util.concurrent.Callable;
 
 /**
  * Implementation of {@link SimpleSingleCache} backed by a {@link SimpleMultiCacheRedis}
- * @param <T>
+ * @param <T> the type of class this cache should use.
  */
 public class SimpleSingleCacheRedis<T> implements SimpleSingleCache<T> {
 

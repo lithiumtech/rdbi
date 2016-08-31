@@ -57,7 +57,9 @@ public interface ExclusiveJobSchedulerDAO {
      * Jobs in the running queue are sorted by their time to live (ttl). A running job
      * is considered expired if the current time is past the ttl. So expirationTimeInMillis
      * should be set to now.
-     *
+     * @param queue queue name
+     * @param expirationTimeInMillis tthe age in milliseconds beyond which a job is considered expired.
+     * @return list of jobs that were removed.
      */
     @Mapper(TimeJobInfoListMapper.class)
     @Query(

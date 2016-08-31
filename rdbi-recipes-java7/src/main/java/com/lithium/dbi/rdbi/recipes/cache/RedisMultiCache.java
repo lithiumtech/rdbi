@@ -23,13 +23,15 @@ import static com.google.common.base.MoreObjects.firstNonNull;
 
 /**
  * A loading cache for apis that prefer to load multiple keys in a single round trip.
- * <p/>
+ * <p>
  * Contrast this cache with {@link RedisHashCache}, which is also a hash-based redis-backed cache.  Whereas {@link RedisHashCache}
  * fetches data for missed cached keys iteratively, this {@link RedisMultiCache} expects to resolve multiple cache misses with a single
  * call to a bulk loader.  Moreover, this cache makes no assumptions about being able to load values for all of the caches potential keys.
- * <p/>
+ * </p>
+ * <p>
  * This cache is <b>not</b> an automatically refreshing cache.  After a key expires, the next request for the key may
  * incur some loading penalty.
+ * </p>
  */
 public class RedisMultiCache<KeyType, ValueType> {
 

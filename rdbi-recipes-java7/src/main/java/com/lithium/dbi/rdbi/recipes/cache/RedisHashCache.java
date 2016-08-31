@@ -56,7 +56,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
      * @param keyTypeSerializationHelper - codec to convert keys to and from a string
      * @param valueKeyGenerator - derive the key from a value.
      * @param valueTypeSerializationHelper - a codec to get your value object to and from a string
-     * @param rdbi
+     * @param rdbi RDBI instance to use
      * @param loader - function to go get your object
      * @param loadAll - function to go get ALL relevant values
      * @param cacheName - name of cache, used in log statements
@@ -286,7 +286,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
     /**
      * Refresh if and only if {@link #needsRefresh()} returns true. If a refresh is not needed,
      * you will get a canceled future that throws a {@link CancellationException} on {@link Future#get()}
-     * @return
+     * @return Future for result from refreshing
      */
     public Future<CallbackResult<Collection<ValueType>>> refreshAll() {
         if (needsRefresh()) {
@@ -469,6 +469,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
     /**
      * Signals that a (possibly) cached item no longer exists.
      * @see #invalidate(Object)
+     * @param key key to remove from hash
      */
     public void remove(final KeyType key) {
         if (key == null) {
@@ -526,7 +527,8 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
 
     /**
      * Removes the cached value for the key, but retains the key for future refresh query.
-     * @see #remove(KeyType)
+     * @see #remove(Object)
+     * @param objKey key to mark as invalidated
      */
     @Override
     public void invalidate(Object objKey) {
@@ -586,7 +588,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
     /**
      * An internal operation that removes only true data points from the cache.
      * Meta-data for locking and refresh timing are not altered.
-     * @param pipeline
+     * @param pipeline jedis pipeline
      * @see #invalidateAll() for the public analog that also alters meta-data
      */
     private void removeAllCachedData(Pipeline pipeline) {
