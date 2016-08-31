@@ -35,13 +35,6 @@
         </developer>
     </developers>
 
-    <scm>
-        <url>scm:git:git@github.com:lithiumtech/rdbi.git</url>
-        <connection>scm:git:git@github.com:lithiumtech/rdbi.git</connection>
-        <developerConnection>scm:git:git@github.com:lithiumtech/rdbi.git</developerConnection>
-        <tag>rdbi-core-0.1</tag>
-    </scm>
-
     <issueManagement>
         <system>GitHub</system>
         <url>https://github.com/lithiumtech/rdbi/issues</url>
