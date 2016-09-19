@@ -261,11 +261,11 @@ public class ExclusiveJobSchedulerTest {
 
     @Test
     public void testReadyCountWithSomeJobsNotReadyAfterScriptFlush() throws Exception {
+        scheduledJobSystem.schedule(tubeName, "{job1}", 0);
+        //simulate reboot of redis
         try (Handle handle = rdbi.open()) {
             handle.jedis().scriptFlush();
         }
-
-        scheduledJobSystem.schedule(tubeName, "{job1}", 0);
         scheduledJobSystem.schedule(tubeName, "{job2}", 500);
         scheduledJobSystem.schedule(tubeName, "{job3}", 10000000);
 

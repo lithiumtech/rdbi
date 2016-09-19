@@ -69,11 +69,11 @@ class MethodContextInterceptor implements MethodInterceptor {
         try {
             return jedis.evalsha(context.getSha1(), keys, argv);
         } catch (JedisDataException e) {
-            if (e.getMessage().contains("NOSCRIPT")) {
+            if (e.getMessage() != null && e.getMessage().contains("NOSCRIPT")) {
                 //If it throws again, we can back-off or we can just let it throw again. In this case, I think we should
                 //let it throw because most likely will be trying the same thing again and hopefully it will succeed later.
-                final String sha2 = jedis.scriptLoad(context.getLuaContext().getRenderedLuaString());
-                if (!sha2.equals(context.getSha1())) {
+                final String newSha = jedis.scriptLoad(context.getLuaContext().getRenderedLuaString());
+                if (!newSha.equals(context.getSha1())) {
                     throw new IllegalStateException("sha should match but they did not");
                 }
                 return jedis.evalsha(context.getSha1(), keys, argv);
