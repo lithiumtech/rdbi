@@ -122,7 +122,7 @@ public class ExclusiveJobSchedulerTest {
         List<TimeJobInfo> jobInfos5 = scheduledJobSystem.peekExpired(tubeName, 0, 1);
         assertEquals(jobInfos5.get(0).getJobStr(), "{hello:world}");
 
-        scheduledJobSystem.deleteJob(tubeName,  "{hello:world}");
+        scheduledJobSystem.deleteJob(tubeName, "{hello:world}");
         assertEquals(scheduledJobSystem.peekDelayed(tubeName, 1, 0).size(), 0);
         assertEquals(scheduledJobSystem.peekReady(tubeName, 1, 0).size(), 0);
         assertEquals(scheduledJobSystem.peekRunning(tubeName, 1, 0).size(), 0);
@@ -242,6 +242,30 @@ public class ExclusiveJobSchedulerTest {
     @Test
     public void testReadyCountWithSomeJobsNotReady() throws Exception {
         scheduledJobSystem.schedule(tubeName, "{job1}", 0);
+        scheduledJobSystem.schedule(tubeName, "{job2}", 500);
+        scheduledJobSystem.schedule(tubeName, "{job3}", 10000000);
+
+        assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 1);
+
+        scheduledJobSystem.reserveSingle(tubeName, 10000);
+
+        assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 0);
+
+        Thread.sleep(500);
+
+        assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 1);
+
+        scheduledJobSystem.reserveSingle(tubeName, 10000);
+        assertEquals(scheduledJobSystem.getReadyJobCount(tubeName), 0);
+    }
+
+    @Test
+    public void testReadyCountWithSomeJobsNotReadyAfterScriptFlush() throws Exception {
+        scheduledJobSystem.schedule(tubeName, "{job1}", 0);
+        //simulate reboot of redis
+        try (Handle handle = rdbi.open()) {
+            handle.jedis().scriptFlush();
+        }
         scheduledJobSystem.schedule(tubeName, "{job2}", 500);
         scheduledJobSystem.schedule(tubeName, "{job3}", 10000000);
 

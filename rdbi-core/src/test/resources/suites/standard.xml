@@ -1,5 +1,5 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
-<suite name="UnitTests">
+<suite name="UnitTests" parallel="false">
     <test name="standard">
         <groups>
             <run>
