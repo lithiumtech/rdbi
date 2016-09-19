@@ -20,7 +20,7 @@ import static org.testng.Assert.fail;
 
 public class RDBITest {
 
-    static interface TestDAO {
+    interface TestDAO {
         @Query(
             "redis.call('SET',  KEYS[1], ARGV[1]);" +
             "return 0;"
@@ -28,7 +28,7 @@ public class RDBITest {
         int testExec(List<String> keys, List<String> args);
     }
 
-    static interface TestCopyDAO {
+    interface TestCopyDAO {
         @Query(
                 "redis.call('SET',  KEYS[1], ARGV[1]);" +
                         "return 0;"
@@ -36,16 +36,16 @@ public class RDBITest {
         int testExec2(List<String> keys, List<String> args);
     }
 
-    static interface NoInputDAO {
+    interface NoInputDAO {
         @Query("return 0;")
         int noInputMethod();
     }
 
-    static interface DynamicDAO {
+    interface DynamicDAO {
         @Query(
                 "redis.call('SET', $a$, $b$); return 0;"
         )
-        int testExect(@BindKey("a") String a, @BindArg("b") String b);
+        int testExec(@BindKey("a") String a, @BindArg("b") String b);
     }
 
     static class BasicObjectUnderTest {
@@ -173,7 +173,7 @@ public class RDBITest {
         Handle handle = rdbi.open();
 
         try {
-            handle.attach(DynamicDAO.class).testExect("a", "b");
+            handle.attach(DynamicDAO.class).testExec("a", "b");
         } finally {
             handle.close();
         }
@@ -186,7 +186,7 @@ public class RDBITest {
 
         try {
             for (int i = 0; i < 2; i++) {
-                handle.attach(DynamicDAO.class).testExect("a", "b");
+                handle.attach(DynamicDAO.class).testExec("a", "b");
             }
             assertTrue(rdbi.proxyFactory.factoryCache.containsKey(DynamicDAO.class));
         } finally {

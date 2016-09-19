@@ -3,6 +3,7 @@ package com.lithium.dbi.rdbi;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.exceptions.JedisDataException;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -44,7 +45,8 @@ class MethodContextInterceptor implements MethodInterceptor {
 
         List<String> keys = objects.length > 0 ? (List<String>) objects[0] : null;
         List<String> argv = objects.length > 1 ? (List<String>) objects[1] : null;
-        return jedis.evalsha(context.getSha1(), keys, argv);
+
+        return  evalShaHandleReloadScript(context, keys, argv);
     }
 
     private Object callEvalDynamicList(MethodContext context, Object[] objects) {
@@ -60,6 +62,24 @@ class MethodContextInterceptor implements MethodInterceptor {
             }
         }
 
-        return  jedis.evalsha(context.getSha1(), keys, argv);
+        return  evalShaHandleReloadScript(context, keys, argv);
+    }
+
+    private Object evalShaHandleReloadScript(MethodContext context, List<String> keys, List<String> argv) {
+        try {
+            return jedis.evalsha(context.getSha1(), keys, argv);
+        } catch (JedisDataException e) {
+            if (e.getMessage().contains("NOSCRIPT")) {
+                //If it throws again, we can back-off or we can just let it throw again. In this case, I think we should
+                //let it throw because most likely will be trying the same thing again and hopefully it will succeed later.
+                final String sha2 = jedis.scriptLoad(context.getLuaContext().getRenderedLuaString());
+                if (!sha2.equals(context.getSha1())) {
+                    throw new IllegalStateException("sha should match but they did not");
+                }
+                return jedis.evalsha(context.getSha1(), keys, argv);
+            } else {
+                throw e;
+            }
+        }
     }
 }

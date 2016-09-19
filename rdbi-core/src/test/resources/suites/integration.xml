@@ -1,5 +1,5 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
-<suite name="IntegrationTests">
+<suite name="IntegrationTests" parallel="false">
     <test name="integration">
         <groups>
             <run>
