@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.57](https://github.com/lithiumtech/rdbi/tree/rdbi-0.57) (2016-09-20)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.56...rdbi-0.57)
+
+**Merged pull requests:**
+
+- if NOSCRIPT occurs, reload the script [\#45](https://github.com/lithiumtech/rdbi/pull/45) ([phutwo](https://github.com/phutwo))
+
 ## [rdbi-0.56](https://github.com/lithiumtech/rdbi/tree/rdbi-0.56) (2016-08-31)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.9...rdbi-0.56)
 
