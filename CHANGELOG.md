@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.58](https://github.com/lithiumtech/rdbi/tree/rdbi-0.58) (2016-10-04)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.57...rdbi-0.58)
+
+**Merged pull requests:**
+
+- NUC-325 Support reacquiring read lock for read write lock [\#46](https://github.com/lithiumtech/rdbi/pull/46) ([kumarad](https://github.com/kumarad))
+
 ## [rdbi-0.57](https://github.com/lithiumtech/rdbi/tree/rdbi-0.57) (2016-09-20)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.56...rdbi-0.57)
 
