@@ -31,7 +31,12 @@ public interface MultiReadSingleWriteLockDAO {
             "if writeLockOwner then\n" +
             "    return 0\n" +
             "end\n" +
-            "return redis.call('ZADD', $readLockKey$, $expirationEpoch$, $ownerId$)"
+            "redis.call('ZADD', $readLockKey$, $expirationEpoch$, $ownerId$)\n" +
+            "if redis.call('ZSCORE', $readLockKey$, $ownerId$) == $expirationEpoch$ then\n" +
+            "   return 1\n" +
+            "else\n" +
+            "   return 0\n" +
+            "end\n"
     )
     int acquireReadLock(@BindKey("writeLockKey") String writeLockKey,
                         @BindKey("readLockKey") String readLockKey,
