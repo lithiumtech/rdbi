@@ -209,4 +209,19 @@ public class MultiReadSingleWriteLockTest {
         lock.acquireReadLock(readLockOwner);
         assertTrue(Instant.now().isAfter(expiration));
     }
+
+    @Test (timeOut = 5000L)
+    public void testReacquireReadLock() throws Exception {
+        final MultiReadSingleWriteLock lock = new MultiReadSingleWriteLock(rdbi,
+                                                                           writeLockKey,
+                                                                           readLockKey,
+                                                                           500,
+                                                                           500);
+
+        final String readLockOwner = UUID.randomUUID().toString();
+
+        // acquire a read lock, this should block until write lock is expired
+        assertTrue(lock.acquireReadLock(readLockOwner));
+        assertTrue(lock.acquireReadLock(readLockOwner));
+    }
 }
