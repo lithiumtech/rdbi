@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.59](https://github.com/lithiumtech/rdbi/tree/rdbi-0.59) (2016-10-26)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.58...rdbi-0.59)
+
+**Merged pull requests:**
+
+- Do not try to access non-existent elements in array [\#47](https://github.com/lithiumtech/rdbi/pull/47) ([cschellenger](https://github.com/cschellenger))
+
 ## [rdbi-0.58](https://github.com/lithiumtech/rdbi/tree/rdbi-0.58) (2016-10-04)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.57...rdbi-0.58)
 
