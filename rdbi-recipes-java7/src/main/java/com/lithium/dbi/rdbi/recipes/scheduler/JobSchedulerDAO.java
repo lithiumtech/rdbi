@@ -60,7 +60,7 @@ public interface JobSchedulerDAO {
         "end\n" +
         "local reserved = {}\n" +
         "local reservedIndex = 1\n" +
-        "for i=1,2*#jobs,2 do\n" +
+        "for i=1,#jobs,2 do\n" +
         "    local runningJob = redis.call('ZSCORE', $runningQueue$, jobs[i])\n" +
         "    if not runningJob then\n" +
         "        reserved[reservedIndex] = jobs[i]\n" +
@@ -92,7 +92,7 @@ public interface JobSchedulerDAO {
     @Mapper(JobInfoListMapper.class)
     @Query(
         "local expiredJobs = redis.call('ZRANGEBYSCORE', $runningQueue$, 0, $timestamp$, 'WITHSCORES')\n" +
-        "for i=1,2*#expiredJobs,2 do\n" +
+        "for i=1,#expiredJobs,2 do\n" +
         "    redis.call('ZADD', $readyQueue$, $newScore$, expiredJobs[i])\n" +
         "end\n" +
         "redis.call('ZREMRANGEBYSCORE', $runningQueue$, 0, $timestamp$)\n" +

@@ -34,7 +34,7 @@ public interface ExclusiveJobSchedulerDAO {
         "if isPaused or next(jobs) == nil then\n" +
         "    return nil\n" +
         "end\n" +
-        "for i=1,2*#jobs,2 do\n" +
+        "for i=1,#jobs,2 do\n" +
         "    redis.call('ZREM', $readyQueue$, jobs[i])\n" + //Note: in order to support "limit", we have to loop the delete, perhaps not have limit, 1 at a time?
         "    redis.call('ZADD', $runningQueue$, $ttr$, jobs[i])\n" +
         "end\n" +

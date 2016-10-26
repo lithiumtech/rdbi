@@ -67,7 +67,7 @@ public interface StateDedupedJobSchedulerDAO {
         "   if next(jobs) == nil then\n" +
         "       return reserved\n" +
         "   end\n" +
-        "   for i=1,2*#jobs,2 do\n" +
+        "   for i=1,#jobs,2 do\n" +
         "      local inRunningQueue = redis.call('ZSCORE', $runningQueue$, jobs[i])\n" +
         "      if not inRunningQueue then\n" +
         "          reserved[reservedIndex] = jobs[i]\n" +
