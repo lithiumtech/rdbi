@@ -95,7 +95,7 @@ public class RedisSet<ValueType> implements Set<ValueType> {
     @Override
     public int size() {
         try (final Handle handle = rdbi.open()) {
-            final Long size = handle.jedis().zcount(redisSetKey, "-inf", "+inf");
+            final Long size = handle.jedis().zcard(redisSetKey);
             if (size > Integer.MAX_VALUE) {
                 log.info("size of " + cacheName + " exceeds integer max value. .size() just lied to you.");
                 return Integer.MAX_VALUE;

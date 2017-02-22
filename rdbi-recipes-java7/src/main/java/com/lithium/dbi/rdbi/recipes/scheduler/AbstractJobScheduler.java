@@ -130,7 +130,7 @@ public abstract class AbstractJobScheduler<T extends JobInfo> {
         return rdbi.withHandle(new Callback<Long>() {
             @Override
             public Long run(Handle handle) {
-                return handle.jedis().zcount(key, "-inf", "+inf");
+                return handle.jedis().zcard(key);
             }
         });
     }
