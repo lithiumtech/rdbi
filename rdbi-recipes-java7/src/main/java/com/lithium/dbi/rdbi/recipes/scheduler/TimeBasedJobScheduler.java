@@ -164,7 +164,7 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
         return rdbi.withHandle(new Callback<Long>() {
             @Override
             public Long run(Handle handle) {
-                return handle.jedis().zcount(key, "-inf", "+inf");
+                return handle.jedis().zcard(key);
             }
         });
     }
