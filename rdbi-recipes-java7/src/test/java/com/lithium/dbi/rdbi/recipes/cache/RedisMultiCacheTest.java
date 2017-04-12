@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.testng.Assert.assertEquals;
 
@@ -34,7 +35,9 @@ public class RedisMultiCacheTest {
         createRdbi().withHandle(new Callback<Void>() {
             @Override
             public Void run(Handle handle) {
-                handle.jedis().del(TEST_NAMESPACE);
+                for (String keyToPurge : handle.jedis().keys(TEST_NAMESPACE + "*")) {
+                    handle.jedis().del(keyToPurge);
+                }
                 return null;
             }
         });
@@ -127,10 +130,55 @@ public class RedisMultiCacheTest {
                      ImmutableMap.of());
     }
 
+    @Test
+    public void expiration() throws InterruptedException {
+        final int ttlSeconds = 1;
+        final CountingLoader loader = successLoader();
+        final RedisMultiCache<Short, Long> cache = redisMultiCache(loader, ttlSeconds);
+
+        // assert no cache interactions thus far
+        assertEquals(loader.countLoadRequests(key1), 0);
+        assertEquals(loader.countLoadRequests(key2), 0);
+
+        // first access of key1 should be a cache miss
+        cache.get(ImmutableSet.of(key1));
+        assertEquals(loader.countLoadRequests(key1), 1);
+
+        // second access of key1 should be a cache hit
+        cache.get(ImmutableSet.of(key1));
+        assertEquals(loader.countLoadRequests(key1), 1);
+
+        // wait until near the expiration boundary
+        TimeUnit.MILLISECONDS.sleep(700);
+
+        // third access of key1 should still be a cache hit
+        cache.get(ImmutableSet.of(key1));
+        assertEquals(loader.countLoadRequests(key1), 1);
+
+        // first access of key2 should be a cache miss
+        cache.get(ImmutableSet.of(key2));
+        assertEquals(loader.countLoadRequests(key2), 1);
+
+        // wait to extend beyond the expiration boundary for key1
+        TimeUnit.MILLISECONDS.sleep(301);
+
+        // fourth access of key1 should be a cache miss again
+        cache.get(ImmutableSet.of(key1));
+        assertEquals(loader.countLoadRequests(key1), 2);
+
+        // but next access of key2 should still be a cache hit
+        cache.get(ImmutableSet.of(key2));
+        assertEquals(loader.countLoadRequests(key2), 1);
+    }
+
     private RedisMultiCache<Short, Long> redisMultiCache(CountingLoader loader) {
+        return redisMultiCache(loader, 30);
+    }
+
+    private RedisMultiCache<Short, Long> redisMultiCache(CountingLoader loader, int ttlSeconds) {
         return new RedisMultiCache<>(createRdbi(),
                                      TEST_NAMESPACE,
-                                     30 /* seconds */,
+                                     ttlSeconds,
                                      fieldGenerator(),
                                      loader,
                                      valueSerializer(),
