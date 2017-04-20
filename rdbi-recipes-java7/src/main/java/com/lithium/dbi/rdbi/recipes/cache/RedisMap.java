@@ -18,10 +18,10 @@ public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
     private static final Logger log = LoggerFactory.getLogger(RDBI.class);
     private final KeyGenerator<KeyType> redisKeyGenerator;
     private final SerializationHelper<ValueType> serializationHelper;
-    private final RDBI rdbi;
     private final String cacheName;
     private final String keyPrefix;
     private final int valueTtl;
+    protected final RDBI rdbi;
 
 
     /**
@@ -31,7 +31,7 @@ public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
      * @param rdbi - RDBI instance to use.
      * @param cacheName - name of cache, used in log statements
      * @param keyPrefix - prefix of all keys used by this cache in redis
-     * @param valueTtl - redis entries holding your values will expire after this many seconds
+     * @param valueTtl - redis entries holding your values will expire after this many seconds after access
      */
     public RedisMap(KeyGenerator<KeyType> redisKeyGenerator,
                     SerializationHelper<ValueType> serializationHelper,
