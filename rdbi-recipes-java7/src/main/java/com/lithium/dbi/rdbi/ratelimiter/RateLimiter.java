@@ -19,7 +19,7 @@ public class RateLimiter {
                                                         "local currentCounterValue = redis.call('GET', keyName)",
                                                         "if not currentCounterValue then",
                                                         "   currentCounterValue = '0'",
-                                                        "   redis.call('SET', currentCounterValue, 'nx', 'ex', expireAfterSeconds)",
+                                                        "   redis.call('SET', keyName, currentCounterValue, 'nx', 'ex', expireAfterSeconds)",
                                                         "elseif redis.call('TTL', keyName) < 0 then",
                                                         "   redis.call('EXPIRE', keyName, expireAfterSeconds)",
                                                         "end",
