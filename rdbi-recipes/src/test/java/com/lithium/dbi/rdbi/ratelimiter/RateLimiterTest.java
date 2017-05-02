@@ -21,12 +21,12 @@ public class RateLimiterTest {
 
     @Test
     public void testSimpleRateLimitingWithSlowRate() {
-        RateLimiter redisRateLimiter = buildRateLimiter(0.75); // 3 requests every 4s
+        Limiter redisRateLimiter = buildRateLimiter(0.75); // 3 requests every 4s
 
         double rate = 0.0;
         long startTime = System.nanoTime();
         for (int i = 0; i < 4; ++i) {
-            redisRateLimiter.acquire(true);
+            redisRateLimiter.acquire();
             rate++;
             logger.info("Acquired rate limit permit");
         }
@@ -39,12 +39,12 @@ public class RateLimiterTest {
 
     @Test
     public void testSimpleRateLimitingWithFastRate() {
-        RateLimiter redisRateLimiter = buildRateLimiter(10); // 10 requests every sec
+        Limiter redisRateLimiter = buildRateLimiter(10); // 10 requests every sec
 
         double rate = 0.0;
         long startTime = System.nanoTime();
         for (int i = 0; i < 40; ++i) {
-            redisRateLimiter.acquire(true);
+            redisRateLimiter.acquire();
             rate++;
             logger.info("Acquired rate limit permit");
         }
@@ -55,7 +55,7 @@ public class RateLimiterTest {
         assertTrue(meanRate < 13.5 && meanRate > 7.0);
     }
 
-    private RateLimiter buildRateLimiter(double permitsPerSecond) {
+    private Limiter buildRateLimiter(double permitsPerSecond) {
         JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
         jedisPoolConfig.setMaxTotal(30);
         JedisPool jedisPool = new JedisPool(jedisPoolConfig, "localhost", 6379, Protocol.DEFAULT_TIMEOUT);
@@ -71,7 +71,7 @@ public class RateLimiterTest {
             }
         });
 
-        return new RateLimiter("d:test:rdbi", rdbi, UUID.randomUUID().toString(), permitsPerSecond);
+        return new BlockingRateLimiter(new RateLimiter("d:test:rdbi", rdbi, UUID.randomUUID().toString(), permitsPerSecond));
     }
 
     private double getMeanRate(double rate, long startTime) {
