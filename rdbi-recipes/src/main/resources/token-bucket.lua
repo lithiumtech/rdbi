@@ -16,12 +16,15 @@ local hmget = function (key, ...)
     if next(arg) == nil then return {} end
     local bulk = redis.call('HMGET', key, unpack(arg))
     local result = {}
-    for i, v in ipairs(bulk) do result[ arg[i] ] = v end
+    for i, v in ipairs(bulk) do
+        result[ arg[i] ] = v
+    end
     return result
 end
 
 -- load current data or set defaults
 local getCurrentData = function(keyName, maxTokens, currentTimeMillis)
+
     local data = hmget(keyName, 'availableTokens', 'lastRefillMs')
 
     local availableTokens = maxTokens
@@ -48,17 +51,17 @@ local amountToRefill = function(lastRefillMs, refillRatePerMs, currentTimeMillis
 end
 
 -- number of milliseconds it will take to make the number of requests
-local wholeRequestsInMs = function(refillRatePerMs, requestCount)
+local msPerRequest = function(refillRatePerMs, requestCount)
     return math.floor(1 / refillRatePerMs) * requestCount
-
 end
+
 -- update our entry
 local update = function(keyName, nowAvailable, currentTimeMillis)
     redis.call('HMSET', keyName, 'availableTokens', nowAvailable, 'lastRefillMs', currentTimeMillis)
 end
 
 local expire = function(keyName, refillRatePerMs, maxTokens)
-    local expireTime = math.max(1, wholeRequestsInMs(refillRatePerMs, maxTokens) * 2 / 1000)
+    local expireTime = math.max(1, msPerRequest(refillRatePerMs, maxTokens) * 2 / 1000)
     redis.log(log_level, "expiring: " .. expireTime)
     redis.call('EXPIRE', keyName, expireTime)
 end
@@ -68,20 +71,19 @@ local availableTokens, lastRefillMs = getCurrentData(keyName, maxTokens, current
 local refillAmount = amountToRefill(lastRefillMs, refillRatePerMs, currentTimeMs)
 local nowAvailable = math.min(maxTokens, availableTokens + refillAmount)
 redis.log(log_level, "main.nowAvailable = " .. nowAvailable)
-local refillToTime = math.floor(lastRefillMs + wholeRequestsInMs(refillRatePerMs, refillAmount))
+local refillToTime = lastRefillMs + msPerRequest(refillRatePerMs, refillAmount)
 redis.log(log_level, "main.refillToTime = " .. refillToTime)
-local afterRequest = nowAvailable - requestedTokens
-redis.log(log_level, "main.afterRequest = " .. afterRequest)
+local availableAfterRequest = nowAvailable - requestedTokens
+redis.log(log_level, "main.afterRequest = " .. availableAfterRequest)
 
-if afterRequest >= 0 then
-    update(keyName, nowAvailable - requestedTokens, refillToTime);
+if availableAfterRequest >= 0 then
+    update(keyName, availableAfterRequest, refillToTime);
     expire(keyName, refillRatePerMs, maxTokens)
     return requestedTokens
 else
-    if refillAmount > 0 then
-        update(keyName, nowAvailable, refillToTime)
-        expire(keyName, refillRatePerMs, maxTokens)
-    end
-    -- signal to the caller how many milliseconds to sleep for
-    return wholeRequestsInMs(refillRatePerMs, afterRequest) + (currentTimeMs - refillToTime)
+    -- note: if refillAmount > 0 then we could go ahead and refill here
+    -- but it's not necessary since we can recalculate the next time around
+
+    -- signal to the caller how many milliseconds to sleep for (must be negative ms)
+    return msPerRequest(refillRatePerMs, availableAfterRequest) + (currentTimeMs - refillToTime)
 end

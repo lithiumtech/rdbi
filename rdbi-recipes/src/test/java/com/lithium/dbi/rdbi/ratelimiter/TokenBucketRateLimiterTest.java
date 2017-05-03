@@ -1,7 +1,5 @@
 package com.lithium.dbi.rdbi.ratelimiter;
 
-import com.google.common.base.Optional;
-import com.google.common.base.Supplier;
 import com.google.common.util.concurrent.Uninterruptibles;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
@@ -261,8 +259,48 @@ public class TokenBucketRateLimiterTest {
         }
     }
 
+    @Test
+    public void testRealTime() {
+        // do it live
+        // 10 max,
+        // 10 per second refill rate
+        // so ~ 40 requests in 3 seconds or ~ 13.333
 
-    private TokenBucketRateLimiter buildRateLimiter(TestClock clock, int maxTokens, int requestRate, TimeUnit refillPeriod) {
+        TokenBucketRateLimiter tokenBucketRateLimiter = buildRateLimiter(System::currentTimeMillis, 10, 10, TimeUnit.SECONDS);
+        Limiter blocking = new BlockingRateLimiter(tokenBucketRateLimiter);
+        double rate = 0.0;
+        long startTime = System.nanoTime();
+        for (int i = 0; i < 40; ++i) {
+            assertTrue(blocking.acquire());
+            rate++;
+        }
+        double meanRate = getMeanRate(rate, startTime);
+        assertTrue(meanRate < 13.5 && meanRate > 10.0);
+
+        // if we do 20 more, our bucket should be 'empty'
+        // so will take about 2 more seconds, or ~12 per second
+
+        for (int i = 0; i < 20; ++i) {
+            assertTrue(blocking.acquire());
+            rate++;
+        }
+        double meanRate2 = getMeanRate(rate, startTime);
+        assertTrue(meanRate2 < 12.5 && meanRate2 < meanRate && meanRate2 > 10.0);
+
+
+    }
+
+    private double getMeanRate(double rate, long startTime) {
+        if(rate == 0L) {
+            return 0.0D;
+        } else {
+            double elapsed = (double)(System.nanoTime() - startTime);
+            return rate / elapsed * (double) TimeUnit.SECONDS.toNanos(1L);
+        }
+    }
+
+
+    private TokenBucketRateLimiter buildRateLimiter(LongSupplier clock, int maxTokens, int requestRate, TimeUnit refillPeriod) {
 
         return new TokenBucketRateLimiter(
                 rdbi,
@@ -310,5 +348,4 @@ public class TokenBucketRateLimiterTest {
             return now;
         }
     }
-
 }

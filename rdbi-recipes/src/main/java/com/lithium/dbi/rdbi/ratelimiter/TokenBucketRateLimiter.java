@@ -115,7 +115,7 @@ public class TokenBucketRateLimiter implements Limiter {
                     return OptionalLong.empty();
                 }
 
-                // We are over our allotment. The return value is the negative of the number of seconds we should wait.
+                // We are over our allotment. The return value is the negative of the number of milliseconds we should wait.
                 return OptionalLong.of(-1 * evalResult);
             }
         }
