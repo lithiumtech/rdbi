@@ -24,7 +24,7 @@ public class HandleTest {
         final ProxyFactory fakeProxyFactory = mock(ProxyFactory.class);
         when(fakeProxyFactory.attachJedis(any(Jedis.class))).thenReturn(fakeWrapper);
 
-        final Handle testHandle = new Handle(fakePool, fakeJedis, fakeProxyFactory);
+        final Handle testHandle = new Handle(fakeJedis, fakeProxyFactory);
         testHandle.close();
 
         verify(fakePool).returnResource(fakeJedis);

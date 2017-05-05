@@ -48,7 +48,7 @@ public class RDBI {
     public Handle open() {
         try {
             Jedis resource = pool.getResource();
-            return new Handle(pool, resource, proxyFactory);
+            return new Handle(resource, proxyFactory);
         } catch (Exception ex) {
             logger.error("Exception caught during resource create!", ex);
             throw new RuntimeException(ex);
