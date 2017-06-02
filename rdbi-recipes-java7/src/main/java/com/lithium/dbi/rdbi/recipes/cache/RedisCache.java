@@ -96,6 +96,22 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
         });
     }
 
+    public boolean acquireLockPatiently(KeyType key, int maxWaitMillis) {
+        final long startTime = System.currentTimeMillis();
+        boolean acquiredLock;
+        while (!(acquiredLock = acquireLock(key)) && System.currentTimeMillis() - startTime < maxWaitMillis) {
+            try {
+                TimeUnit.MILLISECONDS.sleep(250L);
+            } catch(InterruptedException ie) {
+                log.info("{}: interrupted acquiring lock", cacheName, ie);
+            }
+        }
+        if (!acquiredLock) {
+            log.warn("{}: failed to acquire lock within {} milliseconds", cacheName, maxWaitMillis);
+        }
+        return acquiredLock;
+    }
+
     boolean isLocked(KeyType key) {
         final String redisKey = generateRedisKey(key);
         final String redisLockKey = redisLockKey(redisKey);
@@ -385,6 +401,22 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
             }
         });
         cacheEvictionCount.incrementAndGet();
+    }
+
+    /**
+     * Attempts to acquire the refresh lock prior to invoking {@link #invalidate(Object)} on the key,
+     * which prevents an in-progress async refresh from completing and writing stale data after invalidate has been called.
+     */
+    public boolean invalidatePatientlyThenForcibly(KeyType key, int maxWaitMillis) {
+        final boolean acquiredLock = acquireLockPatiently(key, maxWaitMillis);
+        try {
+            invalidate(key);
+        } finally {
+            if (acquiredLock) {
+                releaseLock(key);
+            }
+        }
+        return acquiredLock;
     }
 
     @Override
