@@ -104,6 +104,7 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
                 TimeUnit.MILLISECONDS.sleep(250L);
             } catch(InterruptedException ie) {
                 log.info("{}: interrupted acquiring lock", cacheName, ie);
+                Thread.currentThread().interrupt();
             }
         }
         if (!acquiredLock) {
