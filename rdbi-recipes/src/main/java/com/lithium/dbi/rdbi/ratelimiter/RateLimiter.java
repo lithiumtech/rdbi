@@ -1,15 +1,19 @@
 package com.lithium.dbi.rdbi.ratelimiter;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Optional;
-import com.google.common.base.Throwables;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.apache.commons.codec.digest.DigestUtils;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisDataException;
 
-public class RateLimiter {
+import java.util.OptionalLong;
+
+/**
+ * Rate limiter implementation that will never allow
+ * greater than the configured requests/second
+ */
+public class RateLimiter implements Limiter {
 
     private static final String LUA_SCRIPT = Joiner.on("\n").join(
                                                         "local keyName = KEYS[1]",
@@ -58,24 +62,17 @@ public class RateLimiter {
         }
     }
 
-    /**
-     * @param isBlocking whether or not to block
-     * @return Whether the permit was acquired or not.
-     */
-    public boolean acquire(boolean isBlocking) {
-        return !getOptionalWaitTimeForPermit(isBlocking).isPresent();
+    @Override
+    public boolean acquire() {
+        return !getWaitTimeForPermit().isPresent();
     }
 
-    /**
-     * @param isBlocking whether or not to block
-     * @return If absent, the permit has been acquired. If present, indicates the time the client should wait before
-     * attempting to acquire permit again.
-     */
-    public Optional<Long> getOptionalWaitTimeForPermit(boolean isBlocking) {
+    @Override
+    public OptionalLong getWaitTimeForPermit() {
         try (Handle handle = rdbi.open()) {
             final Jedis jedis = handle.jedis();
 
-            while(true) {
+            while (true) {
                 long evalResult;
                 try {
                     // Use the sha to run the LUA script for maximum performance.  Have a fall-back to reload the script
@@ -92,19 +89,13 @@ public class RateLimiter {
 
                 if (evalResult > 0) {
                     // We are good!
-                    return Optional.absent();
+                    return OptionalLong.empty();
                 }
 
                 // We are over our allotment. The return value is the negative of the number of seconds we should wait.
                 long retryInMillis = -1 * evalResult * 1000;
-                if (!isBlocking) {
-                    return Optional.of(retryInMillis);
-                }
-                Thread.sleep(Math.max(100, retryInMillis));
+                return OptionalLong.of(retryInMillis);
             }
-        } catch (InterruptedException e) {
-            throw Throwables.propagate(e);
         }
     }
-
 }
