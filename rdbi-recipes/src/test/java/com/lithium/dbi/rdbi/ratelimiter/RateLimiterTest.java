@@ -10,6 +10,7 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Protocol;
 
+import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -26,7 +27,7 @@ public class RateLimiterTest {
         double rate = 0.0;
         long startTime = System.nanoTime();
         for (int i = 0; i < 4; ++i) {
-            redisRateLimiter.acquire();
+            redisRateLimiter.acquirePatiently(Duration.ofSeconds(10));
             rate++;
             logger.info("Acquired rate limit permit");
         }
@@ -44,7 +45,7 @@ public class RateLimiterTest {
         double rate = 0.0;
         long startTime = System.nanoTime();
         for (int i = 0; i < 40; ++i) {
-            redisRateLimiter.acquire();
+            redisRateLimiter.acquirePatiently(Duration.ofSeconds(10));
             rate++;
             logger.info("Acquired rate limit permit");
         }
@@ -71,7 +72,7 @@ public class RateLimiterTest {
             }
         });
 
-        return new BlockingRateLimiter(new RateLimiter("d:test:rdbi", rdbi, UUID.randomUUID().toString(), permitsPerSecond));
+        return new RateLimiter("d:test:rdbi", rdbi, UUID.randomUUID().toString(), permitsPerSecond);
     }
 
     private double getMeanRate(double rate, long startTime) {

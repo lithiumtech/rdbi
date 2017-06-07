@@ -13,8 +13,8 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisDataException;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.OptionalLong;
-import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 
 /**
@@ -27,7 +27,7 @@ public class TokenBucketRateLimiter implements Limiter {
 
     private static final Logger logger = LoggerFactory.getLogger(TokenBucketRateLimiter.class);
     private static final String LUA_SCRIPT = loadScript();
-    public static final String LUA_SCRIPT_SHA1 = DigestUtils.sha1Hex(LUA_SCRIPT);
+    private static final String LUA_SCRIPT_SHA1 = DigestUtils.sha1Hex(LUA_SCRIPT);
 
     private final String fullyQualifiedKey;
     private final RDBI rdbi;
@@ -41,12 +41,12 @@ public class TokenBucketRateLimiter implements Limiter {
                                   String key,
                                   int maxTokens,
                                   int refillValue,
-                                  TimeUnit refillPeriod,
+                                  Duration refillPeriod,
                                   LongSupplier clock
                                  ) {
         this.rdbi = rdbi;
         this.maxTokens = maxTokens;
-        this.refillRatePerMs = refillValue * 1.0 / refillPeriod.toMillis(1);
+        this.refillRatePerMs = refillValue * 1.0 / refillPeriod.toMillis();
         fullyQualifiedKey = Joiner.on(":").join(keyPrefix, "tokenBucketRateLimit", key);
         this.clock = clock;
     }
@@ -56,7 +56,7 @@ public class TokenBucketRateLimiter implements Limiter {
                                   String key,
                                   int maxTokens,
                                   int refillValue,
-                                  TimeUnit refillPeriod
+                                  Duration refillPeriod
                                  ) {
         this(rdbi, keyPrefix, key, maxTokens, refillValue, refillPeriod, System::currentTimeMillis);
     }
@@ -73,16 +73,16 @@ public class TokenBucketRateLimiter implements Limiter {
 
     @Override
     public boolean acquire() {
-        return !getOptionalWaitTimeForPermit().isPresent();
+        return !getWaitTimeForPermit().isPresent();
     }
 
     @Override
-    public OptionalLong getOptionalWaitTimeForPermit() {
-      return getOptionalWaitTimeForPermits(1);
+    public OptionalLong getWaitTimeForPermit() {
+      return getWaitTimeForPermits(1);
     }
 
     @VisibleForTesting
-    OptionalLong getOptionalWaitTimeForPermits(int requestedPermits) {
+    OptionalLong getWaitTimeForPermits(int requestedPermits) {
 
         try (Handle handle = rdbi.open()) {
             final Jedis jedis = handle.jedis();

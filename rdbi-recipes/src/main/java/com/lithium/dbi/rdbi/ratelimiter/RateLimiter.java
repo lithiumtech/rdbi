@@ -64,11 +64,11 @@ public class RateLimiter implements Limiter {
 
     @Override
     public boolean acquire() {
-        return !getOptionalWaitTimeForPermit().isPresent();
+        return !getWaitTimeForPermit().isPresent();
     }
 
     @Override
-    public OptionalLong getOptionalWaitTimeForPermit() {
+    public OptionalLong getWaitTimeForPermit() {
         try (Handle handle = rdbi.open()) {
             final Jedis jedis = handle.jedis();
 
