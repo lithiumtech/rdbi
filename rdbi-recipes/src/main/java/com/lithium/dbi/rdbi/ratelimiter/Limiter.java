@@ -34,7 +34,8 @@ public interface Limiter {
             if (!waitTime.isPresent()) {
                 return true;
             } else {
-                final long timeToSleep = Math.max(100, waitTime.getAsLong());
+                final long timeAvailableToWait = timeout.toMillis() - timeWaited;
+                final long timeToSleep = Math.min(timeAvailableToWait, waitTime.getAsLong());
                 try {
                     Thread.sleep(timeToSleep);
                     timeWaited += timeToSleep;

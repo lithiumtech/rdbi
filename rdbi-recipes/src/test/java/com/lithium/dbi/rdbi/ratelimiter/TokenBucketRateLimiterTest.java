@@ -278,6 +278,28 @@ public class TokenBucketRateLimiterTest {
         assertFalse(tokenBucketRateLimiter.acquirePatiently(Duration.ofMillis(500)));
         assertTrue("at least 500ms passed before the method returned", System.currentTimeMillis() - now >= 500);
     }
+
+    @Test
+    public void testAcquireTimesOutButNotTooLong() {
+        // clock that advances 100ms / tick
+        long start = 10_000L;
+        TestClock clock = new TestClock(start, 100);
+
+        // limiter with refill rate of 2/second
+        // burstable up to 20 requests
+        TokenBucketRateLimiter tokenBucketRateLimiter = buildRateLimiter(System::currentTimeMillis, 20, 1, Duration.ofMinutes(1));
+
+        // we can get 20 permits at the same time
+        assertFalse(tokenBucketRateLimiter.getWaitTimeForPermits(20).isPresent());
+
+        // but not 1 more.. and the wait time should be near 1 minute
+        OptionalLong waitTime = tokenBucketRateLimiter.getWaitTimeForPermit();
+        assertTrue(waitTime.getAsLong() < Duration.ofMinutes(1).toMillis() && waitTime.getAsLong() > Duration.ofSeconds(50).toMillis());
+
+        long now = System.currentTimeMillis();
+        assertFalse(tokenBucketRateLimiter.acquirePatiently(Duration.ofMillis(500)));
+        assertTrue("at least 500ms passed before the method returned, but not more than 600ms", System.currentTimeMillis() - now >= 500 && System.currentTimeMillis() - now <= 600);
+    }
     @Test
     public void testRealTime() {
         // do it live
