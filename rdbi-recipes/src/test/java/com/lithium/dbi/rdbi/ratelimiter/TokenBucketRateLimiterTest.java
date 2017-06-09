@@ -294,7 +294,10 @@ public class TokenBucketRateLimiterTest {
 
         // but not 1 more.. and the wait time should be near 1 minute
         OptionalLong waitTime = tokenBucketRateLimiter.getWaitTimeForPermit();
-        assertTrue(waitTime.getAsLong() < Duration.ofMinutes(1).toMillis() && waitTime.getAsLong() > Duration.ofSeconds(50).toMillis());
+        assertTrue("Wait time is present", waitTime.isPresent());
+        long waitMillis = waitTime.getAsLong();
+        assertTrue(String.format("Wait time of %dms should be between 50s and 1m", waitMillis),
+                   waitMillis <= Duration.ofMinutes(1).toMillis() && waitMillis >= Duration.ofSeconds(50).toMillis());
 
         long now = System.currentTimeMillis();
         assertFalse(tokenBucketRateLimiter.acquirePatiently(Duration.ofMillis(500)));
