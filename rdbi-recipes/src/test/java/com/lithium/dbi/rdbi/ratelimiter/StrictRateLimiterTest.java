@@ -16,13 +16,13 @@ import java.util.concurrent.TimeUnit;
 
 import static org.testng.Assert.assertTrue;
 
-public class RateLimiterTest {
+public class StrictRateLimiterTest {
 
-    private static final Logger logger = LoggerFactory.getLogger(RateLimiterTest.class);
+    private static final Logger logger = LoggerFactory.getLogger(StrictRateLimiterTest.class);
 
     @Test
     public void testSimpleRateLimitingWithSlowRate() {
-        Limiter redisRateLimiter = buildRateLimiter(0.75); // 3 requests every 4s
+        RateLimiter redisRateLimiter = buildRateLimiter(0.75); // 3 requests every 4s
 
         double rate = 0.0;
         long startTime = System.nanoTime();
@@ -40,7 +40,7 @@ public class RateLimiterTest {
 
     @Test
     public void testSimpleRateLimitingWithFastRate() {
-        Limiter redisRateLimiter = buildRateLimiter(10); // 10 requests every sec
+        RateLimiter redisRateLimiter = buildRateLimiter(10); // 10 requests every sec
 
         double rate = 0.0;
         long startTime = System.nanoTime();
@@ -56,7 +56,7 @@ public class RateLimiterTest {
         assertTrue(meanRate < 13.5 && meanRate > 7.0);
     }
 
-    private Limiter buildRateLimiter(double permitsPerSecond) {
+    private RateLimiter buildRateLimiter(double permitsPerSecond) {
         JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
         jedisPoolConfig.setMaxTotal(30);
         JedisPool jedisPool = new JedisPool(jedisPoolConfig, "localhost", 6379, Protocol.DEFAULT_TIMEOUT);
@@ -72,7 +72,7 @@ public class RateLimiterTest {
             }
         });
 
-        return new RateLimiter("d:test:rdbi", rdbi, UUID.randomUUID().toString(), permitsPerSecond);
+        return new StrictRateLimiter("d:test:rdbi", rdbi, UUID.randomUUID().toString(), permitsPerSecond);
     }
 
     private double getMeanRate(double rate, long startTime) {

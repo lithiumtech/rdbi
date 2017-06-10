@@ -23,7 +23,7 @@ import java.util.function.LongSupplier;
  * to an average rate limit but allows for a configurable burst bucket to
  * better accommodate uneven workloads
  */
-public class TokenBucketRateLimiter implements Limiter {
+public class TokenBucketRateLimiter implements RateLimiter {
 
     private static final Logger logger = LoggerFactory.getLogger(TokenBucketRateLimiter.class);
     private static final String LUA_SCRIPT = loadScript();
@@ -72,11 +72,6 @@ public class TokenBucketRateLimiter implements Limiter {
     }
 
     @Override
-    public boolean acquire() {
-        return !getWaitTimeForPermit().isPresent();
-    }
-
-    @Override
     public OptionalLong getWaitTimeForPermit() {
       return getWaitTimeForPermits(1);
     }
@@ -121,8 +116,8 @@ public class TokenBucketRateLimiter implements Limiter {
         }
     }
 
-    @VisibleForTesting
-    String getKey() {
+    @Override
+    public String getKey() {
         return fullyQualifiedKey;
     }
 }
