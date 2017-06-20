@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 
+import static org.awaitility.Awaitility.await;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
@@ -251,12 +252,11 @@ public class TokenBucketRateLimiterTest {
         TokenBucketRateLimiter tokenBucketRateLimiter = buildRateLimiter(clock, 1, 1, Duration.ofSeconds(1));
 
         assertFalse(tokenBucketRateLimiter.getWaitTimeForPermit().isPresent());
-        // creates an entry that should expire in 40ms
+        // creates an entry that should expire in 2s
         try (Handle handle = rdbi.open()) {
             final Jedis jedis = handle.jedis();
             assertEquals(jedis.ttl(tokenBucketRateLimiter.getKey()).longValue(), 2L);
-            Uninterruptibles.sleepUninterruptibly(2, TimeUnit.SECONDS);
-            assertFalse(jedis.exists(tokenBucketRateLimiter.getKey()));
+            await().atMost(5, TimeUnit.SECONDS).until(() -> !jedis.exists(tokenBucketRateLimiter.getKey()));
         }
     }
 
@@ -341,14 +341,14 @@ public class TokenBucketRateLimiterTest {
     }
 
 
-    private TokenBucketRateLimiter buildRateLimiter(LongSupplier clock, int maxTokens, int requestRate, Duration refillPeriod) {
+    private TokenBucketRateLimiter buildRateLimiter(LongSupplier clock, int maxTokens, int refillValue, Duration refillPeriod) {
 
         return new TokenBucketRateLimiter(
                 rdbi,
                 "d:test:rdbi",
                 UUID.randomUUID().toString(),
                 maxTokens,
-                requestRate,
+                refillValue,
                 refillPeriod,
                 clock);
     }
