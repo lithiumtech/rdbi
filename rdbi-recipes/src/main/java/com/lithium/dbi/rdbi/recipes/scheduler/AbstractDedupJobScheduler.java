@@ -19,8 +19,32 @@ public abstract class AbstractDedupJobScheduler {
         this.prefix = redisPrefixKey;
     }
 
-    public abstract boolean schedule(final String tube, final String jobStr, final int ttlInMillis);
-    public abstract List<TimeJobInfo> reserveMulti(final String tube, final long ttrInMillis, final int maxNumberOfJobs);
+    /**
+     * schedule a job (place in the ready queue, and schedule for some number of millis after "now").
+     * @param tube job group. jobs within the same job group are deduped by job string.
+     * @param jobStr string representing the job. jobs with identical strings are deduplicated.
+     * @param becomeReadyInMillis this job will become ready to run this many milliseconds into the future.
+     * @return true if the job was scheduled.
+     *         false indicates the job already exists in the ready queue or the running queue.
+     */
+    public abstract boolean schedule(final String tube, final String jobStr, final int becomeReadyInMillis);
+
+    /**
+     * reserve a number of "ready" jobs (in the "ready" queue, and scheduled for some time before "now"),
+     * moving them to the "running" queue.
+     * @param tube job group. we will only grab ready jobs from this group.
+     * @param considerExpiredAfterMillis if jobs haven't been deleted after being reserved for this many millis, consider them expired.
+     * @param maxNumberOfJobs number of jobs to reserve.
+     * @return list of jobs reserved (now considered "running",) or empty list if none.
+     */
+    public abstract List<TimeJobInfo> reserveMulti(final String tube, final long considerExpiredAfterMillis, final int maxNumberOfJobs);
+
+    /**
+     * delete job from ready AND running queues, regardless of job state.
+     * @param tube job group. jobs within the same job group are deduped by job string.
+     * @param jobStr string representing the job. jobs with identical strings are deduplicated.
+     * @return true if deleted ok, false if job wasn't found in either ready or running.
+     */
     public abstract boolean deleteJob(final String tube, String jobStr);
 
     /**

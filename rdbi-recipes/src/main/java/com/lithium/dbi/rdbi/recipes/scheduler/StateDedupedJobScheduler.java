@@ -45,7 +45,7 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
     }
 
     @Override
-    public List<TimeJobInfo> reserveMulti(final String tube, final long ttrInMillis, final int maxNumberOfJobs) {
+    public List<TimeJobInfo> reserveMulti(final String tube, final long considerExpiredAfterMillis, final int maxNumberOfJobs) {
         try (Handle handle = rdbi.open()) {
             return handle.attach(StateDedupedJobSchedulerDAO.class).reserveJobs(
                     getReadyQueue(tube),
@@ -53,7 +53,7 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
                     getPaused(tube),
                     maxNumberOfJobs,
                     Instant.now().getMillis(),
-                    Instant.now().getMillis() + ttrInMillis);
+                    Instant.now().getMillis() + considerExpiredAfterMillis);
         }
     }
 

@@ -25,7 +25,6 @@
         <module>rdbi-parent</module>
         <module>rdbi-core</module>
         <module>rdbi-recipes</module>
-        <module>rdbi-recipes-java7</module>
     </modules>
 
 </project>
