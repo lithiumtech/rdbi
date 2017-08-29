@@ -28,25 +28,20 @@ public class ExclusiveJobScheduler extends AbstractDedupJobScheduler {
 
     //TODO think about runtime exception, the scheduler should catch all connection based one and handle them
 
-    /**
-     * @return true if the job was scheduled.
-     *         false indicates the job already exists in the ready queue or the running queue.
-     */
     @Override
-    public boolean schedule(final String tube, final String jobStr, final int ttlInMillis) {
-
+    public boolean schedule(final String tube, final String jobStr, final int becomeReadyInMillis) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(ExclusiveJobSchedulerDAO.class).scheduleJob(
                     getReadyQueue(tube),
                     getRunningQueue(tube),
                     getPaused(tube),
                     jobStr,
-                    Instant.now().getMillis() + ttlInMillis);
+                    Instant.now().getMillis() + becomeReadyInMillis);
         }
     }
 
     @Override
-    public List<TimeJobInfo> reserveMulti(final String tube, final long ttrInMillis, final int maxNumberOfJobs) {
+    public List<TimeJobInfo> reserveMulti(final String tube, final long considerExpiredAfterMillis, final int maxNumberOfJobs) {
         try (Handle handle = rdbi.open()) {
             return handle.attach(ExclusiveJobSchedulerDAO.class).reserveJobs(
                     getReadyQueue(tube),
@@ -54,7 +49,7 @@ public class ExclusiveJobScheduler extends AbstractDedupJobScheduler {
                     getPaused(tube),
                     maxNumberOfJobs,
                     Instant.now().getMillis(),
-                    Instant.now().getMillis() + ttrInMillis);
+                    Instant.now().getMillis() + considerExpiredAfterMillis);
         }
     }
 
