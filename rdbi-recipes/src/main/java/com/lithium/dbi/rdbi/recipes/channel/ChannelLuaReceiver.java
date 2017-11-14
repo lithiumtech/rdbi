@@ -1,6 +1,8 @@
 package com.lithium.dbi.rdbi.recipes.channel;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.google.common.collect.Lists;
 import com.lithium.dbi.rdbi.BindArg;
@@ -62,6 +64,32 @@ public class ChannelLuaReceiver implements ChannelReceiver {
         );
 
         @Query(
+            "local number_of_channels = ARGV[1]\n" +
+            "local bulk_result = {}\n" +
+            "for i = 1, number_of_channels do\n" +
+            "    local current_count = redis.call(\"GET\", tostring(KEYS[i*2]))\n" +
+            "    if not current_count then\n" +
+            "        current_count = 0\n" +
+            "    else\n" +
+            "        current_count = tonumber(current_count)\n" +
+            "    end\n" +
+            "    if current_count <= tonumber(ARGV[i+1]) then\n" +
+            "        bulk_result[i] = tostring(0)\n" +
+            "    else\n" +
+            "        local results = redis.call(\"LRANGE\", KEYS[i*2-1], 0, current_count - tonumber(ARGV[i+1]) + 1)\n" +
+            "        results[#results + 1] = tostring(current_count)\n" +
+            "        bulk_result[i] = results\n" +
+            "    end\n" +
+            "end\n" +
+            "return bulk_result;"
+        )
+        @Mapper(GetBulkResultMapper.class)
+        public GetBulkResult getMulti(
+                @BindKey("allKeys") List<String> inputKeys,
+                @BindArg("allArgs") List<String> inputArgs
+        );
+
+        @Query(
             "local current_count = redis.call(\"GET\", $countKey$)\n" +
             "if not current_count then\n" +
             "    current_count = 0\n" +
@@ -99,6 +127,27 @@ public class ChannelLuaReceiver implements ChannelReceiver {
         }
     }
 
+    public static class GetBulkResultMapper implements ResultMapper<GetBulkResult,List<List<String>>> {
+
+        @Override
+        public GetBulkResult map(List<List<String>> result) {
+
+            if (result.size() == 0) {
+                return null;
+            }
+
+            List<List<String>> listsResult =  new ArrayList<>();
+            List<Long> listsSizes = new ArrayList<>();
+
+            for (List<String> each: result) {
+                listsResult.add(Lists.reverse(each.subList(0, each.size() - 1)));
+                listsSizes.add(Long.valueOf(each.get(each.size()-1)));
+            }
+
+            return new GetBulkResult(listsResult, listsSizes);
+        }
+    }
+
     public ChannelLuaReceiver(RDBI rdbi) {
         this.rdbi = rdbi;
     }
@@ -124,6 +173,30 @@ public class ChannelLuaReceiver implements ChannelReceiver {
                         lastSeenId,
                         copyDepthToKey);
             }
+        } finally {
+            handle.close();
+        }
+    }
+
+    public GetBulkResult getMulti(List<String> channels, List<Long> lastSeenIds) {
+        Handle handle = rdbi.open();
+
+        try {
+            DAO dao = handle.attach(DAO.class);
+                List<String> depthKeys = channels.stream().map(eachChannel -> ChannelPublisher.getChannelDepthKey(eachChannel)).collect(Collectors.toList());
+                List<String>  queueKeys = channels.stream().map(eachChannel -> ChannelPublisher.getChannelQueueKey(eachChannel)).collect(Collectors.toList());
+
+                List<String> keysList = new ArrayList<>(depthKeys.size()*2);
+                List<String> argsList = new ArrayList<>(depthKeys.size());
+                argsList.add(String.valueOf(depthKeys.size()));
+
+                for (int i = 0; i < channels.size(); i++) {
+                    keysList.add(queueKeys.get(i));
+                    keysList.add(depthKeys.get(i));
+                    argsList.add(String.valueOf(lastSeenIds.get(i)));
+                }
+
+                return dao.getMulti(keysList, argsList);
         } finally {
             handle.close();
         }
