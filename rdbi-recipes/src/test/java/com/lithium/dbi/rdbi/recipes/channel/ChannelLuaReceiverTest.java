@@ -137,6 +137,31 @@ public class ChannelLuaReceiverTest {
     }
 
     @Test
+    public void testEmptyChannelPublishAndReceive() throws Exception {
+
+
+        final List<String> channels = ImmutableList.of("channel1");
+        final Set<String> channelSet = ImmutableSet.of("channel1");
+        final List<Long> lastSeenIds = ImmutableList.of(0L);
+
+        RDBI rdbi = new RDBI(new JedisPool("localhost"));
+
+
+        final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
+        channelPublisher.resetChannels(channelSet);
+
+        final int messageAmount = 0;
+
+        final ChannelReceiver channelReceiver = new ChannelLuaReceiver(rdbi);
+        GetBulkResult result = channelReceiver.getMulti(channels, lastSeenIds);
+
+        assertEquals(result.getMessages().get(0).size(), messageAmount);
+
+        channelPublisher.resetChannels(channelSet);
+
+    }
+
+    @Test
     public void testMultiThreadedMultiChannelPublishAndReceive() throws InterruptedException {
         final Set<String> channelSet = ImmutableSet.of("channel1", "channel2", "channel3", "channel4", "channel5");
         final int messageAmount = 50;

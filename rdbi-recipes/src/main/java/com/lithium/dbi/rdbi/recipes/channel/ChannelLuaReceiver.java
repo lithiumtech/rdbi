@@ -74,7 +74,7 @@ public class ChannelLuaReceiver implements ChannelReceiver {
             "        current_count = tonumber(current_count)\n" +
             "    end\n" +
             "    if current_count <= tonumber(ARGV[i+1]) then\n" +
-            "        bulk_result[i] = tostring(0)\n" +
+            "        bulk_result[i] = {}\n" +
             "    else\n" +
             "        local results = redis.call(\"LRANGE\", KEYS[i*2-1], 0, current_count - tonumber(ARGV[i+1]) + 1)\n" +
             "        results[#results + 1] = tostring(current_count)\n" +
@@ -140,6 +140,11 @@ public class ChannelLuaReceiver implements ChannelReceiver {
             List<Long> listsSizes = new ArrayList<>();
 
             for (List<String> each: result) {
+                if (each.size() == 0) {
+                    listsResult.add(each);
+                    listsSizes.add(0L);
+                    continue;
+                }
                 listsResult.add(Lists.reverse(each.subList(0, each.size() - 1)));
                 listsSizes.add(Long.valueOf(each.get(each.size()-1)));
             }
