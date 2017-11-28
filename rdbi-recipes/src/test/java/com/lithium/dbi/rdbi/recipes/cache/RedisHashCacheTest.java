@@ -387,7 +387,7 @@ public class RedisHashCacheTest {
                         fetchAllFromMap(dataSource),
                         "testRemoveCache",
                         TEST_NAMESPACE,
-                        Integer.MAX_VALUE,
+                        0,
                         0,
                         Optional.of(es),
                         NOOP,
