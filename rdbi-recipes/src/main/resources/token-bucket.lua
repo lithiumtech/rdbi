@@ -53,7 +53,7 @@ end
 
 local expire = function(keyName, refillRatePerMs, maxTokens)
     local expireTime = math.max(1, msPerRequest(refillRatePerMs, maxTokens) * 2 / 1000)
-    redis.call('EXPIRE', keyName, expireTime)
+    redis.call('EXPIRE', keyName, math.ceil(expireTime))
 end
 
 -- main logic

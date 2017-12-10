@@ -331,6 +331,12 @@ public class TokenBucketRateLimiterTest {
         assertTrue(meanRate2 < 12.5 && meanRate2 < meanRate && meanRate2 > 10.0);
     }
 
+    @Test
+    public void testFloaty() {
+        TokenBucketRateLimiter limiter = buildRateLimiter(System::currentTimeMillis, 8, 160_000, Duration.ofDays(1));
+        assertTrue(limiter.acquirePatiently(Duration.ofMinutes(1)));
+    }
+
     private double getMeanRate(double rate, long startTime) {
         if(rate == 0L) {
             return 0.0D;
