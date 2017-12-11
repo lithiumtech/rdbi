@@ -222,13 +222,14 @@ public class StateDedupedJobSchedulerTest {
 
     @Test
     public void testDelete() throws InterruptedException {
-        assertFalse(scheduledJobSystem.deleteJob(tubeName, "{hello:world}"));
+        final String jobStr = "{hello:world}";
+        assertFalse(scheduledJobSystem.deleteJob(tubeName, jobStr));
 
         //////////////// Test deleting from the running queue.
         // Schedule and reserve job.
-        scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
+        scheduledJobSystem.schedule(tubeName, jobStr, 0);
         JobInfo result1 = scheduledJobSystem.reserveSingle(tubeName, 1000);
-        assertEquals(result1.getJobStr(), "{hello:world}");
+        assertEquals(result1.getJobStr(), jobStr);
 
         // Delete the job thats in the running queue.
         assertTrue(scheduledJobSystem.deleteJob(tubeName, result1.getJobStr()));
@@ -240,10 +241,10 @@ public class StateDedupedJobSchedulerTest {
 
         /////////////// Test deleting from ready queue.
         // Schedule the job again.
-        scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
+        scheduledJobSystem.schedule(tubeName, jobStr, 0);
 
         //Delete job while its in the ready queue.
-        assertTrue(scheduledJobSystem.deleteJob(tubeName, "{hello:world}"));
+        assertTrue(scheduledJobSystem.deleteJob(tubeName, jobStr));
 
         // Try to reserve and shouldn't be able to.
         JobInfo result4 = scheduledJobSystem.reserveSingle(tubeName, 1000);
@@ -251,23 +252,27 @@ public class StateDedupedJobSchedulerTest {
 
         ///////////// Test deleting from the running and ready queue.
         // Schedule job again.
-        scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
+        scheduledJobSystem.schedule(tubeName, jobStr, 0);
 
         // Reserve job.
         JobInfo result5 = scheduledJobSystem.reserveSingle(tubeName, 1000);
-        assertEquals(result5.getJobStr(), "{hello:world}");
+        assertEquals(result5.getJobStr(), jobStr);
 
         // Schedule job again so its in the ready and running queue at the same time.
-        assertTrue(scheduledJobSystem.schedule(tubeName, "{hello:world}", 0));
+        assertTrue(scheduledJobSystem.schedule(tubeName, jobStr, 0));
 
-        assertTrue(scheduledJobSystem.inReadyQueue(tubeName, "{hello:world}"));
-        assertTrue(scheduledJobSystem.inRunningQueue(tubeName, "{hello:world}"));
+        assertTrue(scheduledJobSystem.inReadyQueue(tubeName, jobStr));
+        assertTrue(scheduledJobSystem.inRunningQueue(tubeName, jobStr));
+
+        assertTrue(scheduledJobSystem.deleteJobFromReady(tubeName, jobStr));
+        assertFalse(scheduledJobSystem.inReadyQueue(tubeName, jobStr));
+        assertTrue(scheduledJobSystem.inRunningQueue(tubeName, jobStr));
 
         //Delete job while its in the ready and running queue.
-        assertTrue(scheduledJobSystem.deleteJob(tubeName, "{hello:world}"));
+        assertTrue(scheduledJobSystem.deleteJob(tubeName, jobStr));
 
-        assertFalse(scheduledJobSystem.inReadyQueue(tubeName, "{hello:world}"));
-        assertFalse(scheduledJobSystem.inRunningQueue(tubeName, "{hello:world}"));
+        assertFalse(scheduledJobSystem.inReadyQueue(tubeName, jobStr));
+        assertFalse(scheduledJobSystem.inRunningQueue(tubeName, jobStr));
 
         // Try to reserve and shouldn't be able to.
         JobInfo result6 = scheduledJobSystem.reserveSingle(tubeName, 1000);

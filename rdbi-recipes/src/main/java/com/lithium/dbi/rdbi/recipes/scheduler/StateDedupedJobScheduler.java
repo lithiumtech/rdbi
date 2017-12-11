@@ -65,6 +65,12 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
         }
     }
 
+    public boolean deleteJobFromReady(final String tube, String jobStr) {
+        try (Handle handle = rdbi.open()) {
+            return 1 == handle.jedis().zrem(getReadyQueue(tube), jobStr);
+        }
+    }
+
     public boolean ackJob(final String tube, String jobStr) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(StateDedupedJobSchedulerDAO.class)
