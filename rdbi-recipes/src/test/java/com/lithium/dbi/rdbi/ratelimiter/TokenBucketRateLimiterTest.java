@@ -1,6 +1,5 @@
 package com.lithium.dbi.rdbi.ratelimiter;
 
-import com.google.common.util.concurrent.Uninterruptibles;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
@@ -22,7 +21,6 @@ import static org.testng.Assert.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
 
 public class TokenBucketRateLimiterTest {
-
 
     private RDBI rdbi = getRdbi();
 

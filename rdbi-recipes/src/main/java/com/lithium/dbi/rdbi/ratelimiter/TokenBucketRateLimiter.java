@@ -17,6 +17,8 @@ import java.time.Duration;
 import java.util.OptionalLong;
 import java.util.function.LongSupplier;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 /**
  * Rate limiter implementation based on
  * https://en.wikipedia.org/wiki/Token_bucket that generally adheres
@@ -44,6 +46,10 @@ public class TokenBucketRateLimiter implements RateLimiter {
                                   Duration refillPeriod,
                                   LongSupplier clock
                                  ) {
+        checkArgument(maxTokens > 0, "Max tokens %s must be > 0", maxTokens);
+        checkArgument(refillValue > 0, "Refill value of %s must be > 0", refillValue);
+        checkArgument(refillPeriod.toMillis() > 0, "Refill period of %ss must be > 0s", refillPeriod.toMillis() / 1000);
+
         this.rdbi = rdbi;
         this.maxTokens = maxTokens;
         this.refillRatePerMs = refillValue * 1.0 / refillPeriod.toMillis();
