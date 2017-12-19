@@ -1,5 +1,6 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
+import com.google.common.collect.ImmutableList;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
@@ -34,10 +35,11 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
      */
     @Override
     public boolean schedule(final String tube, final String jobStr, final int runInMillis) {
-
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(StateDedupedJobSchedulerDAO.class).scheduleJob(
                     getReadyQueue(tube),
+                    getRunningQueue(tube),
+                    getReadyAndRunningQueue(tube),
                     getPaused(tube),
                     jobStr,
                     Instant.now().getMillis() + runInMillis);
@@ -61,20 +63,29 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
     public boolean deleteJob(final String tube, String jobStr) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(StateDedupedJobSchedulerDAO.class)
-                              .deleteJob(getReadyQueue(tube), getRunningQueue(tube), jobStr);
+                              .deleteJob(getReadyQueue(tube),
+                                         getRunningQueue(tube),
+                                         getReadyAndRunningQueue(tube),
+                                         jobStr);
         }
     }
 
     public boolean deleteJobFromReady(final String tube, String jobStr) {
         try (Handle handle = rdbi.open()) {
-            return 1 == handle.jedis().zrem(getReadyQueue(tube), jobStr);
+            return 1 == handle.attach(StateDedupedJobSchedulerDAO.class)
+                              .deleteJobFromReady(getReadyQueue(tube),
+                                                  getReadyAndRunningQueue(tube),
+                                                  jobStr);
         }
     }
 
     public boolean ackJob(final String tube, String jobStr) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(StateDedupedJobSchedulerDAO.class)
-                              .ackJob(getRunningQueue(tube), jobStr);
+                              .ackJob(getReadyQueue(tube),
+                                      getRunningQueue(tube),
+                                      getReadyAndRunningQueue(tube),
+                                      jobStr);
         }
     }
 
@@ -94,22 +105,41 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
      */
     public List<TimeJobInfo> removeExpiredReadyJobs(String tube, long expirationPeriodInMillis) {
         try (Handle handle = rdbi.open()) {
-            return handle.attach(StateDedupedJobSchedulerDAO.class)
-                         .removeExpiredJobs(getReadyQueue(tube), Instant.now().minus(expirationPeriodInMillis).getMillis());
+            final StateDedupedJobSchedulerDAO dao = handle.attach(StateDedupedJobSchedulerDAO.class);
+            final ImmutableList.Builder<TimeJobInfo> builder = ImmutableList.builder();
+
+            builder.addAll(dao.removeExpiredJobs(
+                    getReadyQueue(tube),
+                    Instant.now().minus(expirationPeriodInMillis).getMillis()));
+
+            return builder.addAll(dao.removeExpiredJobs(
+                    getReadyAndRunningQueue(tube),
+                    Instant.now().minus(expirationPeriodInMillis).getMillis())).build();
+
         }
     }
 
     public boolean inReadyQueue(String tube, String jobStr) {
-        try (Handle handle = rdbi.open()) {
-            return 1 == handle.attach(StateDedupedJobSchedulerDAO.class)
-                         .inQueue(getReadyQueue(tube), jobStr);
-        }
+        return inQueue(getReadyQueue(tube), jobStr);
     }
 
     public boolean inRunningQueue(String tube, String jobStr) {
+       return inQueue(getRunningQueue(tube), jobStr);
+    }
+
+    public boolean inReadyAndRunningQueue(String tube, String jobStr) {
+        return inQueue(getReadyAndRunningQueue(tube), jobStr);
+    }
+
+    private boolean inQueue(String queueName, String jobStr) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(StateDedupedJobSchedulerDAO.class)
-                              .inQueue(getRunningQueue(tube), jobStr);
+                              .inQueue(queueName, jobStr);
         }
     }
+
+    protected String getReadyAndRunningQueue(String tube) {
+        return getPrefix() + tube + ":ready_and_running_queue";
+    }
+
 }
