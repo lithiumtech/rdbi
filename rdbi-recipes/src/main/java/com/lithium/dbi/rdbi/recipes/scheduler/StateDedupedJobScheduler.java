@@ -31,7 +31,7 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
 
     /**
      * @return true if the job was scheduled.
-     *         false indicates the job already exists in the ready queue or the running queue.
+     *         false indicates the job already exists in the ready queue.
      */
     @Override
     public boolean schedule(final String tube, final String jobStr, final int runInMillis) {
@@ -141,5 +141,4 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
     protected String getReadyAndRunningQueue(String tube) {
         return getPrefix() + tube + ":ready_and_running_queue";
     }
-
 }

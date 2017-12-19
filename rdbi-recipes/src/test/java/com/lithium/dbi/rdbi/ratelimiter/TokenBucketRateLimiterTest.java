@@ -3,6 +3,7 @@ package com.lithium.dbi.rdbi.ratelimiter;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
+import com.lithium.dbi.rdbi.TestClock;
 import org.testng.annotations.Test;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -375,22 +376,4 @@ public class TokenBucketRateLimiterTest {
         return rdbi;
     }
 
-    private static class TestClock implements LongSupplier {
-        private final long interval;
-        private long now;
-
-        TestClock(long start, long interval) {
-            this.now = start;
-            this.interval = interval;
-        }
-
-        void tick() {
-            now += interval;
-        }
-
-        @Override
-        public long getAsLong() {
-            return now;
-        }
-    }
 }

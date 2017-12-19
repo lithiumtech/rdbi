@@ -113,6 +113,7 @@ public abstract class AbstractDedupJobScheduler {
         }
     }
 
+    // TODO: StateDedupedJobScheduler needs to combine ready here with ready + running
     public long getReadyJobCount(String tube) {
         final String queue = getReadyQueue(tube);
         final long now = Instant.now().getMillis();
@@ -151,7 +152,6 @@ public abstract class AbstractDedupJobScheduler {
     }
 
     private List<TimeJobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
-
         final List<TimeJobInfo> jobInfos = Lists.newArrayList();
         try (Handle handle = rdbi.open()) {
             Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
