@@ -173,4 +173,8 @@ public abstract class AbstractDedupJobScheduler {
     protected String getPaused(String tube){
         return prefix + tube + ":paused";
     }
+
+    String getPrefix() {
+        return prefix;
+    }
 }

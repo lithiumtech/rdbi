@@ -19,16 +19,24 @@ public interface StateDedupedJobSchedulerDAO {
      * When scheduling a job make sure its not already in the ready queue. A job
      * can be scheduled regardless of whether its in the running queue.
      * @param readyQueue the name of the ready queue
+     * @param runningQueue the name of the running queue
+     * @param readyAndRunningQueue the name of the ready and running queue
      * @param pausedTube the name of the paused tube
      * @param job the string representation of a job to schedule
      * @param runInMillis the timestamp in milliseconds when the job should be run.
      * @return 1 if job was scheduled or 0 otherwise.
      */
     @Query(
-        "local readyJobScore = redis.call('ZSCORE', $readyQueue$, $jobStr$)\n" +
+        "local readyJobScore = redis.call('ZSCORE', $readyQueue$, $job$)\n" +
+        "local runningJobScore = redis.call('ZSCORE', $runningQueue$, $job$)\n" +
+        "local readyAndRunningJobScore = redis.call('ZSCORE', $readyAndRunningQueue$, $job$)\n" +
         "local isPaused = redis.call('GET', $pausedTube$) \n" +
-        "if not readyJobScore and not isPaused then\n" +
-        "   redis.call('ZADD', $readyQueue$, $runInMillis$, $jobStr$)\n" +
+        "if not readyJobScore and not readyAndRunningJobScore and not isPaused then\n" +
+        "   if not runningJobScore then\n" +
+        "     redis.call('ZADD', $readyQueue$, $runInMillis$, $job$)\n" +
+        "   else\n" +
+        "     redis.call('ZADD', $readyAndRunningQueue$, $runInMillis$, $job$)\n" +
+        "   end\n" +
         "   return 1\n" +
         "else\n" +
         "   return 0\n" +
@@ -36,8 +44,10 @@ public interface StateDedupedJobSchedulerDAO {
     )
     int scheduleJob(
             @BindKey("readyQueue") String readyQueue,
+            @BindKey("runningQueue") String runningQueue,
+            @BindKey("readyAndRunningQueue") String readyAndRunningQueue,
             @BindKey("pausedTube") String pausedTube,
-            @BindArg("jobStr") String job,
+            @BindArg("job") String job,
             @BindArg("runInMillis") long runInMillis);
 
     /**
@@ -122,7 +132,9 @@ public interface StateDedupedJobSchedulerDAO {
     @Query(
         "local deletedFromReadyQueue = redis.call('ZREM', $readyQueue$, $job$)\n" +
         "local deletedFromRunningQueue = redis.call('ZREM', $runningQueue$, $job$)\n" +
-        "if deletedFromReadyQueue == 0 and deletedFromRunningQueue == 0 then\n" +
+        "local deletedFromReadyAndRunningQueue = redis.call('ZREM', $readyAndRunningQueue$, $job$)\n" +
+
+        "if deletedFromReadyQueue == 0 and deletedFromRunningQueue == 0 and deletedFromReadyAndRunningQueue == 0 then\n" +
         "   return 0\n" +
         "else\n" +
         "   return 1\n" +
@@ -131,6 +143,7 @@ public interface StateDedupedJobSchedulerDAO {
     int deleteJob(
             @BindKey("readyQueue") String readyQueue,
             @BindKey("runningQueue") String runningQueue,
+            @BindKey("readyAndRunningQueue") String readyAndRunningQueue,
             @BindArg("job") String job);
 
     /**
@@ -142,10 +155,18 @@ public interface StateDedupedJobSchedulerDAO {
      * @return 1 if the job is currently in the running queue or 0 otherwise.
      */
     @Query(
-        "return redis.call('ZREM', $runningQueue$, $job$)"
+        "local removedFromRunning = redis.call('ZREM', $runningQueue$, $job$)\n" +
+        "local readyAndRunningJobScore = redis.call('ZSCORE', $readyAndRunningQueue$, $job$)\n"+
+        "if readyAndRunningJobScore then\n" +
+        "  redis.call('ZREM', $readyAndRunningQueue$, $job$)\n" +
+        "  redis.call('ZADD', $readyQueue$, readyAndRunningJobScore, $job$)\n" +
+        "end\n" +
+        "return removedFromRunning"
     )
     int ackJob(
+            @BindKey("readyQueue") String readyQueue,
             @BindKey("runningQueue") String runningQueue,
+            @BindKey("readyAndRunningQueue") String readyAndRunningQueue,
             @BindArg("job") String job);
 
     @Query(
@@ -160,4 +181,17 @@ public interface StateDedupedJobSchedulerDAO {
             @BindKey("queue") String queue,
             @BindArg("job") String job);
 
+    @Query(
+            "local deletedFromReadyQueue = redis.call('ZREM', $readyQueue$, $job$)\n" +
+            "local deletedFromReadyAndRunningQueue = redis.call('ZREM', $readyAndRunningQueue$, $job$)\n" +
+            "if deletedFromReadyQueue == 0 and deletedFromReadyAndRunningQueue == 0 then\n" +
+            "   return 0\n" +
+            "else\n" +
+            "   return 1\n" +
+            "end"
+    )
+    int deleteJobFromReady(
+            @BindKey("readyQueue") String readyQueue,
+            @BindKey("readyAndRunningQueue") String readyAndRunningQueue,
+            @BindArg("job") String job);
 }

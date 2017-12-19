@@ -37,7 +37,9 @@ public class StateDedupedJobSchedulerTest {
         rdbi.withHandle(new Callback<Void>() {
             @Override
             public Void run(Handle handle) {
-                handle.jedis().del(scheduledJobSystem.getReadyQueue(tubeName), scheduledJobSystem.getRunningQueue(tubeName));
+                handle.jedis().del(scheduledJobSystem.getReadyQueue(tubeName),
+                                   scheduledJobSystem.getRunningQueue(tubeName),
+                                   scheduledJobSystem.getReadyAndRunningQueue(tubeName));
                 return null;
             }
         });
@@ -261,11 +263,15 @@ public class StateDedupedJobSchedulerTest {
         // Schedule job again so its in the ready and running queue at the same time.
         assertTrue(scheduledJobSystem.schedule(tubeName, jobStr, 0));
 
-        assertTrue(scheduledJobSystem.inReadyQueue(tubeName, jobStr));
+        // assert readiness
+        assertFalse(scheduledJobSystem.inReadyQueue(tubeName, jobStr));
+        assertTrue(scheduledJobSystem.inReadyAndRunningQueue(tubeName, jobStr));
         assertTrue(scheduledJobSystem.inRunningQueue(tubeName, jobStr));
+
 
         assertTrue(scheduledJobSystem.deleteJobFromReady(tubeName, jobStr));
         assertFalse(scheduledJobSystem.inReadyQueue(tubeName, jobStr));
+        assertFalse(scheduledJobSystem.inReadyAndRunningQueue(tubeName, jobStr));
         assertTrue(scheduledJobSystem.inRunningQueue(tubeName, jobStr));
 
         //Delete job while its in the ready and running queue.
@@ -302,15 +308,17 @@ public class StateDedupedJobSchedulerTest {
         // Schedule the job again. Since its now reserved should be able to schedule it again.
         assertTrue(scheduledJobSystem.schedule(tubeName, "{hello:world}", 0));
 
-        // Verify the job is in the ready queue now.
-        assertTrue(scheduledJobSystem.inReadyQueue(tubeName, "{hello:world}"));
+        // Verify the job is in the ready-and-running queue now.
+        assertFalse(scheduledJobSystem.inReadyQueue(tubeName, "{hello:world}"));
+        assertTrue(scheduledJobSystem.inReadyAndRunningQueue(tubeName, "{hello:world}"));
         assertTrue(scheduledJobSystem.inRunningQueue(tubeName, "{hello:world}"));
 
         // Ack the job.
         assertTrue(scheduledJobSystem.ackJob(tubeName, "{hello:world}"));
 
-        // Verify the job is in the ready queue even after the ack.
+        // Verify the job is now in ready queue even after the ack, but not ready and running
         assertTrue(scheduledJobSystem.inReadyQueue(tubeName, "{hello:world}"));
+        assertFalse(scheduledJobSystem.inReadyAndRunningQueue(tubeName, "{hello:world}"));
         assertFalse(scheduledJobSystem.inRunningQueue(tubeName, "{hello:world}"));
 
         JobInfo result2 = scheduledJobSystem.reserveSingle(tubeName, 1000);
@@ -341,11 +349,36 @@ public class StateDedupedJobSchedulerTest {
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
 
         // Sleep enough time to allow it to expire.
-        Thread.sleep(100);
+        Thread.sleep(50);
 
         // Verify the job is returned as expired.
         List<TimeJobInfo> infos = scheduledJobSystem.removeExpiredReadyJobs(tubeName, 10);
         assertEquals(infos.size(), 1);
         assertNotNull(infos.get(0).getJobScore());
+    }
+
+    @Test
+    public void testRemoveExpiredReadyAndRuningJobs() throws InterruptedException {
+        // Schedule a job
+        scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
+        // move it to running
+        JobInfo result1 = scheduledJobSystem.reserveSingle(tubeName, 1000);
+
+        // schedule again
+        scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
+
+        // Sleep enough time to allow it to expire.
+        Thread.sleep(50);
+
+        // Verify the job is returned as expired.
+        List<TimeJobInfo> infos = scheduledJobSystem.removeExpiredReadyJobs(tubeName, 10);
+        assertEquals(infos.size(), 1);
+        assertNotNull(infos.get(0).getJobScore());
+
+        assertFalse(scheduledJobSystem.inReadyQueue(tubeName, "{hello:world}"));
+        assertFalse(scheduledJobSystem.inReadyAndRunningQueue(tubeName, "{hello:world}"));
+        assertTrue(scheduledJobSystem.inRunningQueue(tubeName, "{hello:world}"));
+        // Ack the job.
+        assertTrue(scheduledJobSystem.ackJob(tubeName, "{hello:world}"));
     }
 }
