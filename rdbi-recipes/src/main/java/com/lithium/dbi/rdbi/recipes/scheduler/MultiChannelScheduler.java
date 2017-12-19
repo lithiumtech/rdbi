@@ -133,19 +133,19 @@ public class MultiChannelScheduler {
         }
     }
 
-    public List<TimeJobInfo> reserveMulti(final String group, final long considerExpiredAfterMillis, final int maxNumberOfJobs) {
+    public List<TimeJobInfo> reserveMulti(final String tube, final long considerExpiredAfterMillis, final int maxNumberOfJobs) {
         try (Handle handle = rdbi.open()) {
             return handle.attach(MultiChannelSchedulerDAO.class).reserveJobs(
-                    getMultiChannelCircularBuffer(group),
+                    getMultiChannelCircularBuffer(tube),
                     maxNumberOfJobs,
                     Instant.now().getMillis(),
                     Instant.now().getMillis() + considerExpiredAfterMillis);
         }
     }
 
-    public List<String> getAllChannels(final String group) {
+    public List<String> getAllChannels(final String tube) {
         try (Handle handle = rdbi.open()) {
-            return handle.jedis().lrange(getMultiChannelCircularBuffer(group), 0, -1);
+            return handle.jedis().lrange(getMultiChannelCircularBuffer(tube), 0, -1);
         }
     }
 
@@ -164,11 +164,15 @@ public class MultiChannelScheduler {
         }
     }
 
-    private String getMultiChannelCircularBuffer(String group) {
-        return prefix + ":multichannel:" + group + ":circular_buffer";
+    // TODO need to implement the other methods from StateDedupedJobScheduler
+    // TODO don't forget the abstract methods
+
+
+    private String getMultiChannelCircularBuffer(String tube) {
+        return prefix + ":multichannel:" + tube + ":circular_buffer";
     }
-    private String getMultiChannelSet(String group) {
-        return prefix + ":multichannel:" + group + ":set";
+    private String getMultiChannelSet(String tube) {
+        return prefix + ":multichannel:" + tube + ":set";
     }
 
     private String getTubePrefix(String group, String tube) {
