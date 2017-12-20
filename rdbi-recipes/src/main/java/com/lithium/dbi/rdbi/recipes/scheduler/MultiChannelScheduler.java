@@ -42,7 +42,7 @@ public class MultiChannelScheduler {
      * @return true if the job was scheduled.
      *         false indicates the job already exists in the ready queue.
      */
-    public boolean schedule(final String channel, final String tube, final String job, final int runInMillis) {
+    public boolean schedule(String channel, String tube, final String job, final int runInMillis) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(MultiChannelSchedulerDAO.class)
                     .scheduleJob(
@@ -59,7 +59,7 @@ public class MultiChannelScheduler {
     /**
      * see {@link AbstractDedupJobScheduler#reserveMulti(String, long, int)}
      */
-    public List<TimeJobInfo> reserveMulti(final String tube, final long considerExpiredAfterMillis, final int maxNumberOfJobs) {
+    public List<TimeJobInfo> reserveMulti(String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs) {
         try (Handle handle = rdbi.open()) {
             return handle.attach(MultiChannelSchedulerDAO.class).reserveJobs(
                     getMultiChannelCircularBuffer(tube),
@@ -80,7 +80,7 @@ public class MultiChannelScheduler {
     /**
      * See {@link StateDedupedJobScheduler#ackJob(java.lang.String, java.lang.String)}
      */
-    public boolean ackJob(final String tube, final String job) {
+    public boolean ackJob(String tube, String job) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(MultiChannelSchedulerDAO.class)
                     .ackJob(getRunningQueue(tube), job);
@@ -111,7 +111,7 @@ public class MultiChannelScheduler {
      */
     public void pause(String channel, String tube) {
         rdbi.withHandle(handle -> {
-            handle.jedis().set(getPaused(channel, tube), String.valueOf(System.currentTimeMillis() / 1000));
+            handle.jedis().set(getPaused(channel, tube), String.valueOf(clock.getAsLong() / 1000));
             return null;
         });
     }
@@ -148,6 +148,9 @@ public class MultiChannelScheduler {
         return rdbi.withHandle(handle -> handle.jedis().zcard(queue));
     }
 
+    /**
+     * returns a list of jobs scheduled with a delay - to run in the future
+     */
     public List<TimeJobInfo> peekDelayed(String channel, String tube, int offset, int count) {
         return peekInternal(getReadyQueue(channel, tube), (double) clock.getAsLong(), Double.MAX_VALUE, offset, count);
     }

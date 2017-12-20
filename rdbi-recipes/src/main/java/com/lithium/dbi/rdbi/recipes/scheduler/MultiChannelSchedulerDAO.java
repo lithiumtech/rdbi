@@ -42,9 +42,6 @@ public interface MultiChannelSchedulerDAO {
             @BindArg("jobStr") String job,
             @BindArg("runInMillis") long runInMillis);
 
-    //We could add an extra loop in order to go through all the companies if they're empty, but we should check
-    //that we've run one full circle OR we can remove things that have nothing in the ready set; I don't know how this
-    //will interact if we fix the n^2logn problem here either
     @Mapper(TimeJobInfoListMapper.class)
     @Query(
             "local nextChannel = redis.call('RPOPLPUSH', $multiChannelCircularBuffer$, $multiChannelCircularBuffer$)\n" +

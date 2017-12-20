@@ -22,8 +22,6 @@ public class MultiChannelSchedulerTest {
     private static final String prefix = "mc-test:";
     private String tube1 = "tube1";
     private String channel1 = "channel1";
-    private String channel2 = "channel2";
-    private String channel3 = "channel3";
 
     @AfterMethod
     public void tearDown() {
@@ -77,8 +75,8 @@ public class MultiChannelSchedulerTest {
         // submit 5 for B
         // submit 2 for C
         // under old scheduler, we'd drain these in order of submission
-        // now we expect to get [ A, B, C, A, B, C, A, B, A, B, A, B, A, A, A, A, A ]
-
+        // now we expect to get [ A, B, C, A, B, C, A, B, A, B, A, B, A, A, A, A, A ] if no other jobs are submitted
+        // further, when we submit a new C when 3 As remain, C will run when 2 As remain, regardless of original submission time
 
         TestClock clock = new TestClock(System.currentTimeMillis() - 30, 1L);
 
@@ -109,7 +107,7 @@ public class MultiChannelSchedulerTest {
         assertThat(scheduledJobSystem.getReadyJobCount("C", tube1)).isEqualTo(1);
 
 
-        final Consumer<String> reserveAndAssert = channel ->  {
+        final Consumer<String> reserveAndAssert = channel -> {
             List<TimeJobInfo> job1 = scheduledJobSystem.reserveMulti(tube1, 1000, 1);
             assertThat(job1)
                     .hasSize(1);
@@ -174,44 +172,166 @@ public class MultiChannelSchedulerTest {
 
     @Test
     public void testRemoveExpiredRunning() {
-        fail("not done");
+
+        TestClock clock = new TestClock(System.currentTimeMillis(), 20L);
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix, clock);
+        String jobId = channel1 + ":" + tube1;
+
+        assertThat(scheduledJobSystem.schedule(channel1, tube1, jobId, 0)).isTrue();
+
+        scheduledJobSystem.reserveMulti(tube1, 10L, 1);
+
+        assertThat(scheduledJobSystem.peekExpired(tube1, 0, 1)).isEmpty();
+
+        // pre-tick, removing expired has no effect
+        assertThat(scheduledJobSystem.removeExpiredRunningJobs(tube1)).isEmpty();
+
+        // ticking forward 20ms will put this job as expired
+        clock.tick();
+        assertThat(scheduledJobSystem.peekExpired(tube1, 0, 1)).hasSize(1);
+
+        assertThat(scheduledJobSystem.removeExpiredRunningJobs(tube1)).hasSize(1);
+        assertThat(scheduledJobSystem.peekRunning(tube1, 0, 1)).isEmpty();
     }
 
     @Test
     public void testRemoveExpiredReady() {
-        fail("not done");
+        TestClock clock = new TestClock(System.currentTimeMillis(), 20L);
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix, clock);
+        String jobId = channel1 + ":" + tube1;
+
+        assertThat(scheduledJobSystem.schedule(channel1, tube1, jobId, 10)).isTrue();
+
+        // not expired yet
+        assertThat(scheduledJobSystem.removeExpiredReadyJobs(channel1, tube1, clock.getAsLong())).isEmpty();
+
+        clock.tick();
+        assertThat(scheduledJobSystem.removeExpiredReadyJobs(channel1, tube1, clock.getAsLong())).hasSize(1);
+
+        // ready queue now empty
+        assertThat(scheduledJobSystem.peekReady(channel1, tube1, 0, 1)).isEmpty();
     }
 
     @Test
-    public void testPause() {
-        fail("not done");
+    public void testPauseCannotSchedule() {
+        TestClock clock = new TestClock(System.currentTimeMillis(), 1L);
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix, clock);
+
+        String jobId = channel1 + ":" + tube1;
+
+        scheduledJobSystem.pause(channel1, tube1);
+        assertThat(scheduledJobSystem.isPaused(channel1, tube1)).isTrue();
+
+        assertThat(scheduledJobSystem.getPauseStart(channel1, tube1)).isEqualTo(String.valueOf(clock.getAsLong() / 1000));
+
+        assertThat(scheduledJobSystem.schedule(channel1, tube1, jobId, 0)).isFalse();
+        assertThat(scheduledJobSystem.inReadyQueue(channel1, tube1, jobId)).isFalse();
+
+        scheduledJobSystem.resume(channel1, tube1);
+
+        assertThat(scheduledJobSystem.schedule(channel1, tube1, jobId, 0)).isTrue();
+        assertThat(scheduledJobSystem.inReadyQueue(channel1, tube1, jobId)).isTrue();
+    }
+
+    @Test
+    public void testPauseCannotReserve() {
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        String jobId = channel1 + ":" + tube1;
+
+        assertThat(scheduledJobSystem.schedule(channel1, tube1, jobId, 0)).isTrue();
+
+        scheduledJobSystem.pause(channel1, tube1);
+        assertThat(scheduledJobSystem.isPaused(channel1, tube1)).isTrue();
+
+        // can't reserve when paused
+        List<TimeJobInfo> jobs = scheduledJobSystem.reserveMulti(tube1, 1000L, 1);
+        assertThat(jobs).hasSize(0);
+
+        scheduledJobSystem.resume(channel1, tube1);
+
+        // now i can reserve
+        jobs = scheduledJobSystem.reserveMulti(tube1, 1000L, 1);
+        assertThat(jobs).hasSize(1);
     }
 
     @Test
     public void testPeekDelayed() {
-        fail("not done");
+        TestClock clock = new TestClock(System.currentTimeMillis(), 2L);
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix, clock);
+        String jobId = channel1 + ":" + tube1;
+
+        assertThat(scheduledJobSystem.schedule(channel1, tube1, jobId, 1)).isTrue();
+
+        // since the clock hasn't ticked it is still delayed
+        List<TimeJobInfo> delayed = scheduledJobSystem.peekDelayed(channel1, tube1, 0, 10);
+        assertThat(delayed).hasSize(1);
+
+        clock.tick();
+        // but now it should be delayed
+        delayed = scheduledJobSystem.peekDelayed(channel1, tube1, 0, 10);
+        assertThat(delayed).isEmpty();
     }
 
     @Test
     public void testPeekReady() {
-        fail("not done");
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        String jobId = channel1 + ":" + tube1;
+
+        assertThat(scheduledJobSystem.peekReady(channel1, tube1, 0, 10)).hasSize(0);
+
+        scheduledJobSystem.schedule(channel1, tube1, jobId + "_1", 0);
+        scheduledJobSystem.schedule(channel1, tube1, jobId + "_2", 0);
+
+        assertThat(scheduledJobSystem.peekReady(channel1, tube1, 0, 10)).hasSize(2);
+        assertThat(scheduledJobSystem.peekReady(channel1, tube1, 0, 1)).hasSize(1);
+
     }
 
     @Test
     public void testPeekRunning() {
-        fail("not done");
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        String jobId = channel1 + ":" + tube1;
+
+        scheduledJobSystem.schedule(channel1, tube1, jobId + "_1", 0);
+        scheduledJobSystem.schedule(channel1, tube1, jobId + "_2", 0);
+
+        scheduledJobSystem.reserveMulti(tube1, 1000L, 2);
+        assertThat(scheduledJobSystem.peekReady(channel1, tube1, 0, 10)).hasSize(0);
+        assertThat(scheduledJobSystem.peekRunning(tube1, 0, 10)).hasSize(2);
     }
 
     @Test
     public void testPeekExpired() {
-        fail("not done");
+
+        TestClock clock = new TestClock(System.currentTimeMillis(), 20L);
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix, clock);
+        String jobId = channel1 + ":" + tube1;
+
+        assertThat(scheduledJobSystem.schedule(channel1, tube1, jobId, 0)).isTrue();
+
+        scheduledJobSystem.reserveMulti(tube1, 10L, 1);
+
+        assertThat(scheduledJobSystem.peekExpired(tube1, 0, 1)).isEmpty();
+
+        // ticking forward 20ms will put this job as expired
+        clock.tick();
+        assertThat(scheduledJobSystem.peekExpired(tube1, 0, 1)).hasSize(1);
     }
 
     @Test
     public void testInReadyQueue() {
-        fail("not done");
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        String jobId = channel1 + ":" + tube1 + "_1";
+        scheduledJobSystem.schedule(channel1, tube1, jobId, 0);
+        assertThat(scheduledJobSystem.inReadyQueue(channel1, tube1, jobId)).isTrue();
     }
 
-
-
+    @Test
+    public void testInRunningQueue() {
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        String jobId = channel1 + ":" + tube1 + "_1";
+        scheduledJobSystem.schedule(channel1, tube1, jobId, 0);
+        scheduledJobSystem.reserveMulti(tube1, 1000, 1);
+        assertThat(scheduledJobSystem.inRunningQueue(tube1, jobId)).isTrue();
+    }
 }

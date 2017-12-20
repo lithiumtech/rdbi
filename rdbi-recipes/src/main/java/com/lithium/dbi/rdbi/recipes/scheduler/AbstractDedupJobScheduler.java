@@ -135,6 +135,9 @@ public abstract class AbstractDedupJobScheduler {
         });
     }
 
+    /**
+     * returns a list of jobs scheduled with a delay - to run in the future
+     */
     public List<TimeJobInfo> peekDelayed(String tube, int offset, int count) {
         return peekInternal(getReadyQueue(tube), (double) Instant.now().getMillis(), Double.MAX_VALUE, offset, count);
     }
