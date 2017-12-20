@@ -12,14 +12,15 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 
 /**
  * Similar to {@link StateDedupedJobScheduler}, except that it includes a separate "channel"
- * dimension and attempts to maintain fairness among jobs that are reserved by round-robining
+ * dimension and attempts to maintain fairness among jobs in a particular by round-robining
  * through all channels.
  *
  * Includes support for methods from {@link StateDedupedJobScheduler} and it's abstract hierarchy,
- * however does not extend from that tree because some methods that require the channel parameter
+ * however does not extend from that tree because some methods require the channel parameter
  *
- * // TODO consider creating a MultiChannelScheduler.ForChannel that extends from that hierarchy.
- * // TODO incorporate changes from https://github.com/lithiumtech/rdbi/commit/6bbf2eeb49b87b71655f24fa9b797300b37b6797 into this scheduler (secondary PR)
+ * it may prove useful to create a MultiChannelScheduler.ForChannel that extends from the {@link AbstractDedupJobScheduler} hierarchy
+ *
+ * // TODO This doesn't yet incorporate concepts from https://github.com/lithiumtech/rdbi/commit/6bbf2eeb49b87b71655f24fa9b797300b37b6797, that will be tackled separately
  */
 public class MultiChannelScheduler {
     private final RDBI rdbi;

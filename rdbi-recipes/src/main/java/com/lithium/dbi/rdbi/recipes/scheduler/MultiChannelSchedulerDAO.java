@@ -74,6 +74,7 @@ public interface MultiChannelSchedulerDAO {
             "          nextLimit = nextLimit - 1\n" +
             "          local hasReady = redis.call('ZCARD', readyQueue)\n" +
             "          if hasReady == 0 then\n" +
+                         // as a result of RPOPLPUSH call above we know our channel is at the head of the list
             "            redis.call('LPOP', $multiChannelCircularBuffer$)\n" +
             "            redis.call('SREM', $multiChannelSet$, nextChannel)\n" +
             "          end\n" +
@@ -117,11 +118,11 @@ public interface MultiChannelSchedulerDAO {
 
     @Query(
             "local inQueue = redis.call('ZSCORE', $queue$, $job$)\n" +
-                    "if inQueue then\n" +
-                    "   return 1\n" +
-                    "else\n" +
-                    "   return 0\n" +
-                    "end"
+            "if inQueue then\n" +
+            "   return 1\n" +
+            "else\n" +
+            "   return 0\n" +
+            "end"
     )
     int inQueue(
             @BindKey("queue") String queue,

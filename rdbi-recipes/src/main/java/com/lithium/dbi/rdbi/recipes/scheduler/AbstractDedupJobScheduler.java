@@ -113,7 +113,6 @@ public abstract class AbstractDedupJobScheduler {
         }
     }
 
-    // TODO: StateDedupedJobScheduler needs to combine ready here with ready + running
     public long getReadyJobCount(String tube) {
         final String queue = getReadyQueue(tube);
         final long now = Instant.now().getMillis();
