@@ -13,23 +13,23 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 /**
  * This is similar to {@link StateDedupedJobScheduler}, except that it includes a separate "channel"
  * dimension and attempts to maintain fairness across channels among jobs in a particular "tube".
- *
+ * <p>
  * Includes support for methods from {@link StateDedupedJobScheduler} and it's abstract hierarchy,
  * however does not extend from that tree because some methods now require the channel parameter
- *
+ * <p>
  * Definitions:
- *   "tube" here means the same as it means in other scheduler variations. A tube corresponds
- *          to a specific set of sorted sets in redis and represents a grouping of a particular type of
- *          job. All calls must reference a tube. Jobs are scheduled for a particular tube, and when
- *          {@link #reserveMulti(String, long, int)} is called, they are pulled from that referenced tube.
- *
- *   "channel" here is a new dimension, and a single tube can hold jobs for multiple channels (implemented
- *          as distinct sorted sets in redis). jobs for a single channel will be reserved in FIFO order
- *          for that particular channel, but jobs in the same tube for a different channel will be
- *          reserved by round-robin through all active channels. Thus a glut of jobs in one channel
- *          should not adversely affect other channels. The possibility, of course, still exists that
- *          one channel can delay itself....
- *
+ * "tube" here means the same as it means in other scheduler variations. A tube corresponds
+ * to a specific set of sorted sets in redis and represents a grouping of a particular type of
+ * job. All calls must reference a tube. Jobs are scheduled for a particular tube, and when
+ * {@link #reserveMulti(String, long, int)} is called, they are pulled from that referenced tube.
+ * <p>
+ * "channel" here is a new dimension, and a single tube can hold jobs for multiple channels (implemented
+ * as distinct sorted sets in redis). jobs for a single channel will be reserved in FIFO order
+ * for that particular channel, but jobs in the same tube for a different channel will be
+ * reserved by round-robin through all active channels. Thus a glut of jobs in one channel
+ * should not adversely affect other channels. The possibility, of course, still exists that
+ * one channel can delay itself....
+ * <p>
  * it may prove useful to create a MultiChannelScheduler.ForChannel that extends from the {@link AbstractDedupJobScheduler} hierarchy
  * // TODO This doesn't yet incorporate concepts from https://github.com/lithiumtech/rdbi/commit/6bbf2eeb49b87b71655f24fa9b797300b37b6797, that will be tackled separately
  */
@@ -52,19 +52,19 @@ public class MultiChannelScheduler {
      * see {@link AbstractDedupJobScheduler#schedule(String, String, int)}
      *
      * @return true if the job was scheduled.
-     *         false indicates the job already exists in the ready queue.
+     * false indicates the job already exists in the ready queue.
      */
     public boolean schedule(String channel, String tube, final String job, final int runInMillis) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(MultiChannelSchedulerDAO.class)
-                    .scheduleJob(
-                            getMultiChannelCircularBuffer(tube),
-                            getMultiChannelSet(tube),
-                            getReadyQueue(channel, tube),
-                            getPaused(channel, tube),
-                            getTubePrefix(channel, tube),
-                            job,
-                            clock.getAsLong() + runInMillis);
+                              .scheduleJob(
+                                      getMultiChannelCircularBuffer(tube),
+                                      getMultiChannelSet(tube),
+                                      getReadyQueue(channel, tube),
+                                      getPaused(channel, tube),
+                                      getTubePrefix(channel, tube),
+                                      job,
+                                      clock.getAsLong() + runInMillis);
         }
     }
 
@@ -95,7 +95,7 @@ public class MultiChannelScheduler {
     public boolean ackJob(String tube, String job) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(MultiChannelSchedulerDAO.class)
-                    .ackJob(getRunningQueue(tube), job);
+                              .ackJob(getRunningQueue(tube), job);
         }
     }
 
@@ -105,7 +105,7 @@ public class MultiChannelScheduler {
     public List<TimeJobInfo> removeExpiredRunningJobs(String tube) {
         try (Handle handle = rdbi.open()) {
             return handle.attach(MultiChannelSchedulerDAO.class)
-                    .removeExpiredJobs(getRunningQueue(tube), clock.getAsLong());
+                         .removeExpiredJobs(getRunningQueue(tube), clock.getAsLong());
         }
     }
 
@@ -119,6 +119,7 @@ public class MultiChannelScheduler {
     /**
      * This will "pause" the system for the specified tube / channel combo, preventing any new jobs from being scheduled
      * or reserved.
+     *
      * @param tube the name of related jobs
      */
     public void pause(String channel, String tube) {
@@ -183,8 +184,8 @@ public class MultiChannelScheduler {
         try (Handle handle = rdbi.open()) {
             Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
             return tupleSet.stream()
-                    .map(t -> new TimeJobInfo(t.getElement(), t.getScore()))
-                    .collect(toImmutableList());
+                           .map(t -> new TimeJobInfo(t.getElement(), t.getScore()))
+                           .collect(toImmutableList());
         }
     }
 
@@ -206,6 +207,7 @@ public class MultiChannelScheduler {
     private String getMultiChannelCircularBuffer(String tube) {
         return prefix + ":multichannel:" + tube + ":circular_buffer";
     }
+
     private String getMultiChannelSet(String tube) {
         return prefix + ":multichannel:" + tube + ":set";
     }
@@ -222,7 +224,7 @@ public class MultiChannelScheduler {
         return prefix + ":" + tube + ":running_queue";
     }
 
-    private String getPaused(String channel, String tube){
+    private String getPaused(String channel, String tube) {
         return getTubePrefix(channel, tube) + ":paused";
     }
 }
