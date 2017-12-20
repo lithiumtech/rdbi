@@ -7,13 +7,6 @@ import com.lithium.dbi.rdbi.Query;
 
 import java.util.List;
 
-/**
- *
- * This is a pure round robin scheduler. If the next channel up doesn't have data it returns immediately
- * instead of moving on to the next one.
- *
- * NOTE this is no longer compatible with redis cluster because we do not specify the keys upfront
- */
 public interface MultiChannelSchedulerDAO {
 
     @Query(

@@ -11,15 +11,26 @@ import java.util.function.LongSupplier;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
 /**
- * Similar to {@link StateDedupedJobScheduler}, except that it includes a separate "channel"
- * dimension and attempts to maintain fairness among jobs in a particular by round-robining
- * through all channels.
+ * This is similar to {@link StateDedupedJobScheduler}, except that it includes a separate "channel"
+ * dimension and attempts to maintain fairness across channels among jobs in a particular "tube".
  *
  * Includes support for methods from {@link StateDedupedJobScheduler} and it's abstract hierarchy,
- * however does not extend from that tree because some methods require the channel parameter
+ * however does not extend from that tree because some methods now require the channel parameter
+ *
+ * Definitions:
+ *   "tube" here means the same as it means in other scheduler variations. A tube corresponds
+ *          to a specific set of sorted sets in redis and represents a grouping of a particular type of
+ *          job. All calls must reference a tube. Jobs are scheduled for a particular tube, and when
+ *          {@link #reserveMulti(String, long, int)} is called, they are pulled from that referenced tube.
+ *
+ *   "channel" here is a new dimension, and a single tube can hold jobs for multiple channels (implemented
+ *          as distinct sorted sets in redis). jobs for a single channel will be reserved in FIFO order
+ *          for that particular channel, but jobs in the same tube for a different channel will be
+ *          reserved by round-robin through all active channels. Thus a glut of jobs in one channel
+ *          should not adversely affect other channels. The possibility, of course, still exists that
+ *          one channel can delay itself....
  *
  * it may prove useful to create a MultiChannelScheduler.ForChannel that extends from the {@link AbstractDedupJobScheduler} hierarchy
- *
  * // TODO This doesn't yet incorporate concepts from https://github.com/lithiumtech/rdbi/commit/6bbf2eeb49b87b71655f24fa9b797300b37b6797, that will be tackled separately
  */
 public class MultiChannelScheduler {
