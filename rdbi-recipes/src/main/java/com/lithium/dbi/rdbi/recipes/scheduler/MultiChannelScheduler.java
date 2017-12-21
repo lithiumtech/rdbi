@@ -139,6 +139,40 @@ public class MultiChannelScheduler {
                                                     expirationPeriodInMillis);
         }
     }
+
+    /**
+     * Deletes a job from either ready or running queue (or both)
+     */
+    public boolean deleteJob(String channel, String tube, String job) {
+        try (Handle handle = rdbi.open()) {
+            return 1 == handle.attach(MultiChannelSchedulerDAO.class)
+                              .deleteJob(getMultiChannelCircularBuffer(tube),
+                                         getMultiChannelSet(tube),
+                                         getReadyQueue(channel, tube),
+                                         getRunningQueue(tube),
+                                         getTubePrefix(channel, tube),
+                                         job
+                                        );
+        }
+
+    }
+
+    /**
+     * Delete job only from the ready queue
+     */
+    public boolean deleteJobFromReady(String channel, String tube, String job) {
+        try (Handle handle = rdbi.open()) {
+            return 1 == handle.attach(MultiChannelSchedulerDAO.class)
+                              .deleteJobFromReady(
+                                      getMultiChannelCircularBuffer(tube),
+                                      getMultiChannelSet(tube),
+                                      getReadyQueue(channel, tube),
+                                      getTubePrefix(channel, tube),
+                                      job);
+        }
+
+    }
+
     /**
      * This will "pause" the system for the specified tube / channel combo, preventing any new jobs from being scheduled
      * or reserved.

@@ -103,26 +103,26 @@ public interface MultiChannelSchedulerDAO {
     @Mapper(TimeJobInfoListMapper.class)
     @Query(
             "local channelCount = redis.call('LLEN', $multiChannelCircularBuffer$)\n" +
-                    "local expired = {}\n" +
-                    "local expiredIndex = 1\n" +
-                    "for chanIdx = 1, channelCount do\n" +
-                    "  local nextChannel = redis.call('RPOPLPUSH', $multiChannelCircularBuffer$, $multiChannelCircularBuffer$)\n" +
-                    "  local readyQueue = nextChannel .. \":ready_queue\"\n" +
-                    "  local expiredJobs = redis.call('ZRANGEBYSCORE', readyQueue, 0, $expirationTimeInMillis$, 'WITHSCORES')\n" +
-                    "  if #expiredJobs > 0 then\n" +
-                    "    redis.call('ZREMRANGEBYSCORE', readyQueue, 0, $expirationTimeInMillis$)\n" +
-                    "    local hasReady = redis.call('ZCARD', readyQueue)\n" +
-                    "    if hasReady == 0 then\n" + // need to clean up, no more ready jobs for this type
-                    "       redis.call('LPOP', $multiChannelCircularBuffer$)\n" +
-                    "       redis.call('SREM', $multiChannelSet$, nextChannel)\n" +
-                    "    end\n" +
-                    "    for j = 1, #expiredJobs do\n" +
-                    "      expired[expiredIndex] = expiredJobs[j]\n" +
-                    "      expiredIndex = expiredIndex + 1\n" +
-                    "    end\n" +
-                    "  end\n" +
-                    "end\n" +
-                    "return expired"
+            "local expired = {}\n" +
+            "local expiredIndex = 1\n" +
+            "for chanIdx = 1, channelCount do\n" +
+            "  local nextChannel = redis.call('RPOPLPUSH', $multiChannelCircularBuffer$, $multiChannelCircularBuffer$)\n" +
+            "  local readyQueue = nextChannel .. \":ready_queue\"\n" +
+            "  local expiredJobs = redis.call('ZRANGEBYSCORE', readyQueue, 0, $expirationTimeInMillis$, 'WITHSCORES')\n" +
+            "  if #expiredJobs > 0 then\n" +
+            "    redis.call('ZREMRANGEBYSCORE', readyQueue, 0, $expirationTimeInMillis$)\n" +
+            "    local hasReady = redis.call('ZCARD', readyQueue)\n" +
+            "    if hasReady == 0 then\n" + // need to clean up, no more ready jobs for this type
+            "       redis.call('LPOP', $multiChannelCircularBuffer$)\n" +
+            "       redis.call('SREM', $multiChannelSet$, nextChannel)\n" +
+            "    end\n" +
+            "    for j = 1, #expiredJobs do\n" +
+            "      expired[expiredIndex] = expiredJobs[j]\n" +
+            "      expiredIndex = expiredIndex + 1\n" +
+            "    end\n" +
+            "  end\n" +
+            "end\n" +
+            "return expired"
     )
     List<TimeJobInfo> removeAllExpiredReadyJobs(
             @BindKey("multiChannelCircularBuffer") String multiChannelCircularBuffer,
@@ -168,4 +168,45 @@ public interface MultiChannelSchedulerDAO {
     long getAllReadyJobCount(
             @BindKey("multiChannelCircularBuffer") String multiChannelCircularBuffer);
 
+    @Query(
+            "local removed = redis.call('ZREM', $readyQueue$, $job$)\n" +
+            "if removed > 0 then\n" +
+            "  local hasReady = redis.call('ZCARD', $readyQueue$)\n" +
+            "  if hasReady == 0 then\n" +
+            "     redis.call('LREM', $multiChannelCircularBuffer$, 1, $channelPrefix$)\n" +
+            "     redis.call('SREM', $multiChannelSet$, $channelPrefix$)\n" +
+            "  end\n" +
+            "end\n" +
+            "return removed"
+    )
+    int deleteJobFromReady(
+            @BindKey("multiChannelCircularBuffer") String multiChannelCircularBuffer,
+            @BindKey("multiChannelSet") String multiChannelSet,
+            @BindKey("readyQueue") String readyQueue,
+            @BindArg("channelPrefix") String channelPrefix,
+            @BindArg("job") String job);
+
+    @Query(
+            "local removedFromRunning = redis.call('ZREM', $runningQueue$, $job$)\n" +
+            "local removed = redis.call('ZREM', $readyQueue$, $job$)\n" +
+            "if removed > 0 then\n" +
+            "  local hasReady = redis.call('ZCARD', $readyQueue$)\n" +
+            "  if hasReady == 0 then\n" +
+            "     redis.call('LREM', $multiChannelCircularBuffer$, 1, $channelPrefix$)\n" +
+            "     redis.call('SREM', $multiChannelSet$, $channelPrefix$)\n" +
+            "  end\n" +
+            "end\n" +
+            "if removed == 0 and removedFromRunning == 0 then\n" +
+            "  return 0\n" +
+            "else\n" +
+            "  return 1\n" +
+            "end"
+    )
+    int deleteJob(
+            @BindKey("multiChannelCircularBuffer") String multiChannelCircularBuffer,
+            @BindKey("multiChannelSet") String multiChannelSet,
+            @BindKey("readyQueue") String readyQueue,
+            @BindKey("runningQueue") String runningQueue,
+            @BindArg("channelPrefix") String channelPrefix,
+            @BindArg("job") String job);
 }

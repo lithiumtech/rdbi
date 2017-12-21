@@ -386,9 +386,61 @@ public class MultiChannelSchedulerTest {
 
         assertThat(scheduledJobSystem.getAllReadyJobCount(tube1)).isEqualTo(3);
 
-        scheduledJobSystem.getAllReadyChannels(tube1)
-                          .forEach(System.out::println);
+    }
 
+    @Test
+    public void testDeleteJob() {
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        String jobId = "doesnt-matter" + ":" + tube1;
+        scheduledJobSystem.schedule("A", tube1, jobId, 0);
 
+        scheduledJobSystem.reserveMulti(tube1, 1_000L, 1);
+        scheduledJobSystem.schedule("A", tube1, jobId, 0);
+
+        // verify state - job in both ready + running
+        assertThat(scheduledJobSystem.inRunningQueue(tube1, jobId)).isTrue();
+        assertThat(scheduledJobSystem.inReadyQueue("A", tube1, jobId)).isTrue();
+
+        assertThat(scheduledJobSystem.deleteJob("A", tube1, jobId)).isTrue();
+
+        // submit & reserve a job in another channel to make sure we cleaned up internal state
+        scheduledJobSystem.schedule("B", tube1, jobId + "_1", 0);
+
+        // re-verify state
+        assertThat(scheduledJobSystem.inRunningQueue(tube1, jobId)).isFalse();
+        assertThat(scheduledJobSystem.inReadyQueue("B", tube1, jobId)).isFalse();
+
+        List<TimeJobInfo> reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 1);
+
+        assertThat(reserved)
+                .hasSize(1)
+                .extracting(JobInfo::getJobStr)
+                .containsExactly(jobId + "_1");
+    }
+
+    @Test
+    public void testDeleteFromReady() {
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        String jobId = "doesnt-matter" + ":" + tube1;
+        scheduledJobSystem.schedule("A", tube1, jobId, 0);
+
+        // verify state - job in both ready
+        assertThat(scheduledJobSystem.inReadyQueue("A", tube1, jobId)).isTrue();
+
+        assertThat(scheduledJobSystem.deleteJobFromReady("A", tube1, jobId)).isTrue();
+
+        // re-verify state
+        assertThat(scheduledJobSystem.inRunningQueue(tube1, jobId)).isFalse();
+
+        // submit & reserve a job in another channel to make sure we cleaned up internal state
+        scheduledJobSystem.schedule("B", tube1, jobId + "_1", 0);
+        assertThat(scheduledJobSystem.inReadyQueue("B", tube1, jobId)).isFalse();
+
+        List<TimeJobInfo> reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 1);
+
+        assertThat(reserved)
+                .hasSize(1)
+                .extracting(JobInfo::getJobStr)
+                .containsExactly(jobId + "_1");
     }
 }
