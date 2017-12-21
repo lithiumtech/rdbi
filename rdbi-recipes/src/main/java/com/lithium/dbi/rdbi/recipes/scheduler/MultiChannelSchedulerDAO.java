@@ -35,6 +35,12 @@ public interface MultiChannelSchedulerDAO {
             @BindArg("jobStr") String job,
             @BindArg("runInMillis") long runInMillis);
 
+    /**
+     * A bit of a limitation as written is that we are trying to reach the job limit only within
+     * the first considered channel. This will take some rewriting to allow fulfilling the limit
+     * across multiple channels, and since that's not a primary use case for gopher, (which reserves 1
+     * job at a time) i'm going to leave it as is for now and maybe get back to it later
+     */
     @Mapper(TimeJobInfoListMapper.class)
     @Query(
             "local nextChannel = redis.call('RPOPLPUSH', $multiChannelCircularBuffer$, $multiChannelCircularBuffer$)\n" +
@@ -94,6 +100,35 @@ public interface MultiChannelSchedulerDAO {
     List<TimeJobInfo> removeExpiredJobs(@BindKey("queue") String queue,
                                         @BindArg("expirationTimeInMillis") Long expirationTimeInMillis);
 
+    @Mapper(TimeJobInfoListMapper.class)
+    @Query(
+            "local channelCount = redis.call('LLEN', $multiChannelCircularBuffer$)\n" +
+                    "local expired = {}\n" +
+                    "local expiredIndex = 1\n" +
+                    "for chanIdx = 1, channelCount do\n" +
+                    "  local nextChannel = redis.call('RPOPLPUSH', $multiChannelCircularBuffer$, $multiChannelCircularBuffer$)\n" +
+                    "  local readyQueue = nextChannel .. \":ready_queue\"\n" +
+                    "  local expiredJobs = redis.call('ZRANGEBYSCORE', readyQueue, 0, $expirationTimeInMillis$, 'WITHSCORES')\n" +
+                    "  if #expiredJobs > 0 then\n" +
+                    "    redis.call('ZREMRANGEBYSCORE', readyQueue, 0, $expirationTimeInMillis$)\n" +
+                    "    local hasReady = redis.call('ZCARD', readyQueue)\n" +
+                    "    if hasReady == 0 then\n" + // need to clean up, no more ready jobs for this type
+                    "       redis.call('LPOP', $multiChannelCircularBuffer$)\n" +
+                    "       redis.call('SREM', $multiChannelSet$, nextChannel)\n" +
+                    "    end\n" +
+                    "    for j = 1, #expiredJobs do\n" +
+                    "      expired[expiredIndex] = expiredJobs[j]\n" +
+                    "      expiredIndex = expiredIndex + 1\n" +
+                    "    end\n" +
+                    "  end\n" +
+                    "end\n" +
+                    "return expired"
+    )
+    List<TimeJobInfo> removeAllExpiredReadyJobs(
+            @BindKey("multiChannelCircularBuffer") String multiChannelCircularBuffer,
+            @BindKey("multiChannelSet") String multiChannelSet,
+            @BindArg("expirationTimeInMillis") Long expirationTimeInMillis);
+
     /**
      * Ack indicates we are done with a reserved job that is in the running queue.
      * Another instance of that job might already be queued up in the ready queue waiting
@@ -120,4 +155,17 @@ public interface MultiChannelSchedulerDAO {
     int inQueue(
             @BindKey("queue") String queue,
             @BindArg("job") String job);
+
+    @Query(
+            "local channels = redis.call('LRANGE',$multiChannelCircularBuffer$, 0, -1)\n" +
+            "local count = 0\n" +
+            "for i, channel in ipairs(channels) do \n" +
+            "  local readyQueue = channel .. \":ready_queue\"\n" +
+            "  count = count + redis.call('ZCARD', readyQueue)\n" +
+            "end\n" +
+            "return count"
+    )
+    long getAllReadyJobCount(
+            @BindKey("multiChannelCircularBuffer") String multiChannelCircularBuffer);
+
 }

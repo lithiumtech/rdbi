@@ -12,9 +12,6 @@ import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
-import static org.testng.Assert.fail;
 
 @Test(groups = "integration")
 public class MultiChannelSchedulerTest {
@@ -50,7 +47,7 @@ public class MultiChannelSchedulerTest {
         List<String> running = scheduledJobSystem.getAllReadyChannels(tube1);
         assertThat(running)
                 .hasSize(1)
-                .contains(prefix + ":" + channel1 + ":" + tube1);
+                .contains(channel1);
 
         List<TimeJobInfo> job1 = scheduledJobSystem.reserveMulti(tube1, 1000, 1);
         List<TimeJobInfo> job2 = scheduledJobSystem.reserveMulti(tube1, 1000, 1);
@@ -66,6 +63,27 @@ public class MultiChannelSchedulerTest {
         boolean ack1 = scheduledJobSystem.ackJob(tube1, job1.get(0).getJobStr());
 
         assertThat(ack1).isTrue();
+    }
+
+
+    // test reserve multi works within a single channel.
+    // it's a known limitation that it doesn't work across channels
+    @Test
+    public void testReserveMulti() {
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+
+        String jobId = "ajob:" + tube1;
+        scheduledJobSystem.schedule(channel1, tube1, jobId + "_1", 0);
+        scheduledJobSystem.schedule(channel1, tube1, jobId + "_2", 0);
+        scheduledJobSystem.schedule(channel1, tube1, jobId + "_3", 0);
+
+        assertThat(scheduledJobSystem.getAllReadyJobCount(tube1)).isEqualTo(3);
+
+        List<TimeJobInfo> infos = scheduledJobSystem.reserveMulti(tube1, 1_000L, 3);
+
+        assertThat(infos).hasSize(3);
+        assertThat(scheduledJobSystem.getAllReadyJobCount(tube1)).isEqualTo(0);
+        assertThat(scheduledJobSystem.getRunningJobCount(tube1)).isEqualTo(3);
     }
 
     @Test
@@ -117,14 +135,14 @@ public class MultiChannelSchedulerTest {
         };
 
         assertThat(scheduledJobSystem.getAllReadyChannels(tube1))
-                .containsExactlyInAnyOrder(prefix + ":A:" + tube1, prefix + ":B:" + tube1, prefix + ":C:" + tube1);
+                .containsExactlyInAnyOrder("A", "B", "C");
 
         reserveAndAssert.accept("A");
         reserveAndAssert.accept("B");
         reserveAndAssert.accept("C");
 
         assertThat(scheduledJobSystem.getAllReadyChannels(tube1))
-                .containsExactlyInAnyOrder(prefix + ":A:" + tube1, prefix + ":B:" + tube1);
+                .containsExactlyInAnyOrder("A", "B");
 
         reserveAndAssert.accept("A");
         reserveAndAssert.accept("B");
@@ -139,7 +157,7 @@ public class MultiChannelSchedulerTest {
         reserveAndAssert.accept("B");
 
         assertThat(scheduledJobSystem.getAllReadyChannels(tube1))
-                .containsExactlyInAnyOrder(prefix + ":A:" + tube1);
+                .containsExactlyInAnyOrder("A");
 
         reserveAndAssert.accept("A");
         reserveAndAssert.accept("A");
@@ -153,13 +171,13 @@ public class MultiChannelSchedulerTest {
         assertThat(scheduledJobSystem.schedule("C", tube1, jobId, 0)).isTrue();
 
         assertThat(scheduledJobSystem.getAllReadyChannels(tube1))
-                .containsExactlyInAnyOrder(prefix + ":A:" + tube1, prefix + ":C:" + tube1);
+                .containsExactlyInAnyOrder("A", "C");
 
         reserveAndAssert.accept("A");
         reserveAndAssert.accept("C");
 
         assertThat(scheduledJobSystem.getAllReadyChannels(tube1))
-                .containsExactlyInAnyOrder(prefix + ":A:" + tube1);
+                .containsExactlyInAnyOrder("A");
 
         reserveAndAssert.accept("A");
         reserveAndAssert.accept("A");
@@ -198,19 +216,42 @@ public class MultiChannelSchedulerTest {
     public void testRemoveExpiredReady() {
         TestClock clock = new TestClock(System.currentTimeMillis(), 20L);
         MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix, clock);
-        String jobId = channel1 + ":" + tube1;
+        String jobId = "yo:" + tube1;
 
-        assertThat(scheduledJobSystem.schedule(channel1, tube1, jobId, 10)).isTrue();
+        assertThat(scheduledJobSystem.schedule("A", tube1, jobId + "_1", 10)).isTrue();
+        assertThat(scheduledJobSystem.schedule("B", tube1, jobId + "_2", 10)).isTrue();
+        assertThat(scheduledJobSystem.schedule("C", tube1, jobId + "_3", 10)).isTrue();
+
+        assertThat(scheduledJobSystem.schedule("D", tube1, jobId + "_1a", 30)).isTrue();
+        assertThat(scheduledJobSystem.schedule("E", tube1, jobId + "_2a", 30)).isTrue();
+        assertThat(scheduledJobSystem.schedule("F", tube1, jobId + "_3a", 30)).isTrue();
 
         // not expired yet
-        assertThat(scheduledJobSystem.removeExpiredReadyJobs(channel1, tube1, clock.getAsLong())).isEmpty();
+        assertThat(scheduledJobSystem.removeExpiredReadyJobs(tube1, clock.getAsLong())).isEmpty();
 
         clock.tick();
-        assertThat(scheduledJobSystem.removeExpiredReadyJobs(channel1, tube1, clock.getAsLong())).hasSize(1);
+        List<TimeJobInfo> infos = scheduledJobSystem.removeExpiredReadyJobs(tube1, clock.getAsLong());
+        infos.forEach(System.out::println);
+        assertThat(infos).hasSize(3);
 
-        // ready queue now empty
-        assertThat(scheduledJobSystem.peekReady(channel1, tube1, 0, 1)).isEmpty();
+
+        // ready queues now empty
+        assertThat(scheduledJobSystem.peekReady("A", tube1, 0, 1)).isEmpty();
+        assertThat(scheduledJobSystem.peekReady("B", tube1, 0, 1)).isEmpty();
+        assertThat(scheduledJobSystem.peekReady("C", tube1, 0, 1)).isEmpty();
+
+        // assert subsequent reserve calls work (and prior expire calls cleaned state correctly)
+        // note that we are making 3 separate calls because we can't currently reserve multiple jobs across channels
+        clock.tick();
+        assertThat(scheduledJobSystem.reserveMulti(tube1, 1000L, 1)).hasSize(1);
+        assertThat(scheduledJobSystem.reserveMulti(tube1, 1000L, 1)).hasSize(1);
+        assertThat(scheduledJobSystem.reserveMulti(tube1, 1000L, 1)).hasSize(1);
+
+        assertThat(scheduledJobSystem.getAllReadyJobCount(tube1)).isEqualTo(0);
+        assertThat(scheduledJobSystem.getRunningJobCount(tube1)).isEqualTo(3);
+
     }
+
 
     @Test
     public void testPauseCannotSchedule() {
@@ -333,5 +374,21 @@ public class MultiChannelSchedulerTest {
         scheduledJobSystem.schedule(channel1, tube1, jobId, 0);
         scheduledJobSystem.reserveMulti(tube1, 1000, 1);
         assertThat(scheduledJobSystem.inRunningQueue(tube1, jobId)).isTrue();
+    }
+
+    @Test
+    public void testGetAllReadyCount() {
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        String jobId = "doesnt-matter" + ":" + tube1;
+        scheduledJobSystem.schedule("A", tube1, jobId + "_1", 0);
+        scheduledJobSystem.schedule("B", tube1, jobId + "_2", 0);
+        scheduledJobSystem.schedule("C", tube1, jobId + "_3", 0);
+
+        assertThat(scheduledJobSystem.getAllReadyJobCount(tube1)).isEqualTo(3);
+
+        scheduledJobSystem.getAllReadyChannels(tube1)
+                          .forEach(System.out::println);
+
+
     }
 }

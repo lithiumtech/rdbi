@@ -70,6 +70,9 @@ public class MultiChannelScheduler {
 
     /**
      * see {@link AbstractDedupJobScheduler#reserveMulti(String, long, int)}
+     *
+     * note that currently maxNumberOfJobs only applies to max number of jobs in a single channel, so
+     * you might get back fewere than the total number available
      */
     public List<TimeJobInfo> reserveMulti(String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs) {
         try (Handle handle = rdbi.open()) {
@@ -85,7 +88,23 @@ public class MultiChannelScheduler {
 
     public List<String> getAllReadyChannels(final String tube) {
         try (Handle handle = rdbi.open()) {
-            return handle.jedis().lrange(getMultiChannelCircularBuffer(tube), 0, -1);
+            // mc buffer holds the prefixes, we have to
+            // decompose them to get the channel only
+            return handle.jedis().lrange(getMultiChannelCircularBuffer(tube), 0, -1)
+                    .stream()
+                    // rm our prefix
+                    .map(chPrefix -> chPrefix.replaceFirst(prefix + ":", ""))
+                    // rm tube suffix
+                    .map(channelAndTube -> channelAndTube.replace(":" + tube, ""))
+                    .collect(toImmutableList());
+        }
+    }
+
+    public long getAllReadyJobCount(String tube) {
+        try (Handle handle = rdbi.open()) {
+            return handle.attach(MultiChannelSchedulerDAO.class)
+                         .getAllReadyJobCount(
+                                 getMultiChannelCircularBuffer(tube));
         }
     }
 
@@ -109,13 +128,17 @@ public class MultiChannelScheduler {
         }
     }
 
-    public List<TimeJobInfo> removeExpiredReadyJobs(String channel, String tube, long expirationPeriodInMillis) {
+    /**
+     * removes expired ready jobs across all channels
+     */
+    public List<TimeJobInfo> removeExpiredReadyJobs(String tube, long expirationPeriodInMillis) {
         try (Handle handle = rdbi.open()) {
             return handle.attach(MultiChannelSchedulerDAO.class)
-                         .removeExpiredJobs(getReadyQueue(channel, tube), expirationPeriodInMillis);
+                         .removeAllExpiredReadyJobs(getMultiChannelCircularBuffer(tube),
+                                                    getMultiChannelSet(tube),
+                                                    expirationPeriodInMillis);
         }
     }
-
     /**
      * This will "pause" the system for the specified tube / channel combo, preventing any new jobs from being scheduled
      * or reserved.
