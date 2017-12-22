@@ -227,10 +227,10 @@ public class MultiChannelSchedulerTest {
         assertThat(scheduledJobSystem.schedule("F", tube1, jobId + "_3a", 30)).isTrue();
 
         // not expired yet
-        assertThat(scheduledJobSystem.removeExpiredReadyJobs(tube1, clock.getAsLong())).isEmpty();
+        assertThat(scheduledJobSystem.removeExpiredReadyJobs(tube1, 10)).isEmpty();
 
         clock.tick();
-        List<TimeJobInfo> infos = scheduledJobSystem.removeExpiredReadyJobs(tube1, clock.getAsLong());
+        List<TimeJobInfo> infos = scheduledJobSystem.removeExpiredReadyJobs(tube1, 10);
         infos.forEach(System.out::println);
         assertThat(infos).hasSize(3);
 

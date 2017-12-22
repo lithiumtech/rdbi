@@ -135,7 +135,7 @@ public class MultiChannelScheduler {
             return handle.attach(MultiChannelSchedulerDAO.class)
                          .removeAllExpiredReadyJobs(getMultiChannelCircularBuffer(tube),
                                                     getMultiChannelSet(tube),
-                                                    expirationPeriodInMillis);
+                                                    clock.getAsLong() - expirationPeriodInMillis);
         }
     }
 

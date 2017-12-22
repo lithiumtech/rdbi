@@ -359,7 +359,7 @@ public class StateDedupedJobSchedulerTest {
     }
 
     @Test
-    public void testRemoveExpiredReadyAndRuningJobs() throws InterruptedException {
+    public void testRemoveExpiredReadyAndRunningJobs() throws InterruptedException {
         // Schedule a job
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
         // move it to running
