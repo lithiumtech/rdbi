@@ -4,19 +4,21 @@ import com.google.common.collect.Lists;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Instant;
 import redis.clients.jedis.Tuple;
 
 import java.util.List;
 import java.util.Set;
+import java.util.function.LongSupplier;
 
 public abstract class AbstractDedupJobScheduler {
     protected final RDBI rdbi;
     private final String prefix;
+    private final LongSupplier clock;
 
-    public AbstractDedupJobScheduler(RDBI rdbi, String redisPrefixKey) {
+    public AbstractDedupJobScheduler(RDBI rdbi, String redisPrefixKey, LongSupplier clock) {
         this.rdbi = rdbi;
         this.prefix = redisPrefixKey;
+        this.clock = clock;
     }
 
     /**
@@ -53,22 +55,14 @@ public abstract class AbstractDedupJobScheduler {
      * @param tube the name of related jobs
      */
     public void pause(final String tube) {
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().set(getPaused(tube), String.valueOf(System.currentTimeMillis() / 1000));
-                return null;
-            }
+        rdbi.withHandle((Callback<Void>) handle -> {
+            handle.jedis().set(getPaused(tube), String.valueOf(clock.getAsLong() / 1000));
+            return null;
         });
     }
 
     public boolean isPaused(final String tube) {
-        return rdbi.withHandle(new Callback<Boolean>() {
-            @Override
-            public Boolean run(Handle handle) {
-                return handle.jedis().get(getPaused(tube)) != null;
-            }
-        });
+        return rdbi.withHandle(handle -> handle.jedis().get(getPaused(tube)) != null);
     }
 
     /**
@@ -78,12 +72,7 @@ public abstract class AbstractDedupJobScheduler {
      * @return the time in epoch seconds the tube was paused.
      */
     public String getPauseStart(final String tube) {
-        return rdbi.withHandle(new Callback<String>() {
-            @Override
-            public String run(Handle handle) {
-                return handle.jedis().get(getPaused(tube));
-            }
-        });
+        return rdbi.withHandle(handle -> handle.jedis().get(getPaused(tube)));
     }
 
     /**
@@ -91,12 +80,9 @@ public abstract class AbstractDedupJobScheduler {
      * @param tube the name of related jobs
      */
     public void resume(final String tube) {
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().del(getPaused(tube));
-                return null;
-            }
+        rdbi.withHandle((Callback<Void>) handle -> {
+            handle.jedis().del(getPaused(tube));
+            return null;
         });
     }
 
@@ -115,42 +101,32 @@ public abstract class AbstractDedupJobScheduler {
 
     public long getReadyJobCount(String tube) {
         final String queue = getReadyQueue(tube);
-        final long now = Instant.now().getMillis();
-        return rdbi.withHandle(new Callback<Long>() {
-            @Override
-            public Long run(Handle handle) {
-                return handle.jedis().zcount(queue, 0, now);
-            }
-        });
+        final long now = clock.getAsLong();
+        return rdbi.withHandle(handle -> handle.jedis().zcount(queue, 0, now));
     }
 
     public long getRunningJobCount(String tube) {
         final String queue = getRunningQueue(tube);
-        return rdbi.withHandle(new Callback<Long>() {
-            @Override
-            public Long run(Handle handle) {
-                return handle.jedis().zcard(queue);
-            }
-        });
+        return rdbi.withHandle(handle -> handle.jedis().zcard(queue));
     }
 
     /**
      * returns a list of jobs scheduled with a delay - to run in the future
      */
     public List<TimeJobInfo> peekDelayed(String tube, int offset, int count) {
-        return peekInternal(getReadyQueue(tube), (double) Instant.now().getMillis(), Double.MAX_VALUE, offset, count);
+        return peekInternal(getReadyQueue(tube), (double) clock.getAsLong(), Double.MAX_VALUE, offset, count);
     }
 
     public List<TimeJobInfo> peekReady(String tube, int offset, int count) {
-        return peekInternal(getReadyQueue(tube), 0.0d, (double) Instant.now().getMillis(), offset, count);
+        return peekInternal(getReadyQueue(tube), 0.0d, (double) clock.getAsLong(), offset, count);
     }
 
     public List<TimeJobInfo> peekRunning(String tube, int offset, int count) {
-        return peekInternal(getRunningQueue(tube), (double) Instant.now().getMillis(), Double.MAX_VALUE, offset, count);
+        return peekInternal(getRunningQueue(tube), (double) clock.getAsLong(), Double.MAX_VALUE, offset, count);
     }
 
     public List<TimeJobInfo> peekExpired(String tube, int offset, int count) {
-        return peekInternal(getRunningQueue(tube), 0.0d, (double) Instant.now().getMillis(), offset, count);
+        return peekInternal(getRunningQueue(tube), 0.0d, (double) clock.getAsLong(), offset, count);
     }
 
     private List<TimeJobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
@@ -178,5 +154,9 @@ public abstract class AbstractDedupJobScheduler {
 
     String getPrefix() {
         return prefix;
+    }
+
+    LongSupplier getClock() {
+        return clock;
     }
 }

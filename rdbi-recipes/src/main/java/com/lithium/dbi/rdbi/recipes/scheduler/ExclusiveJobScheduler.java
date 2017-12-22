@@ -2,7 +2,6 @@ package com.lithium.dbi.rdbi.recipes.scheduler;
 
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Instant;
 
 import java.util.List;
 
@@ -23,7 +22,7 @@ public class ExclusiveJobScheduler extends AbstractDedupJobScheduler {
      * @param redisPrefixKey the prefix key for the job system. All keys the job system uses will have the prefix redisPrefixKey
      */
     public ExclusiveJobScheduler(RDBI rdbi, String redisPrefixKey) {
-        super(rdbi, redisPrefixKey);
+        super(rdbi, redisPrefixKey, System::currentTimeMillis);
     }
 
     //TODO think about runtime exception, the scheduler should catch all connection based one and handle them
@@ -36,7 +35,7 @@ public class ExclusiveJobScheduler extends AbstractDedupJobScheduler {
                     getRunningQueue(tube),
                     getPaused(tube),
                     jobStr,
-                    Instant.now().getMillis() + becomeReadyInMillis);
+                    getClock().getAsLong() + becomeReadyInMillis);
         }
     }
 
@@ -48,8 +47,8 @@ public class ExclusiveJobScheduler extends AbstractDedupJobScheduler {
                     getRunningQueue(tube),
                     getPaused(tube),
                     maxNumberOfJobs,
-                    Instant.now().getMillis(),
-                    Instant.now().getMillis() + considerExpiredAfterMillis);
+                    getClock().getAsLong(),
+                    getClock().getAsLong() + considerExpiredAfterMillis);
         }
     }
 
@@ -65,7 +64,7 @@ public class ExclusiveJobScheduler extends AbstractDedupJobScheduler {
     public List<TimeJobInfo> removeExpiredJobs(String tube) {
         try (Handle handle = rdbi.open()) {
             return handle.attach(ExclusiveJobSchedulerDAO.class)
-                         .removeExpiredJobs(getRunningQueue(tube), Instant.now().getMillis());
+                         .removeExpiredJobs(getRunningQueue(tube), getClock().getAsLong());
         }
     }
 
@@ -79,7 +78,7 @@ public class ExclusiveJobScheduler extends AbstractDedupJobScheduler {
     public List<TimeJobInfo> removeExpiredReadyJobs(String tube, long expirationPeriodInMillis) {
         try (Handle handle = rdbi.open()) {
             return handle.attach(ExclusiveJobSchedulerDAO.class)
-                         .removeExpiredJobs(getReadyQueue(tube), Instant.now().minus(expirationPeriodInMillis).getMillis());
+                         .removeExpiredJobs(getReadyQueue(tube), getClock().getAsLong() - expirationPeriodInMillis);
         }
     }
 }
