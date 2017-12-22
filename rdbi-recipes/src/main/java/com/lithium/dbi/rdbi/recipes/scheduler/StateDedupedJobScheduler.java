@@ -147,6 +147,15 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
         }
     }
 
+    @Override
+    public long getReadyJobCount(String tube) {
+        try (Handle handle = rdbi.open()) {
+            return handle.attach(StateDedupedJobSchedulerDAO.class)
+                         .getReadyJobCount(getReadyQueue(tube),
+                                           getReadyAndRunningQueue(tube));
+        }
+    }
+
     protected String getReadyAndRunningQueue(String tube) {
         return getPrefix() + tube + ":ready_and_running_queue";
     }
