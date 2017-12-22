@@ -277,7 +277,7 @@ public class MultiChannelScheduler {
     }
 
     private String getRunningQueue(String tube) {
-        return prefix + ":" + tube + ":running_queue";
+        return prefix + ":multichannel:" + tube + ":running_queue";
     }
 
     private String getPaused(String channel, String tube) {
