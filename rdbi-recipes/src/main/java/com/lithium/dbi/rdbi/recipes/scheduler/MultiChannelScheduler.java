@@ -7,8 +7,7 @@ import redis.clients.jedis.Tuple;
 import java.util.List;
 import java.util.Set;
 import java.util.function.LongSupplier;
-
-import static com.google.common.collect.ImmutableList.toImmutableList;
+import java.util.stream.Collectors;
 
 /**
  * This is similar to {@link StateDedupedJobScheduler}, except that it includes a separate "channel"
@@ -96,7 +95,7 @@ public class MultiChannelScheduler {
                     .map(chPrefix -> chPrefix.replaceFirst(prefix + ":", ""))
                     // rm tube suffix
                     .map(channelAndTube -> channelAndTube.replace(":" + tube, ""))
-                    .collect(toImmutableList());
+                    .collect(Collectors.toList());
         }
     }
 
@@ -242,7 +241,7 @@ public class MultiChannelScheduler {
             Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
             return tupleSet.stream()
                            .map(t -> new TimeJobInfo(t.getElement(), t.getScore()))
-                           .collect(toImmutableList());
+                           .collect(Collectors.toList());
         }
     }
 
