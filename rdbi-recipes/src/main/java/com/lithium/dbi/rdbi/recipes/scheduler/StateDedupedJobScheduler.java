@@ -3,9 +3,9 @@ package com.lithium.dbi.rdbi.recipes.scheduler;
 import com.google.common.collect.ImmutableList;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Instant;
 
 import java.util.List;
+import java.util.function.LongSupplier;
 
 /**
  * Similar to ExclusiveJobScheduler. Main difference is that jobs are de-duplicated by state.
@@ -26,12 +26,21 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
      * @param redisPrefixKey the prefix key for the job system. All keys the job system uses will have the prefix redisPrefixKey
      */
     public StateDedupedJobScheduler(RDBI rdbi, String redisPrefixKey) {
-        super(rdbi, redisPrefixKey);
+        this(rdbi, redisPrefixKey, System::currentTimeMillis);
+    }
+
+    /**
+     * @param rdbi the rdbi driver
+     * @param redisPrefixKey the prefix key for the job system. All keys the job system uses will have the prefix redisPrefixKey
+     * @param clock current time in ms supplier
+     */
+    public StateDedupedJobScheduler(RDBI rdbi, String redisPrefixKey, LongSupplier clock) {
+        super(rdbi, redisPrefixKey, clock);
     }
 
     /**
      * @return true if the job was scheduled.
-     *         false indicates the job already exists in the ready queue or the running queue.
+     *         false indicates the job already exists in the ready queue.
      */
     @Override
     public boolean schedule(final String tube, final String jobStr, final int runInMillis) {
@@ -42,7 +51,7 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
                     getReadyAndRunningQueue(tube),
                     getPaused(tube),
                     jobStr,
-                    Instant.now().getMillis() + runInMillis);
+                    getClock().getAsLong() + runInMillis);
         }
     }
 
@@ -54,8 +63,8 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
                     getRunningQueue(tube),
                     getPaused(tube),
                     maxNumberOfJobs,
-                    Instant.now().getMillis(),
-                    Instant.now().getMillis() + considerExpiredAfterMillis);
+                    getClock().getAsLong(),
+                    getClock().getAsLong() + considerExpiredAfterMillis);
         }
     }
 
@@ -92,7 +101,7 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
     public List<TimeJobInfo> removeExpiredRunningJobs(String tube) {
         try (Handle handle = rdbi.open()) {
             return handle.attach(StateDedupedJobSchedulerDAO.class)
-                         .removeExpiredJobs(getRunningQueue(tube), Instant.now().getMillis());
+                         .removeExpiredJobs(getRunningQueue(tube), getClock().getAsLong());
         }
     }
 
@@ -110,11 +119,11 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
 
             builder.addAll(dao.removeExpiredJobs(
                     getReadyQueue(tube),
-                    Instant.now().minus(expirationPeriodInMillis).getMillis()));
+                    getClock().getAsLong() - expirationPeriodInMillis));
 
             return builder.addAll(dao.removeExpiredJobs(
                     getReadyAndRunningQueue(tube),
-                    Instant.now().minus(expirationPeriodInMillis).getMillis())).build();
+                    getClock().getAsLong() - expirationPeriodInMillis)).build();
 
         }
     }
@@ -138,8 +147,16 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
         }
     }
 
+    @Override
+    public long getReadyJobCount(String tube) {
+        try (Handle handle = rdbi.open()) {
+            return handle.attach(StateDedupedJobSchedulerDAO.class)
+                         .getReadyJobCount(getReadyQueue(tube),
+                                           getReadyAndRunningQueue(tube));
+        }
+    }
+
     protected String getReadyAndRunningQueue(String tube) {
         return getPrefix() + tube + ":ready_and_running_queue";
     }
-
 }

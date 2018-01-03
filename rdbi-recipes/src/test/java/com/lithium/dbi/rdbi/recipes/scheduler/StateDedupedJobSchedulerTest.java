@@ -11,6 +11,7 @@ import redis.clients.jedis.JedisPool;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
@@ -358,7 +359,7 @@ public class StateDedupedJobSchedulerTest {
     }
 
     @Test
-    public void testRemoveExpiredReadyAndRuningJobs() throws InterruptedException {
+    public void testRemoveExpiredReadyAndRunningJobs() throws InterruptedException {
         // Schedule a job
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
         // move it to running
@@ -380,5 +381,19 @@ public class StateDedupedJobSchedulerTest {
         assertTrue(scheduledJobSystem.inRunningQueue(tubeName, "{hello:world}"));
         // Ack the job.
         assertTrue(scheduledJobSystem.ackJob(tubeName, "{hello:world}"));
+    }
+
+    @Test
+    public void testReadyJobCountWhenReadyAndRunning() {
+        // Schedule a job
+        scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
+        // move it to running
+        scheduledJobSystem.reserveSingle(tubeName, 1000);
+
+        // schedule again
+        scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
+
+        // we should count it as 'ready'
+        assertThat(scheduledJobSystem.getReadyJobCount(tubeName)).isEqualTo(1);
     }
 }
