@@ -103,7 +103,8 @@ public class MultiChannelScheduler {
         try (Handle handle = rdbi.open()) {
             return handle.attach(MultiChannelSchedulerDAO.class)
                          .getAllReadyJobCount(
-                                 getMultiChannelCircularBuffer(tube));
+                                 getMultiChannelCircularBuffer(tube),
+                                 clock.getAsLong());
         }
     }
 

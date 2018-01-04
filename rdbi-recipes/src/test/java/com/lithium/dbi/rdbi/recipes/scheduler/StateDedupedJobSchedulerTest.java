@@ -1,8 +1,7 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
-import com.lithium.dbi.rdbi.Callback;
-import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
+import com.lithium.dbi.rdbi.TestClock;
 import com.lithium.dbi.rdbi.testutil.TubeUtils;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -27,22 +26,19 @@ public class StateDedupedJobSchedulerTest {
     private StateDedupedJobScheduler scheduledJobSystem = null;
 
     @BeforeMethod
-    public void setup(){
+    public void setup() {
         tubeName = TubeUtils.uniqueTubeName();
-        scheduledJobSystem  = new StateDedupedJobScheduler(rdbi, "myprefix:");
+        scheduledJobSystem = new StateDedupedJobScheduler(rdbi, "myprefix:");
     }
 
     @AfterMethod
-    public void tearDown(){
+    public void tearDown() {
         // nuke the queues
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().del(scheduledJobSystem.getReadyQueue(tubeName),
-                                   scheduledJobSystem.getRunningQueue(tubeName),
-                                   scheduledJobSystem.getReadyAndRunningQueue(tubeName));
-                return null;
-            }
+        rdbi.withHandle(handle -> {
+            handle.jedis().del(scheduledJobSystem.getReadyQueue(tubeName),
+                               scheduledJobSystem.getRunningQueue(tubeName),
+                               scheduledJobSystem.getReadyAndRunningQueue(tubeName));
+            return null;
         });
 
         // ensure system is not paused
@@ -143,10 +139,10 @@ public class StateDedupedJobSchedulerTest {
 
         boolean job2Reserved = false;
         boolean job4Reserved = false;
-        for(TimeJobInfo jobInfo : reservedJobs) {
-            if(jobInfo.getJobStr().equals("job2")) {
+        for (TimeJobInfo jobInfo : reservedJobs) {
+            if (jobInfo.getJobStr().equals("job2")) {
                 job2Reserved = true;
-            } else if(jobInfo.getJobStr().equals("job4")) {
+            } else if (jobInfo.getJobStr().equals("job4")) {
                 job4Reserved = true;
             } else {
                 fail("Reserved an unexpected job: " + jobInfo.getJobStr());
@@ -182,12 +178,12 @@ public class StateDedupedJobSchedulerTest {
         boolean job3Reserved = false;
         boolean job5Reserved = false;
         boolean job6Reserved = false;
-        for(TimeJobInfo jobInfo : reservedJobs) {
-            if(jobInfo.getJobStr().equals("job3")) {
+        for (TimeJobInfo jobInfo : reservedJobs) {
+            if (jobInfo.getJobStr().equals("job3")) {
                 job3Reserved = true;
-            } else if(jobInfo.getJobStr().equals("job5")) {
+            } else if (jobInfo.getJobStr().equals("job5")) {
                 job5Reserved = true;
-            } else if(jobInfo.getJobStr().equals("job6")) {
+            } else if (jobInfo.getJobStr().equals("job6")) {
                 job6Reserved = true;
             } else {
                 fail("Reserved an unexpected job: " + jobInfo.getJobStr());
@@ -224,7 +220,7 @@ public class StateDedupedJobSchedulerTest {
     }
 
     @Test
-    public void testDelete() throws InterruptedException {
+    public void testDelete() {
         final String jobStr = "{hello:world}";
         assertFalse(scheduledJobSystem.deleteJob(tubeName, jobStr));
 
@@ -288,7 +284,7 @@ public class StateDedupedJobSchedulerTest {
     }
 
     @Test
-    public void testAck() throws InterruptedException {
+    public void testAck() {
         // Schedule.
         assertTrue(scheduledJobSystem.schedule(tubeName, "{hello:world}", 0));
 
@@ -327,7 +323,10 @@ public class StateDedupedJobSchedulerTest {
     }
 
     @Test
-    public void testRemoveExpiredRunningJobs() throws InterruptedException {
+    public void testRemoveExpiredRunningJobs() {
+        TestClock clock = new TestClock(System.currentTimeMillis(), 10);
+        scheduledJobSystem = new StateDedupedJobScheduler(rdbi, "myprefix:", clock);
+
         // Schedule a job
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
 
@@ -336,30 +335,36 @@ public class StateDedupedJobSchedulerTest {
         assertNotNull(result1);
 
         // Sleep enough time to allow it to expire.
-        Thread.sleep(10);
+        clock.tick();
 
         // Verify the job is returned as expired.
         List<TimeJobInfo> infos = scheduledJobSystem.removeExpiredRunningJobs(tubeName);
-        assertEquals(infos.size(), 1);
-        assertNotNull(infos.get(0).getJobScore());
+        assertThat(infos).hasSize(1);
     }
 
     @Test
-    public void testRemoveExpiredReadyJobs() throws InterruptedException {
+    public void testRemoveExpiredReadyJobs() {
+
+        TestClock clock = new TestClock(System.currentTimeMillis(), 10);
+        scheduledJobSystem = new StateDedupedJobScheduler(rdbi, "myprefix:", clock);
+
         // Schedule a job
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
 
         // Sleep enough time to allow it to expire.
-        Thread.sleep(50);
+        clock.tick();
 
         // Verify the job is returned as expired.
         List<TimeJobInfo> infos = scheduledJobSystem.removeExpiredReadyJobs(tubeName, 10);
-        assertEquals(infos.size(), 1);
-        assertNotNull(infos.get(0).getJobScore());
+        assertThat(infos).hasSize(1);
     }
 
     @Test
-    public void testRemoveExpiredReadyAndRunningJobs() throws InterruptedException {
+    public void testRemoveExpiredReadyAndRunningJobs() {
+
+        TestClock clock = new TestClock(System.currentTimeMillis(), 10);
+        scheduledJobSystem = new StateDedupedJobScheduler(rdbi, "myprefix:", clock);
+
         // Schedule a job
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
         // move it to running
@@ -369,12 +374,11 @@ public class StateDedupedJobSchedulerTest {
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
 
         // Sleep enough time to allow it to expire.
-        Thread.sleep(50);
+        clock.tick();
 
         // Verify the job is returned as expired.
         List<TimeJobInfo> infos = scheduledJobSystem.removeExpiredReadyJobs(tubeName, 10);
-        assertEquals(infos.size(), 1);
-        assertNotNull(infos.get(0).getJobScore());
+        assertThat(infos).hasSize(1);
 
         assertFalse(scheduledJobSystem.inReadyQueue(tubeName, "{hello:world}"));
         assertFalse(scheduledJobSystem.inReadyAndRunningQueue(tubeName, "{hello:world}"));
@@ -394,6 +398,27 @@ public class StateDedupedJobSchedulerTest {
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0);
 
         // we should count it as 'ready'
+        assertThat(scheduledJobSystem.getReadyJobCount(tubeName)).isEqualTo(1);
+    }
+
+    @Test
+    public void testReadyJobCountWithFutureReady() {
+
+        TestClock clock = new TestClock(System.currentTimeMillis(), 10);
+        scheduledJobSystem = new StateDedupedJobScheduler(rdbi, "myprefix:", clock);
+
+        // Schedule a job
+        scheduledJobSystem.schedule(tubeName, "{hello:world}", 20);
+
+        // we should not count it as 'ready'
+        assertThat(scheduledJobSystem.getReadyJobCount(tubeName)).isEqualTo(0);
+
+        clock.tick();
+        // we should not count it as 'ready'
+        assertThat(scheduledJobSystem.getReadyJobCount(tubeName)).isEqualTo(0);
+
+        clock.tick();
+        // we should now count it as 'ready'
         assertThat(scheduledJobSystem.getReadyJobCount(tubeName)).isEqualTo(1);
     }
 }

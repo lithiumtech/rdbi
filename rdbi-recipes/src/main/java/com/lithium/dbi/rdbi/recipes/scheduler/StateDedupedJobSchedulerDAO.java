@@ -196,11 +196,11 @@ public interface StateDedupedJobSchedulerDAO {
             @BindArg("job") String job);
 
     @Query(
-            "local readyCount = redis.call('ZCARD', $readyQueue$)\n"+
-            "return readyCount + redis.call('ZCARD', $readyAndRunningQueue$)"
+            "local readyCount = redis.call('ZCOUNT', $readyQueue$, 0, $currentTimeMillis$)\n"+
+            "return readyCount + redis.call('ZCOUNT', $readyAndRunningQueue$, 0, $currentTimeMillis$)"
     )
     int getReadyJobCount(
             @BindKey("readyQueue") String readyQueue,
-            @BindKey("readyAndRunningQueue") String readyAndRunningQueue
-                        );
+            @BindKey("readyAndRunningQueue") String readyAndRunningQueue,
+            @BindArg("currentTimeMillis") long currentTimeMillis);
 }

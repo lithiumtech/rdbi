@@ -161,12 +161,13 @@ public interface MultiChannelSchedulerDAO {
             "local count = 0\n" +
             "for i, channel in ipairs(channels) do \n" +
             "  local readyQueue = channel .. \":ready_queue\"\n" +
-            "  count = count + redis.call('ZCARD', readyQueue)\n" +
+            "  count = count + redis.call('ZCOUNT', readyQueue, 0, $currentTimeMillis$)\n" +
             "end\n" +
             "return count"
     )
     long getAllReadyJobCount(
-            @BindKey("multiChannelCircularBuffer") String multiChannelCircularBuffer);
+            @BindKey("multiChannelCircularBuffer") String multiChannelCircularBuffer,
+            @BindArg("currentTimeMillis") long currentTimeMillis);
 
     @Query(
             "local removed = redis.call('ZREM', $readyQueue$, $job$)\n" +
