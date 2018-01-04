@@ -11,6 +11,7 @@ import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.testng.Assert.assertEquals;
@@ -56,10 +57,10 @@ public class TimeBasedJobSchedulerTest {
 
     @Test
     public void testMaximumReadyQueueSizeScheduling() {
-        assertTrue(scheduledJobSystem.schedule(tubeName, UUID.randomUUID().toString(), 0, QUIESCENCE, 2));
-        assertTrue(scheduledJobSystem.schedule(tubeName, UUID.randomUUID().toString(), 0, QUIESCENCE, 2));
+        assertTrue(scheduledJobSystem.schedule(tubeName, UUID.randomUUID().toString(), 0, QUIESCENCE, Optional.of(2L)));
+        assertTrue(scheduledJobSystem.schedule(tubeName, UUID.randomUUID().toString(), 0, QUIESCENCE, Optional.of(2L)));
         try {
-            scheduledJobSystem.schedule(tubeName, UUID.randomUUID().toString(), 0, QUIESCENCE, 2);
+            scheduledJobSystem.schedule(tubeName, UUID.randomUUID().toString(), 0, QUIESCENCE, Optional.of(2L));
             fail("MaxSizeExceededException should have been thrown");
         } catch (MaxSizeExceededException e) {
             // expected
@@ -200,7 +201,7 @@ public class TimeBasedJobSchedulerTest {
         final String payloadBar = "{hello:bar}";
         final String payloadBaz = "{hello:baz}";
 
-        assertEquals(0, scheduledJobSystem.scheduleMulti(tubeName, ImmutableSet.<String>of(), 0));
+        assertEquals(0, scheduledJobSystem.scheduleMulti(tubeName, ImmutableSet.of(), 0));
 
         assertEquals(1, scheduledJobSystem.scheduleMulti(tubeName, ImmutableSet.of(payloadFoo), 0));
         assertEquals(0, scheduledJobSystem.scheduleMulti(tubeName, ImmutableSet.of(payloadFoo), 0));
