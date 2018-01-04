@@ -152,7 +152,8 @@ public class StateDedupedJobScheduler extends AbstractDedupJobScheduler {
         try (Handle handle = rdbi.open()) {
             return handle.attach(StateDedupedJobSchedulerDAO.class)
                          .getReadyJobCount(getReadyQueue(tube),
-                                           getReadyAndRunningQueue(tube));
+                                           getReadyAndRunningQueue(tube),
+                                           getClock().getAsLong());
         }
     }
 

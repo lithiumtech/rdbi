@@ -389,6 +389,30 @@ public class MultiChannelSchedulerTest {
     }
 
     @Test
+    public void testReadyJobCountWithFutureReady() {
+
+        TestClock clock = new TestClock(System.currentTimeMillis(), 10);
+        MultiChannelScheduler scheduledJobSystem  = new MultiChannelScheduler(rdbi, prefix, clock);
+
+        // Schedule a job
+        scheduledJobSystem.schedule("A", tube1, "{hello:world}", 20);
+
+        // we should not count it as 'ready'
+        assertThat(scheduledJobSystem.getReadyJobCount("A", tube1)).isEqualTo(0);
+        assertThat(scheduledJobSystem.getAllReadyJobCount(tube1)).isEqualTo(0);
+
+        clock.tick();
+        // we should not count it as 'ready'
+        assertThat(scheduledJobSystem.getReadyJobCount("A", tube1)).isEqualTo(0);
+        assertThat(scheduledJobSystem.getAllReadyJobCount(tube1)).isEqualTo(0);
+
+        clock.tick();
+        // we should now count it as 'ready'
+        assertThat(scheduledJobSystem.getReadyJobCount("A", tube1)).isEqualTo(1);
+        assertThat(scheduledJobSystem.getAllReadyJobCount(tube1)).isEqualTo(1);
+    }
+
+    @Test
     public void testDeleteJob() {
         MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
         String jobId = "doesnt-matter" + ":" + tube1;
