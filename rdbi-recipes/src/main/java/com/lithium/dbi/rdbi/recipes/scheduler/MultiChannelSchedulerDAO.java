@@ -36,10 +36,12 @@ public interface MultiChannelSchedulerDAO {
             @BindArg("runInMillis") long runInMillis);
 
     /**
-     * A bit of a limitation as written is that we are trying to reach the job limit only within
-     * the first considered channel. This will take some rewriting to allow fulfilling the limit
-     * across multiple channels, and since that's not a primary use case for gopher, (which reserves 1
-     * job at a time) i'm going to leave it as is for now and maybe get back to it later
+     * Will attempt to reserve up to $limit jobs across multiple channels.
+     *
+     * Note that if multiple jobs are requested and found in one channel, they will
+     * all be fulfilled within that channel, not necessarily following the round robin
+     * expectation.
+     *
      */
     @Mapper(TimeJobInfoListMapper.class)
     @Query(
