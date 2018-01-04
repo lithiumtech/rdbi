@@ -20,22 +20,29 @@ public interface JobSchedulerDAO {
      * @param job Key for sorted set.
      * @param timestamp Earliest UTC timestamp to process this job.
      * @param quiescence Maximum forward distance (exclusive) from current timestamp to allow an update if the job already exists.
+     * @param maxReadyQueueSize The maximum allowed size of the ready queue, or a negative number if it should be unbounded.
      * @return 1 if added or updated, 0 otherwise.
      */
     @Query(
-            "local readyJobScore = redis.call('ZSCORE', $readyQueue$, $jobStr$)\n" +
-            "if not readyJobScore or ($timestamp$ > readyJobScore and math.abs($timestamp$ - readyJobScore) < tonumber($quiescence$)) then\n" +
-            "    redis.call('ZADD', $readyQueue$, $timestamp$, $jobStr$)\n" +
-            "    return 1\n" +
-            "else\n" +
-            "    return 0\n" +
-            "end"
+        "local readyJobScore = redis.call('ZSCORE', $readyQueue$, $jobStr$)\n" +
+        "if not readyJobScore or ($timestamp$ > readyJobScore and math.abs($timestamp$ - readyJobScore) < tonumber($quiescence$)) then\n" +
+        "    local maxSize = tonumber($maxReadyQueueSize$)\n" +
+        "    if maxSize < 0 or (redis.call('ZCARD', $readyQueue$) + 1) <= maxSize then\n" +
+        "        redis.call('ZADD', $readyQueue$, $timestamp$, $jobStr$)\n" +
+        "        return 1\n" +
+        "    else\n" +
+        "        return -1\n" +
+        "    end\n" +
+        "else\n" +
+        "    return 0\n" +
+        "end"
     )
-    public int scheduleJob(
+    int scheduleJob(
             @BindKey("readyQueue") String readyQueue,
             @BindArg("jobStr") String job,
             @BindArg("timestamp") long timestamp,
-            @BindArg("quiescence") long quiescence);
+            @BindArg("quiescence") long quiescence,
+            @BindArg("maxReadyQueueSize") long maxReadyQueueSize);
 
     /**
      * Moves items from readyQueue to runningQueue and returns details.
@@ -72,7 +79,7 @@ public interface JobSchedulerDAO {
         "end\n" +
         "return reserved"
     )
-    public List<JobInfo> reserveJobs(
+    List<JobInfo> reserveJobs(
             @BindKey("readyQueue") String readyQueue,
             @BindKey("runningQueue") String runningQueue,
             @BindArg("limit") int limit,
@@ -98,10 +105,10 @@ public interface JobSchedulerDAO {
         "redis.call('ZREMRANGEBYSCORE', $runningQueue$, 0, $timestamp$)\n" +
         "return expiredJobs"
     )
-    public List<JobInfo> requeueExpiredJobs(@BindKey("readyQueue") String readyQueue,
-                                            @BindKey("runningQueue") String runningQueue,
-                                            @BindArg("timestamp") long timestamp,
-                                            @BindArg("newScore") double newScore);
+    List<JobInfo> requeueExpiredJobs(@BindKey("readyQueue") String readyQueue,
+                                     @BindKey("runningQueue") String runningQueue,
+                                     @BindArg("timestamp") long timestamp,
+                                     @BindArg("newScore") double newScore);
 
     /**
      * Delete a job from the runningQueue. This implies the job is no longer
@@ -112,7 +119,7 @@ public interface JobSchedulerDAO {
      * @return 1 if successful, or 0 if unsuccessful.
      */
     @Query("return redis.call('ZREM', $runningQueue$, $job$)")
-    public int deleteRunningJob(
+    int deleteRunningJob(
             @BindKey("runningQueue") String runningQueue,
             @BindArg("job") String job);
 }

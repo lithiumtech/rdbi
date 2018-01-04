@@ -36,14 +36,32 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
      * @return true if the job was newly scheduled or updated, or false if the job already existed and was outside of its quiescence period
      */
     public boolean schedule(final String tube, final String jobStr, final long millisInFuture, final long quiescence) {
+        return schedule(tube, jobStr, millisInFuture, quiescence, -1);
+    }
+
+    /**
+     * Add a new job to the TimeBasedJobScheduler
+     *
+     * @param tube Used in conjunction with the redisPrefixKey (constructor) to make up the full redis key name.
+     * @param jobStr A string representation of the job to be scheduled
+     * @param millisInFuture The "priority" of the job in terms of the number of millis in the future that this job should become available.
+     * @param quiescence The maximum forward distance (exclusive) in millis from current timestamp to allow an update if the job already exists.
+     * @param maxReadyQueueSize The maximum allowed size of the ready queue, or a negative number if it should be unbounded.
+     * @return true if the job was newly scheduled or updated, or false if the job already existed and was outside of its quiescence period
+     */
+    public boolean schedule(final String tube, final String jobStr, final long millisInFuture, final long quiescence, final long maxReadyQueueSize) {
         try (Handle handle = rdbi.open()) {
-            return 1 == handle
-                    .attach(JobSchedulerDAO.class)
-                    .scheduleJob(
-                            getReadyQueue(tube),
-                            jobStr,
-                            Instant.now().getMillis() + millisInFuture,
-                            quiescence);
+            int scheduleResult = handle.attach(JobSchedulerDAO.class)
+                                       .scheduleJob(
+                                               getReadyQueue(tube),
+                                               jobStr,
+                                               Instant.now().getMillis() + millisInFuture,
+                                               quiescence,
+                                               maxReadyQueueSize);
+            if (scheduleResult == -1) {
+                throw new MaxSizeExceededException();
+            }
+            return scheduleResult == 1;
         }
     }
 

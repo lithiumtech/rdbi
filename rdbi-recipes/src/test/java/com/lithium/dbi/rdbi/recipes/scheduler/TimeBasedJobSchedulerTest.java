@@ -2,7 +2,6 @@ package com.lithium.dbi.rdbi.recipes.scheduler;
 
 import com.google.common.collect.ImmutableSet;
 import com.lithium.dbi.rdbi.Callback;
-import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import com.lithium.dbi.rdbi.testutil.TubeUtils;
 import org.joda.time.Instant;
@@ -12,12 +11,14 @@ import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 @Test(groups = "integration")
 public class TimeBasedJobSchedulerTest {
@@ -38,17 +39,14 @@ public class TimeBasedJobSchedulerTest {
     @AfterMethod
     public void tearDown(){
         // nuke the queues
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().del(scheduledJobSystem.getReadyQueue(tubeName), scheduledJobSystem.getRunningQueue(tubeName));
-                return null;
-            }
+        rdbi.withHandle((Callback<Void>) handle -> {
+            handle.jedis().del(scheduledJobSystem.getReadyQueue(tubeName), scheduledJobSystem.getRunningQueue(tubeName));
+            return null;
         });
     }
 
     @Test
-    public void testBasicSchedule() throws InterruptedException {
+    public void testBasicSchedule() {
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0, QUIESCENCE);
         JobInfo result2 = scheduledJobSystem.reserveSingle(tubeName, 1000);
         assertEquals(result2.getJobStr(), "{hello:world}");
@@ -57,7 +55,19 @@ public class TimeBasedJobSchedulerTest {
     }
 
     @Test
-    public void testDuplicateReserve() throws InterruptedException {
+    public void testMaximumReadyQueueSizeScheduling() {
+        assertTrue(scheduledJobSystem.schedule(tubeName, UUID.randomUUID().toString(), 0, QUIESCENCE, 2));
+        assertTrue(scheduledJobSystem.schedule(tubeName, UUID.randomUUID().toString(), 0, QUIESCENCE, 2));
+        try {
+            scheduledJobSystem.schedule(tubeName, UUID.randomUUID().toString(), 0, QUIESCENCE, 2);
+            fail("MaxSizeExceededException should have been thrown");
+        } catch (MaxSizeExceededException e) {
+            // expected
+        }
+    }
+
+    @Test
+    public void testDuplicateReserve() {
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0, QUIESCENCE);
         JobInfo result2 = scheduledJobSystem.reserveSingle(tubeName, 1000);
         assertEquals(result2.getJobStr(), "{hello:world}");
@@ -73,7 +83,7 @@ public class TimeBasedJobSchedulerTest {
     }
 
     @Test
-    public void testRepeatSchedule() throws InterruptedException {
+    public void testRepeatSchedule() {
         assertTrue(scheduledJobSystem.schedule(tubeName, "{hello:world}", 0, QUIESCENCE)); // set time to now
         assertTrue(scheduledJobSystem.schedule(tubeName, "{hello:world}", 500, QUIESCENCE)); // success ~500ms > original
         assertFalse(scheduledJobSystem.schedule(tubeName, "{hello:world}", 0, QUIESCENCE)); // fails < original
@@ -115,7 +125,7 @@ public class TimeBasedJobSchedulerTest {
     }
 
     @Test
-    public void testRequeue() throws InterruptedException {
+    public void testRequeue() {
         scheduledJobSystem.schedule(tubeName, "{hello:world}", 0, QUIESCENCE);
         JobInfo result2 = scheduledJobSystem.reserveSingle(tubeName, 0);
         assertEquals(result2.getJobStr(), "{hello:world}");
@@ -185,7 +195,7 @@ public class TimeBasedJobSchedulerTest {
     }
 
     @Test
-    public void testBasicScheduleMulti() throws InterruptedException {
+    public void testBasicScheduleMulti() {
         final String payloadFoo = "{hello:foo}";
         final String payloadBar = "{hello:bar}";
         final String payloadBaz = "{hello:baz}";
@@ -202,7 +212,7 @@ public class TimeBasedJobSchedulerTest {
     }
 
     @Test
-    public void testScheduleMultiPlaysNicelyWithQuiescence() throws InterruptedException {
+    public void testScheduleMultiPlaysNicelyWithQuiescence() {
         final String payloadFoo = "{hello:foo}";
         final String payloadBar = "{hello:bar}";
         assertEquals(2, scheduledJobSystem.scheduleMulti(tubeName, ImmutableSet.of(payloadFoo, payloadBar), 0));
