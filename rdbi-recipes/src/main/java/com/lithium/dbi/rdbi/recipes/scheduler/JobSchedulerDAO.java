@@ -21,7 +21,7 @@ public interface JobSchedulerDAO {
      * @param timestamp Earliest UTC timestamp to process this job.
      * @param quiescence Maximum forward distance (exclusive) from current timestamp to allow an update if the job already exists.
      * @param maxReadyQueueSize The maximum allowed size of the ready queue, or a negative number if it should be unbounded.
-     * @return 1 if added or updated, 0 otherwise.
+     * @return 1 if added or updated, -1 if element was not added/updated due to maxReadyQueueSize constraint, 0 otherwise.
      */
     @Query(
         "local readyJobScore = redis.call('ZSCORE', $readyQueue$, $jobStr$)\n" +
