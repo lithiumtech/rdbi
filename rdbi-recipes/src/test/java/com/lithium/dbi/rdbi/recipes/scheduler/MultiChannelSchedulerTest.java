@@ -467,4 +467,74 @@ public class MultiChannelSchedulerTest {
                 .extracting(JobInfo::getJobStr)
                 .containsExactly(jobId + "_1");
     }
+
+    @Test
+    public void testKeepsLooking() {
+        TestClock clock = new TestClock(System.currentTimeMillis(), 10);
+        MultiChannelScheduler scheduledJobSystem  = new MultiChannelScheduler(rdbi, prefix, clock);
+        String jobId = "doesnt-matter" + ":" + tube1;
+        // Schedule some jobs in the future
+        scheduledJobSystem.schedule("A", tube1, jobId + "_1", 10);
+        scheduledJobSystem.schedule("B", tube1, jobId + "_2", 10);
+        scheduledJobSystem.schedule("C", tube1, jobId + "_3", 10);
+
+        // all in the future
+        List<TimeJobInfo> reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 1);
+        assertThat(reserved).isEmpty();
+
+        // Schedule some jobs in the now
+        scheduledJobSystem.schedule("A", tube1, jobId + "_1a", 0);
+        scheduledJobSystem.schedule("B", tube1, jobId + "_2a", 0);
+        scheduledJobSystem.schedule("C", tube1, jobId + "_3a", 0);
+
+
+        // should get 3
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 1);
+        assertThat(reserved)
+                .hasSize(1)
+                .extracting(JobInfo::getJobStr)
+                .containsExactly(jobId + "_1a");
+
+
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 1);
+        assertThat(reserved)
+                .hasSize(1)
+                .extracting(JobInfo::getJobStr)
+                .containsExactly(jobId + "_2a");
+
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 1);
+        assertThat(reserved)
+                .hasSize(1)
+                .extracting(JobInfo::getJobStr)
+                .containsExactly(jobId + "_3a");
+
+
+        // all in the future
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 1);
+        assertThat(reserved).isEmpty();
+
+
+        clock.tick();
+
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 1);
+        assertThat(reserved)
+                .hasSize(1)
+                .extracting(JobInfo::getJobStr)
+                .containsExactly(jobId + "_1");
+
+
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 1);
+        assertThat(reserved)
+                .hasSize(1)
+                .extracting(JobInfo::getJobStr)
+                .containsExactly(jobId + "_2");
+
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 1);
+        assertThat(reserved)
+                .hasSize(1)
+                .extracting(JobInfo::getJobStr)
+                .containsExactly(jobId + "_3");
+
+
+    }
 }
