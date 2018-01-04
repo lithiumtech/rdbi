@@ -1,12 +1,12 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
-import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Instant;
 import redis.clients.jedis.Pipeline;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Differences between this class and {@link com.lithium.dbi.rdbi.recipes.scheduler.ExclusiveJobScheduler}:
@@ -16,12 +16,14 @@ import java.util.List;
  *     <li>Expired jobs in the runningQueue are not purged, but instead moved back to the readyQueue.</li>
  * </ul>
  */
+@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
 
     /**
      * @param rdbi the rdbi driver
      * @param redisPrefixKey the prefix key for the job system. All keys the job system uses will have the prefix redisPrefixKey
      */
+    @SuppressWarnings("WeakerAccess")
     public TimeBasedJobScheduler(RDBI rdbi, String redisPrefixKey) {
         super(rdbi, redisPrefixKey);
     }
@@ -36,14 +38,32 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
      * @return true if the job was newly scheduled or updated, or false if the job already existed and was outside of its quiescence period
      */
     public boolean schedule(final String tube, final String jobStr, final long millisInFuture, final long quiescence) {
+        return schedule(tube, jobStr, millisInFuture, quiescence, Optional.empty());
+    }
+
+    /**
+     * Add a new job to the TimeBasedJobScheduler
+     *
+     * @param tube Used in conjunction with the redisPrefixKey (constructor) to make up the full redis key name.
+     * @param jobStr A string representation of the job to be scheduled
+     * @param millisInFuture The "priority" of the job in terms of the number of millis in the future that this job should become available.
+     * @param quiescence The maximum forward distance (exclusive) in millis from current timestamp to allow an update if the job already exists.
+     * @param maxReadyQueueSize The maximum allowed size of the ready queue, or empty if it should be unbounded.
+     * @return true if the job was newly scheduled or updated, or false if the job already existed and was outside of its quiescence period
+     */
+    public boolean schedule(final String tube, final String jobStr, final long millisInFuture, final long quiescence, final Optional<Long> maxReadyQueueSize) {
         try (Handle handle = rdbi.open()) {
-            return 1 == handle
-                    .attach(JobSchedulerDAO.class)
-                    .scheduleJob(
-                            getReadyQueue(tube),
-                            jobStr,
-                            Instant.now().getMillis() + millisInFuture,
-                            quiescence);
+            int scheduleResult = handle.attach(JobSchedulerDAO.class)
+                                       .scheduleJob(
+                                               getReadyQueue(tube),
+                                               jobStr,
+                                               Instant.now().getMillis() + millisInFuture,
+                                               quiescence,
+                                               maxReadyQueueSize.orElse(-1L));
+            if (scheduleResult == -1) {
+                throw new MaxSizeExceededException();
+            }
+            return scheduleResult == 1;
         }
     }
 
@@ -137,19 +157,19 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
 
 
     public List<TimeJobInfo> peekDelayed(String tube, int offset, int count) {
-        return peekInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+        return peekInternal(getReadyQueue(tube), (double) Instant.now().getMillis(), Double.MAX_VALUE, offset, count);
     }
 
     public List<TimeJobInfo> peekReady(String tube, int offset, int count) {
-        return peekInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+        return peekInternal(getReadyQueue(tube), 0.0d, (double) Instant.now().getMillis(), offset, count);
     }
 
     public List<TimeJobInfo> peekRunning(String tube, int offset, int count) {
-        return peekInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+        return peekInternal(getRunningQueue(tube), (double) Instant.now().getMillis(), Double.MAX_VALUE, offset, count);
     }
 
     public List<TimeJobInfo> peekExpired(String tube, int offset, int count) {
-        return peekInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+        return peekInternal(getRunningQueue(tube), 0.0d, (double) Instant.now().getMillis(), offset, count);
     }
 
     protected String getRunningQueue(String tube) {
@@ -161,12 +181,7 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
     }
 
     private long getSortedSetSize(final String key) {
-        return rdbi.withHandle(new Callback<Long>() {
-            @Override
-            public Long run(Handle handle) {
-                return handle.jedis().zcard(key);
-            }
-        });
+        return rdbi.withHandle(handle -> handle.jedis().zcard(key));
     }
 
     @Override
