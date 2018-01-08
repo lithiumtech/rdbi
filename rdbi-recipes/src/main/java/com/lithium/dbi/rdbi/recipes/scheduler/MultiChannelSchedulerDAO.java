@@ -52,7 +52,7 @@ public interface MultiChannelSchedulerDAO {
             "if runningLimit > 0 then\n" +
             "  local nowRunning = redis.call('ZCARD', $runningQueue$)\n" +
             "  if nextLimit + nowRunning > runningLimit then\n" +
-            "    return reserved" +
+            "    return reserved\n" +
             "  end\n" +
             "end\n" +
             "local channelCount = redis.call('LLEN', $multiChannelCircularBuffer$)\n" +
