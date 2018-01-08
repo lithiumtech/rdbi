@@ -611,7 +611,7 @@ public class MultiChannelSchedulerTest {
 
         scheduledJobSystem.ackJob(tube1, jobId + "_1");
         reserved = scheduledJobSystem.reserveMulti(tube1, 1_0000L, 1, 2);
-        // tried to reserve 1 but 1 + 1 so we're good
+        // tried to reserve 1 but 1 + 1  <= 2 so we're good
         assertThat(reserved).hasSize(1)
                             .extracting(JobInfo::getJobStr)
                             .containsExactly(jobId + "_3");
