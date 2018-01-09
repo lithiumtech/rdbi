@@ -584,4 +584,36 @@ public class MultiChannelSchedulerTest {
                 .extracting(JobInfo::getJobStr)
                 .containsExactly(jobId + "_2", jobId + "_3");
     }
+
+    @Test
+    public void testReserveWithRunningLimit() {
+        MultiChannelScheduler scheduledJobSystem  = new MultiChannelScheduler(rdbi, prefix);
+        String jobId = "doesnt-matter" + ":" + tube1;
+
+        scheduledJobSystem.schedule("A", tube1, jobId + "_1", 0);
+        scheduledJobSystem.schedule("B", tube1, jobId + "_2", 0);
+        scheduledJobSystem.schedule("C", tube1, jobId + "_3", 0);
+
+
+        List<TimeJobInfo> reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 2);
+        assertThat(reserved)
+                .hasSize(2)
+                .extracting(JobInfo::getJobStr)
+                .containsExactly(jobId + "_1", jobId + "_2");
+
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_0000L, 2, 3);
+        // tried to reserve 2 but 2 + 2 running would be > 3
+        assertThat(reserved).isEmpty();
+
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_0000L, 1, 2);
+        // tried to reserve 1 but 2 + 1 running would be > 2
+        assertThat(reserved).isEmpty();
+
+        scheduledJobSystem.ackJob(tube1, jobId + "_1");
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_0000L, 1, 2);
+        // tried to reserve 1 but 1 + 1  <= 2 so we're good
+        assertThat(reserved).hasSize(1)
+                            .extracting(JobInfo::getJobStr)
+                            .containsExactly(jobId + "_3");
+    }
 }

@@ -70,16 +70,33 @@ public class MultiChannelScheduler {
     /**
      * see {@link AbstractDedupJobScheduler#reserveMulti(String, long, int)}
      *
-     * note that currently maxNumberOfJobs only applies to max number of jobs in a single channel, so
-     * you might get back fewere than the total number available
      */
     public List<TimeJobInfo> reserveMulti(String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs) {
+        return reserveMulti(tube, considerExpiredAfterMillis, maxNumberOfJobs, 0);
+    }
+
+    /**
+     * attempt to reserve 1 or more jobs while also specifying a global running limit on jobs for this tube.
+     *
+     * if the current # of running jobs + maxNumberOfJobs attempted to reserve is > runningLimit, no jobs
+     * will be reserved.
+     *
+     * see also {@link AbstractDedupJobScheduler#reserveMulti(String, long, int)}
+     *
+     * @param tube job group. we will only grab ready jobs from this group.
+     * @param considerExpiredAfterMillis if jobs haven't been deleted after being reserved for this many millis, consider them expired.
+     * @param maxNumberOfJobs number of jobs to reserve.
+     * @param runningLimit if > 0, a limit of jobs we want to allow running for this particular tube type. If <= 0, no limit will be enforced.
+     * @return list of jobs reserved (now considered "running",) or empty list if none.
+     */
+    public List<TimeJobInfo> reserveMulti(String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs, final int runningLimit) {
         try (Handle handle = rdbi.open()) {
             return handle.attach(MultiChannelSchedulerDAO.class).reserveJobs(
                     getMultiChannelCircularBuffer(tube),
                     getMultiChannelSet(tube),
                     getRunningQueue(tube),
                     maxNumberOfJobs,
+                    runningLimit,
                     clock.getAsLong(),
                     clock.getAsLong() + considerExpiredAfterMillis);
         }

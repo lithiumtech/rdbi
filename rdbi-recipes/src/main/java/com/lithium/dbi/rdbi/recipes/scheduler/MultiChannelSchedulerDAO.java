@@ -48,6 +48,13 @@ public interface MultiChannelSchedulerDAO {
             "local reservedIndex = 1\n" +
             "local nextLimit = tonumber($limit$)\n" +
             "local reserved = {}\n" +
+            "local runningLimit = tonumber($runningLimit$)\n" +
+            "if runningLimit > 0 then\n" +
+            "  local nowRunning = redis.call('ZCARD', $runningQueue$)\n" +
+            "  if nextLimit + nowRunning > runningLimit then\n" +
+            "    return reserved\n" +
+            "  end\n" +
+            "end\n" +
             "local channelCount = redis.call('LLEN', $multiChannelCircularBuffer$)\n" +
             "if channelCount == 0 then\n" +
             "  return reserved\n" +
@@ -94,6 +101,7 @@ public interface MultiChannelSchedulerDAO {
             @BindKey("multiChannelSet") String multiChannelSet,
             @BindKey("runningQueue") String runningQueue,
             @BindArg("limit") int limit,
+            @BindArg("runningLimit") int runningLimit,
             @BindArg("now") long now,
             @BindArg("ttl") long ttl);
 
