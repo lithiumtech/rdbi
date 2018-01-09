@@ -86,7 +86,7 @@ public class MultiChannelScheduler {
      * @param tube job group. we will only grab ready jobs from this group.
      * @param considerExpiredAfterMillis if jobs haven't been deleted after being reserved for this many millis, consider them expired.
      * @param maxNumberOfJobs number of jobs to reserve.
-     * @param runningLimit if > 0, a limit of jobs we want to allow running for this particular tube type
+     * @param runningLimit if > 0, a limit of jobs we want to allow running for this particular tube type. If <= 0, no limit will be enforced.
      * @return list of jobs reserved (now considered "running",) or empty list if none.
      */
     public List<TimeJobInfo> reserveMulti(String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs, final int runningLimit) {
