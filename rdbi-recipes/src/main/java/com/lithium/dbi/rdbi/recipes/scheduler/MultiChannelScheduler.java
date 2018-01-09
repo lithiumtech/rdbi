@@ -78,7 +78,7 @@ public class MultiChannelScheduler {
     /**
      * attempt to reserve 1 or more jobs while also specifying a global running limit on jobs for this tube.
      *
-     * if the current # of running jobs + maxNumberOfJobs attempted to reserve is > runningLimit, no jobs
+     * if the current # of running jobs + maxNumberOfJobs attempted to reserve is &gt; runningLimit, no jobs
      * will be reserved.
      *
      * see also {@link AbstractDedupJobScheduler#reserveMulti(String, long, int)}
@@ -86,7 +86,7 @@ public class MultiChannelScheduler {
      * @param tube job group. we will only grab ready jobs from this group.
      * @param considerExpiredAfterMillis if jobs haven't been deleted after being reserved for this many millis, consider them expired.
      * @param maxNumberOfJobs number of jobs to reserve.
-     * @param runningLimit if > 0, a limit of jobs we want to allow running for this particular tube type. If <= 0, no limit will be enforced.
+     * @param runningLimit if &gt; 0, a limit of jobs we want to allow running for this particular tube type. If &lt;= 0, no limit will be enforced.
      * @return list of jobs reserved (now considered "running",) or empty list if none.
      */
     public List<TimeJobInfo> reserveMulti(String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs, final int runningLimit) {
