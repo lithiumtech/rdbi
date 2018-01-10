@@ -45,6 +45,7 @@ public interface MultiChannelSchedulerDAO {
      */
     @Mapper(TimeJobInfoListMapper.class)
     @Query(
+
             "local reservedIndex = 1\n" +
             "local nextLimit = tonumber($limit$)\n" +
             "local reserved = {}\n" +
@@ -64,11 +65,17 @@ public interface MultiChannelSchedulerDAO {
             "  local readyQueue = nextChannel .. \":ready_queue\"\n" +
             "  local pausedTube = nextChannel .. \":paused\"\n" +
             "  local isPaused = redis.call('GET', pausedTube) \n" +
+            "  local hasReady = redis.call('ZCARD', readyQueue)\n" +
+            "  if hasReady == 0 then\n" +
+            //   as a result of RPOPLPUSH call above we know our channel is at the head of the list
+            "    redis.call('LPOP', $multiChannelCircularBuffer$)\n" +
+            "    redis.call('SREM', $multiChannelSet$, nextChannel)\n" +
+            "  end\n" +
             "  local nextOffset = 0\n" +
-            "  while nextLimit > 0 and not isPaused do\n" +
+            "  while nextLimit > 0 and not isPaused and hasReady > 0 do\n" +
             "     local jobs = redis.call('ZRANGEBYSCORE', readyQueue, 0, $now$, 'WITHSCORES', 'LIMIT', nextOffset, nextLimit)\n" +
             "     if next(jobs) == nil then\n" +
-            "         break\n" +
+            "       break\n" +
             "     end\n" +
             "     for i=1,#jobs,2 do\n" +
             "        local inRunningQueue = redis.call('ZSCORE', $runningQueue$, jobs[i])\n" +
@@ -100,6 +107,55 @@ public interface MultiChannelSchedulerDAO {
             @BindKey("multiChannelCircularBuffer") String multiChannelCircularBuffer,
             @BindKey("multiChannelSet") String multiChannelSet,
             @BindKey("runningQueue") String runningQueue,
+            @BindArg("limit") int limit,
+            @BindArg("runningLimit") int runningLimit,
+            @BindArg("now") long now,
+            @BindArg("ttl") long ttl);
+
+    /**
+     * Will attempt to reserve up to $limit jobs for only 1 channel
+     */
+    @Mapper(TimeJobInfoListMapper.class)
+    @Query(
+                    "local reserved = {}\n" +
+                    "local isPaused = redis.call('GET', $pausedTube$) \n" +
+                    "if isPaused then\n" +
+                    "    return reserved\n" +
+                    "end\n" +
+                    "local nextLimit = tonumber($limit$)\n" +
+                    "local runningLimit = tonumber($runningLimit$)\n" +
+                    "if runningLimit > 0 then\n" +
+                    "  local nowRunning = redis.call('ZCARD', $runningQueue$)\n" +
+                    "  if nextLimit + nowRunning > runningLimit then\n" +
+                    "    return reserved\n" +
+                    "  end\n" +
+                    "end\n" +
+                    "local reservedIndex = 1\n" +
+                    "local nextOffset = 0\n" +
+                    "while nextLimit > 0 do\n" +
+                    "   local jobs = redis.call('ZRANGEBYSCORE', $readyQueue$, 0, $now$, 'WITHSCORES', 'LIMIT', nextOffset, nextLimit)\n" +
+                    "   if next(jobs) == nil then\n" +
+                    "       return reserved\n" +
+                    "   end\n" +
+                    "   for i=1,#jobs,2 do\n" +
+                    "      local inRunningQueue = redis.call('ZSCORE', $runningQueue$, jobs[i])\n" +
+                    "      if not inRunningQueue then\n" +
+                    "          reserved[reservedIndex] = jobs[i]\n" +
+                    "          reserved[reservedIndex + 1] = jobs[i + 1]\n" +
+                    "          redis.call('ZREM', $readyQueue$, reserved[reservedIndex])\n" +
+                    "          redis.call('ZADD', $runningQueue$, $ttl$, reserved[reservedIndex])\n" +
+                    "          reservedIndex = reservedIndex + 2\n" +
+                    "          nextLimit = nextLimit - 1\n" +
+                    "      end\n" +
+                    "   end\n" +
+                    "   nextOffset = nextOffset + nextLimit\n" +
+                    "end\n" +
+                    "return reserved"
+    )
+    List<TimeJobInfo> reserveJobsForChannel(
+            @BindKey("readyQueue") String readyQueue,
+            @BindKey("runningQueue") String runningQueue,
+            @BindKey("pausedTube") String pausedTube,
             @BindArg("limit") int limit,
             @BindArg("runningLimit") int runningLimit,
             @BindArg("now") long now,
