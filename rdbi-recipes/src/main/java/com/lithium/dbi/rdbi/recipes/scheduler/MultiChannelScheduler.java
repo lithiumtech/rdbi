@@ -60,7 +60,7 @@ public class MultiChannelScheduler {
                                       getMultiChannelCircularBuffer(tube),
                                       getMultiChannelSet(tube),
                                       getReadyQueue(channel, tube),
-                                      getPaused(channel, tube),
+                                      getPausedKey(channel, tube),
                                       getTubePrefix(channel, tube),
                                       job,
                                       clock.getAsLong() + runInMillis);
@@ -95,6 +95,19 @@ public class MultiChannelScheduler {
                     getMultiChannelCircularBuffer(tube),
                     getMultiChannelSet(tube),
                     getRunningQueue(tube),
+                    maxNumberOfJobs,
+                    runningLimit,
+                    clock.getAsLong(),
+                    clock.getAsLong() + considerExpiredAfterMillis);
+        }
+    }
+
+    public List<TimeJobInfo> reserveMultiForChannel(String channel, String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs, final int runningLimit) {
+        try(Handle handle = rdbi.open()) {
+            return handle.attach(MultiChannelSchedulerDAO.class).reserveJobsForChannel(
+                    getReadyQueue(channel, tube),
+                    getRunningQueue(tube),
+                    getPausedKey(channel, tube),
                     maxNumberOfJobs,
                     runningLimit,
                     clock.getAsLong(),
@@ -198,13 +211,13 @@ public class MultiChannelScheduler {
      */
     public void pause(String channel, String tube) {
         rdbi.withHandle(handle -> {
-            handle.jedis().set(getPaused(channel, tube), String.valueOf(clock.getAsLong() / 1000));
+            handle.jedis().set(getPausedKey(channel, tube), String.valueOf(clock.getAsLong() / 1000));
             return null;
         });
     }
 
     public boolean isPaused(String channel, String tube) {
-        return rdbi.withHandle(handle -> handle.jedis().get(getPaused(channel, tube)) != null);
+        return rdbi.withHandle(handle -> handle.jedis().get(getPausedKey(channel, tube)) != null);
     }
 
     /**
@@ -212,7 +225,7 @@ public class MultiChannelScheduler {
      * it will be a unix timestamp (seconds since the epoch).
      */
     public String getPauseStart(String channel, String tube) {
-        return rdbi.withHandle(handle -> handle.jedis().get(getPaused(channel, tube)));
+        return rdbi.withHandle(handle -> handle.jedis().get(getPausedKey(channel, tube)));
     }
 
     /**
@@ -220,7 +233,7 @@ public class MultiChannelScheduler {
      */
     public void resume(String channel, String tube) {
         rdbi.withHandle(handle -> {
-            handle.jedis().del(getPaused(channel, tube));
+            handle.jedis().del(getPausedKey(channel, tube));
             return null;
         });
     }
@@ -298,7 +311,7 @@ public class MultiChannelScheduler {
         return prefix + ":multichannel:" + tube + ":running_queue";
     }
 
-    private String getPaused(String channel, String tube) {
+    private String getPausedKey(String channel, String tube) {
         return getTubePrefix(channel, tube) + ":paused";
     }
 }
