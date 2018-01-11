@@ -45,7 +45,6 @@ public interface MultiChannelSchedulerDAO {
      */
     @Mapper(TimeJobInfoListMapper.class)
     @Query(
-
             "local reservedIndex = 1\n" +
             "local nextLimit = tonumber($limit$)\n" +
             "local reserved = {}\n" +
