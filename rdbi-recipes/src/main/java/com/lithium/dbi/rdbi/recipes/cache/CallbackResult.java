@@ -1,7 +1,6 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
 import com.google.common.base.Optional;
-import com.google.common.base.Throwables;
 
 public class CallbackResult<ValueType> {
     private final Optional<ValueType> value;
@@ -32,7 +31,7 @@ public class CallbackResult<ValueType> {
 
     public ValueType getOrThrowUnchecked() {
         if (error != null) {
-            throw Throwables.propagate(error);
+            throw new RuntimeException(error);
         } else {
             return value.orNull();
         }

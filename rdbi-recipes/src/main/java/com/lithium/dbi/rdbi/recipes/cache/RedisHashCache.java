@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
-import com.google.common.base.Throwables;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
@@ -228,7 +227,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
             // Encode typed key -> string to remove from missing set.
             pipeline.srem(cacheMissingKey(), keyTypeSerializationHelper.encode(key));
         } catch(Exception jpe) {
-            Throwables.propagate(jpe);
+            throw new RuntimeException(jpe);
         }
     }
 

@@ -3,7 +3,6 @@ package com.lithium.dbi.rdbi.recipes.cache;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
-import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.lithium.dbi.rdbi.Callback;
@@ -198,7 +197,7 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
             String saveStr = serializationHelper.encode(data);
             response = jedis.setex(redisKey, ttlSeconds, saveStr);
         } catch(Exception jpe) {
-            Throwables.propagate(jpe);
+            throw new RuntimeException(jpe);
         }
         return response;
     }

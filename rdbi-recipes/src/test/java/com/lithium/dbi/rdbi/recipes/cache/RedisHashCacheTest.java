@@ -2,7 +2,6 @@ package com.lithium.dbi.rdbi.recipes.cache;
 
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
-import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -305,7 +304,7 @@ public class RedisHashCacheTest {
                 try {
                     return queue.take();
                 } catch (InterruptedException e) {
-                    throw Throwables.propagate(e);
+                    throw new RuntimeException(e);
                 }
             }
         };
