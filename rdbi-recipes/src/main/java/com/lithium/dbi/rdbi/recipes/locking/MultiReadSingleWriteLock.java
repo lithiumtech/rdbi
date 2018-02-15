@@ -1,6 +1,5 @@
 package com.lithium.dbi.rdbi.recipes.locking;
 
-import com.google.common.base.Throwables;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.joda.time.Duration;
@@ -55,11 +54,8 @@ public class MultiReadSingleWriteLock {
                 Thread.sleep(250);
             }
         } catch (InterruptedException e) {
-            Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
-
-        // will never get here, we'll block until write lock is acquired and all readers have quiesced.
-        return false;
     }
 
     public boolean releaseWriteLock(String ownerId) {
@@ -83,11 +79,8 @@ public class MultiReadSingleWriteLock {
                 Thread.sleep(250);
             }
         } catch (InterruptedException e) {
-            Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
-
-        // will never get here, we'll block until read lock is acquired
-        return false;
     }
 
     public boolean releaseReadLock(String ownerId) {

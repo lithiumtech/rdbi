@@ -2,7 +2,6 @@ package com.lithium.dbi.rdbi.recipes.cache;
 
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
-import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.lithium.dbi.rdbi.RDBI;
@@ -19,8 +18,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
 import static org.testng.AssertJUnit.assertEquals;
 
 @Test(groups = "integration")
@@ -161,7 +160,8 @@ public class RedisCacheTest {
             cache.get(barfKey);
         } catch (ExecutionException ex) {
             thrown = true;
-            assertEquals(barfKey, ex.getCause().getMessage());
+            // wrapped in two RuntimeExceptions
+            assertEquals(barfKey, ex.getCause().getCause().getMessage());
         }
         assertTrue(thrown);
         assertEquals(3, misses.get());
@@ -198,7 +198,7 @@ public class RedisCacheTest {
                 try {
                     return queue.take();
                 } catch (InterruptedException e) {
-                    throw Throwables.propagate(e);
+                    throw new RuntimeException(e);
                 }
             }
         };

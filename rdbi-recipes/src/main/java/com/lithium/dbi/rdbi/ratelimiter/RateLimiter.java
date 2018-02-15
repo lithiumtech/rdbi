@@ -1,7 +1,5 @@
 package com.lithium.dbi.rdbi.ratelimiter;
 
-import com.google.common.base.Throwables;
-
 import java.time.Duration;
 import java.util.OptionalLong;
 
@@ -42,7 +40,7 @@ public interface RateLimiter {
                     timeWaited += timeToSleep;
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    throw Throwables.propagate(e);
+                    throw new RuntimeException(e);
                 }
             }
         }
