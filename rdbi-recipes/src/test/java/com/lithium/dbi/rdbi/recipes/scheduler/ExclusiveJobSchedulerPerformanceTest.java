@@ -2,11 +2,11 @@ package com.lithium.dbi.rdbi.recipes.scheduler;
 
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Instant;
 import org.testng.annotations.Test;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
+import java.time.Instant;
 import java.util.Set;
 
 @Test(groups = "integration")
@@ -37,32 +37,23 @@ public class ExclusiveJobSchedulerPerformanceTest {
             handle.close();
         }
 
-        Instant before = new Instant();
+        Instant before = Instant.now();
 
-        Thread t1 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < 3333; i++) {
-                    scheduledJobSystem.schedule("mytube", "{hello:world} " + i, 0);
-                }
+        Thread t1 = new Thread(() -> {
+            for (int i = 0; i < 3333; i++) {
+                scheduledJobSystem.schedule("mytube", "{hello:world} " + i, 0);
             }
         });
 
-        Thread t2 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < 3333; i++) {
-                    scheduledJobSystem.schedule("mytube", "{hello:world} " + i, 0);
-                }
+        Thread t2 = new Thread(() -> {
+            for (int i = 0; i < 3333; i++) {
+                scheduledJobSystem.schedule("mytube", "{hello:world} " + i, 0);
             }
         });
 
-        Thread t3 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < 3333; i++) {
-                    scheduledJobSystem.schedule("mytube", "{hello:world} " + i, 0);
-                }
+        Thread t3 = new Thread(() -> {
+            for (int i = 0; i < 3333; i++) {
+                scheduledJobSystem.schedule("mytube", "{hello:world} " + i, 0);
             }
         });
 
@@ -75,18 +66,18 @@ public class ExclusiveJobSchedulerPerformanceTest {
         t1.join();
         t2.join();
 
-        Instant after = new Instant();
+        Instant after = Instant.now();
 
         Thread.sleep(2000);
 
-        System.out.println("final " + after.minus(before.getMillis()).getMillis());
+        System.out.println("final " + after.minusMillis(before.toEpochMilli()).toEpochMilli());
 
-        Instant before2 = new Instant();
+        Instant before2 = Instant.now();
         for (int i = 0; i < 10000; i++) {
             scheduledJobSystem.reserveSingle("mytube", 1);
         }
 
-        Instant after2 = new Instant();
-        System.out.println("final " + after2.minus(before2.getMillis()).getMillis());
+        Instant after2 = Instant.now();
+        System.out.println("final " + after2.minusMillis(before2.toEpochMilli()).toEpochMilli());
     }
 }

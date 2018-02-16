@@ -5,9 +5,10 @@ import com.lithium.dbi.rdbi.RDBI;
 import com.lithium.dbi.rdbi.recipes.cache.KeyGenerator;
 import com.lithium.dbi.rdbi.recipes.cache.RedisMap;
 import com.lithium.dbi.rdbi.recipes.cache.SerializationHelper;
-import org.joda.time.Duration;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
+
+import java.time.Duration;
 
 public class RedisMapExpireAfterWrite<KeyType, ValueType> extends RedisMap<KeyType, ValueType> {
     /**

@@ -3,12 +3,9 @@ package com.lithium.dbi.rdbi.recipes.cache;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.cache.CacheStats;
-import com.lithium.dbi.rdbi.Callback;
-import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;

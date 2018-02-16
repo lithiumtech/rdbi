@@ -2,9 +2,9 @@ package com.lithium.dbi.rdbi.recipes.scheduler;
 
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Instant;
 import redis.clients.jedis.Pipeline;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -57,7 +57,7 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
                                        .scheduleJob(
                                                getReadyQueue(tube),
                                                jobStr,
-                                               Instant.now().getMillis() + millisInFuture,
+                                               Instant.now().toEpochMilli() + millisInFuture,
                                                quiescence,
                                                maxReadyQueueSize.orElse(-1L));
             if (scheduleResult == -1) {
@@ -82,7 +82,7 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
             final Pipeline pl = handle.jedis().pipelined();
             for (String jobStr : jobStrs) {
                 pl.zadd(getReadyQueue(tube),
-                        Instant.now().getMillis() + millisInFuture,
+                        Instant.now().toEpochMilli() + millisInFuture,
                         jobStr);
             }
             int numAdded = 0;
@@ -111,8 +111,8 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
                                   getRunningQueue(tube),
                                   maxNumberOfJobs,
                                   0L,
-                                  Instant.now().getMillis(),
-                                  Instant.now().getMillis() + timeToReserveMillis);
+                                  Instant.now().toEpochMilli(),
+                                  Instant.now().toEpochMilli() + timeToReserveMillis);
             return TimeJobInfo.from(jobInfos);
         }
     }
@@ -129,8 +129,8 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
                     handle.attach(JobSchedulerDAO.class)
                           .requeueExpiredJobs(getReadyQueue(tube),
                                               getRunningQueue(tube),
-                                              Instant.now().getMillis(),
-                                              Instant.now().getMillis());
+                                              Instant.now().toEpochMilli(),
+                                              Instant.now().toEpochMilli());
             return TimeJobInfo.from(jobInfos);
         }
     }
@@ -157,19 +157,19 @@ public class TimeBasedJobScheduler extends AbstractJobScheduler<TimeJobInfo> {
 
 
     public List<TimeJobInfo> peekDelayed(String tube, int offset, int count) {
-        return peekInternal(getReadyQueue(tube), (double) Instant.now().getMillis(), Double.MAX_VALUE, offset, count);
+        return peekInternal(getReadyQueue(tube), (double) Instant.now().toEpochMilli(), Double.MAX_VALUE, offset, count);
     }
 
     public List<TimeJobInfo> peekReady(String tube, int offset, int count) {
-        return peekInternal(getReadyQueue(tube), 0.0d, (double) Instant.now().getMillis(), offset, count);
+        return peekInternal(getReadyQueue(tube), 0.0d, (double) Instant.now().toEpochMilli(), offset, count);
     }
 
     public List<TimeJobInfo> peekRunning(String tube, int offset, int count) {
-        return peekInternal(getRunningQueue(tube), (double) Instant.now().getMillis(), Double.MAX_VALUE, offset, count);
+        return peekInternal(getRunningQueue(tube), (double) Instant.now().toEpochMilli(), Double.MAX_VALUE, offset, count);
     }
 
     public List<TimeJobInfo> peekExpired(String tube, int offset, int count) {
-        return peekInternal(getRunningQueue(tube), 0.0d, (double) Instant.now().getMillis(), offset, count);
+        return peekInternal(getRunningQueue(tube), 0.0d, (double) Instant.now().toEpochMilli(), offset, count);
     }
 
     protected String getRunningQueue(String tube) {

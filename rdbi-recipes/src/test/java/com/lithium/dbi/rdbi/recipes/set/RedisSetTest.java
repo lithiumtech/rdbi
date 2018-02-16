@@ -8,8 +8,8 @@ import redis.clients.jedis.JedisPool;
 
 import java.util.UUID;
 
-import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
 @Test(groups = "integration")

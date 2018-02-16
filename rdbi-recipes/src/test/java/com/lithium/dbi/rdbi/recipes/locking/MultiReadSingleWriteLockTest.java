@@ -3,14 +3,14 @@ package com.lithium.dbi.rdbi.recipes.locking;
 import com.google.common.collect.ImmutableList;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Duration;
-import org.joda.time.Instant;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Protocol;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -82,7 +82,7 @@ public class MultiReadSingleWriteLockTest {
             assertEquals(newLockOwnerId, handle.jedis().get(writeLockKey));
 
             // wait for new owner to expire and check that no one owns lock
-            final Instant beyondExpiration = Instant.now().plus(Duration.millis(500));
+            final Instant beyondExpiration = Instant.now().plus(Duration.ofMillis(500));
             while (true) {
                 Thread.sleep(100);
                 if (Instant.now().isAfter(beyondExpiration)) {
@@ -104,17 +104,17 @@ public class MultiReadSingleWriteLockTest {
         final String lockOwnerId = UUID.randomUUID().toString();
         try (Handle handle = rdbi.open()) {
             // start by checking that no one has any read locks
-            assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().getMillis()), "+inf", 0, 1).isEmpty());
+            assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf", 0, 1).isEmpty());
 
             // acquire a read lock and verify that we own a read lock
             lock.acquireReadLock(lockOwnerId);
-            final Set<String> owners = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().getMillis()), "+inf");
+            final Set<String> owners = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
             assertEquals(1, owners.size());
             assertTrue(owners.contains(lockOwnerId));
 
             // release the lock and verify that no one owns a ready lock
             lock.releaseReadLock(lockOwnerId);
-            assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().getMillis()), "+inf", 0, 1).isEmpty());
+            assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf", 0, 1).isEmpty());
 
             // acquire read locks for 3 different owners and verify
             final String newOwner1 = UUID.randomUUID().toString();
@@ -123,20 +123,20 @@ public class MultiReadSingleWriteLockTest {
             lock.acquireReadLock(newOwner1);
             lock.acquireReadLock(newOwner2);
             lock.acquireReadLock(newOwner3);
-            final Set<String> newOwners = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().getMillis()), "+inf");
+            final Set<String> newOwners = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
             assertEquals(3, newOwners.size());
             assertTrue(newOwners.containsAll(ImmutableList.of(newOwner1, newOwner2, newOwner3)));
 
             // release one lock and verify the others are still there
             lock.releaseReadLock(newOwner1);
-            final Set<String> newOwner2And3 = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().getMillis()), "+inf");
+            final Set<String> newOwner2And3 = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
             assertEquals(2, newOwner2And3.size());
             assertTrue(newOwner2And3.containsAll(ImmutableList.of(newOwner2, newOwner3)));
 
             // release everything
             lock.releaseReadLock(newOwner2);
             lock.releaseReadLock(newOwner3);
-            assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().getMillis()), "+inf", 0, 1).isEmpty());
+            assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf", 0, 1).isEmpty());
         }
     }
 
@@ -151,23 +151,23 @@ public class MultiReadSingleWriteLockTest {
         final String lockOwnerId = UUID.randomUUID().toString();
         try (Handle handle = rdbi.open()) {
             // start by checking that no one has any read locks
-            assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().getMillis()), "+inf", 0, 1).isEmpty());
+            assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf", 0, 1).isEmpty());
 
             // acquire a read lock but let's not release it...
             lock.acquireReadLock(lockOwnerId);
-            final Set<String> owners = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().getMillis()), "+inf");
+            final Set<String> owners = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
             assertEquals(1, owners.size());
             assertTrue(owners.contains(lockOwnerId));
 
             // wait for expiration and verify the lock has expired
-            final Instant beyondExpiration = Instant.now().plus(Duration.millis(500));
+            final Instant beyondExpiration = Instant.now().plus(Duration.ofMillis(500));
             while (true) {
                 Thread.sleep(100);
                 if (Instant.now().isAfter(beyondExpiration)) {
                     break;
                 }
             }
-            assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().getMillis()), "+inf", 0, 1).isEmpty());
+            assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf", 0, 1).isEmpty());
         }
     }
 
@@ -182,7 +182,7 @@ public class MultiReadSingleWriteLockTest {
         final String readLockOwner = UUID.randomUUID().toString();
         final String writeLockOwner = UUID.randomUUID().toString();
         // acquire a read lock, this should prevent all write lock acquisitions until expiration
-        final Instant expiration = Instant.now().plus(Duration.millis(500));
+        final Instant expiration = Instant.now().plus(Duration.ofMillis(500));
         lock.acquireReadLock(readLockOwner);
 
         // acquire a write lock, this should block until read lock is expired
@@ -202,7 +202,7 @@ public class MultiReadSingleWriteLockTest {
         final String writeLockOwner = UUID.randomUUID().toString();
 
         // acquire a write lock, this should prevent all read lock acquisitions until expiration
-        final Instant expiration = Instant.now().plus(Duration.millis(500));
+        final Instant expiration = Instant.now().plus(Duration.ofMillis(500));
         lock.acquireWriteLock(writeLockOwner);
 
         // acquire a read lock, this should block until write lock is expired

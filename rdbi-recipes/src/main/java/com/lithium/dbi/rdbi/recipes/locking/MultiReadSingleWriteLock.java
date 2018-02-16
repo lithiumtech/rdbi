@@ -2,8 +2,9 @@ package com.lithium.dbi.rdbi.recipes.locking;
 
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Duration;
-import org.joda.time.Instant;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 public class MultiReadSingleWriteLock {
 
@@ -46,7 +47,7 @@ public class MultiReadSingleWriteLock {
             // However, since there could be readers when we grant the write lock, we have to give the existing readers
             // a chance to relinquish their lock or time out before we unblock the new writer. So we'll wait in the loop below.
             while (true) {
-                final Long readerCount = handle.jedis().zcount(readLockKey, Long.toString(Instant.now().getMillis()), "+inf");
+                final Long readerCount = handle.jedis().zcount(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
                 if (readerCount < 1) {
                     return true;
                 }
@@ -74,7 +75,7 @@ public class MultiReadSingleWriteLock {
                 final int acquiredLock = dao.acquireReadLock(writeLockKey,
                                                              readLockKey,
                                                              ownerId,
-                                                             Instant.now().plus(Duration.millis(readTimeoutMillis)).getMillis());
+                                                             Instant.now().plus(readTimeoutMillis, ChronoUnit.MILLIS).toEpochMilli());
                 if (acquiredLock > 0) {
                     return true;
                 }
@@ -91,7 +92,7 @@ public class MultiReadSingleWriteLock {
 
     public boolean releaseReadLock(String ownerId) {
         try (Handle handle = rdbi.open()) {
-            return handle.attach(MultiReadSingleWriteLockDAO.class).releaseReadLock(readLockKey, Instant.now().getMillis(), ownerId) > 0;
+            return handle.attach(MultiReadSingleWriteLockDAO.class).releaseReadLock(readLockKey, Instant.now().toEpochMilli(), ownerId) > 0;
         }
     }
 }

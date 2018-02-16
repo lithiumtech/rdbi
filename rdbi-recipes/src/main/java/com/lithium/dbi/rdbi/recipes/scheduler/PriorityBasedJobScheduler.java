@@ -1,10 +1,9 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
-import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Instant;
 
+import java.time.Instant;
 import java.util.List;
 
 public class PriorityBasedJobScheduler extends AbstractJobScheduler<JobInfo> {
@@ -26,12 +25,9 @@ public class PriorityBasedJobScheduler extends AbstractJobScheduler<JobInfo> {
      * @return true if the job was successfully scheduled
      */
     public boolean schedule(final String tube, final String jobStr, final double priority) {
-        return rdbi.withHandle(new Callback<Boolean>() {
-            @Override
-            public Boolean run(Handle handle) {
-                handle.jedis().zadd(getReadyQueue(tube), priority, jobStr);
-                return true;
-            }
+        return rdbi.withHandle(handle -> {
+            handle.jedis().zadd(getReadyQueue(tube), priority, jobStr);
+            return true;
         });
     }
 
@@ -54,7 +50,7 @@ public class PriorityBasedJobScheduler extends AbstractJobScheduler<JobInfo> {
                             maxNumberOfJobs,
                             Long.MIN_VALUE,
                             Long.MAX_VALUE,
-                            Instant.now().getMillis() + timeToReserveMillis);
+                            Instant.now().toEpochMilli() + timeToReserveMillis);
         }
     }
 
@@ -71,7 +67,7 @@ public class PriorityBasedJobScheduler extends AbstractJobScheduler<JobInfo> {
                     .attach(JobSchedulerDAO.class)
                     .requeueExpiredJobs(getReadyQueue(tube),
                                         getRunningQueue(tube),
-                                        Instant.now().getMillis(),
+                                        Instant.now().toEpochMilli(),
                                         newScore);
         }
     }

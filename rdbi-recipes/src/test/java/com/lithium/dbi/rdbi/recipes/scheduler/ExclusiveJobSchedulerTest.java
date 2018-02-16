@@ -7,13 +7,13 @@ import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import com.lithium.dbi.rdbi.testutil.TubeUtils;
-import org.joda.time.Instant;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
 import javax.annotation.Nullable;
+import java.time.Instant;
 import java.util.List;
 
 import static org.testng.Assert.assertEquals;
@@ -39,12 +39,9 @@ public class ExclusiveJobSchedulerTest {
     @AfterMethod
     public void tearDown(){
         // nuke the queues
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().del(scheduledJobSystem.getReadyQueue(tubeName), scheduledJobSystem.getRunningQueue(tubeName));
-                return null;
-            }
+        rdbi.withHandle((Callback<Void>) handle -> {
+            handle.jedis().del(scheduledJobSystem.getReadyQueue(tubeName), scheduledJobSystem.getRunningQueue(tubeName));
+            return null;
         });
 
         // ensure system is not paused
@@ -132,22 +129,22 @@ public class ExclusiveJobSchedulerTest {
     @Test
     public void testBasicPerformance() throws InterruptedException {
 
-        Instant before = new Instant();
+        Instant before = Instant.now();
         for ( int i = 0; i < 10000; i++) {
             scheduledJobSystem.schedule(tubeName, "{hello:world} " + i, 0);
         }
-        Instant after = new Instant();
-        System.out.println("final " + after.minus(before.getMillis()).getMillis());
+        Instant after = Instant.now();
+        System.out.println("final " + after.minusMillis(before.toEpochMilli()).toEpochMilli());
 
         Thread.sleep(2000);
 
-        Instant before2 = new Instant();
+        Instant before2 = Instant.now();
         for ( int i = 0; i < 10000; i++) {
             scheduledJobSystem.reserveSingle(tubeName, 1);
         }
 
-        Instant after2 = new Instant();
-        System.out.println("final " + after2.minus(before2.getMillis()).getMillis());
+        Instant after2 = Instant.now();
+        System.out.println("final " + after2.minusMillis(before2.toEpochMilli()).toEpochMilli());
     }
 
     @Test

@@ -2,12 +2,12 @@ package com.lithium.dbi.rdbi.recipes.cache;
 
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Seconds;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.Pipeline;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -39,11 +39,11 @@ public class RedisMapTest {
         final RDBI rdbi = new RDBI(new JedisPool("localhost"));
 
         final Map<String, RedisCacheTest.TestContainer> rMap = new RedisMap<>(RedisCacheTest.keyGenerator,
-                                                                             RedisCacheTest.helper,
-                                                                             rdbi,
-                                                                             "mycache" + UUID.randomUUID().toString(),
-                                                                             cachePrefix,
-                                                                             Seconds.seconds(60).toStandardDuration());
+                                                                              RedisCacheTest.helper,
+                                                                              rdbi,
+                                                                              "mycache" + UUID.randomUUID().toString(),
+                                                                              cachePrefix,
+                                                                              Duration.ofSeconds(60));
 
         final RedisCacheTest.TestContainer value1 = new RedisCacheTest.TestContainer(UUID.randomUUID());
         final RedisCacheTest.TestContainer value2 = new RedisCacheTest.TestContainer(UUID.randomUUID());
@@ -65,7 +65,7 @@ public class RedisMapTest {
                                                                               rdbi,
                                                                               cacheName,
                                                                               cachePrefix,
-                                                                              Seconds.seconds(60).toStandardDuration());
+                                                                              Duration.ofSeconds(60));
 
         assertNull(rMap.get("key1"));
         assertNull(rMap.get("key2"));
@@ -82,11 +82,11 @@ public class RedisMapTest {
         assertNull(rMap.get("key3"));
 
         final Map<String, RedisCacheTest.TestContainer> rMap2 = new RedisMap<>(RedisCacheTest.keyGenerator,
-                                                                              RedisCacheTest.helper,
-                                                                              rdbi,
-                                                                              cacheName,
-                                                                              cachePrefix,
-                                                                              Seconds.seconds(60).toStandardDuration());
+                                                                               RedisCacheTest.helper,
+                                                                               rdbi,
+                                                                               cacheName,
+                                                                               cachePrefix,
+                                                                               Duration.ofSeconds(60));
 
         assertEquals(rMap2.get("key1"), value1);
         assertEquals(rMap2.get("key2"), value2);

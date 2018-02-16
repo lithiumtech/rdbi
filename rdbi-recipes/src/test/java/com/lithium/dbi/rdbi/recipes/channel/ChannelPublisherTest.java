@@ -1,16 +1,16 @@
 package com.lithium.dbi.rdbi.recipes.channel;
 
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Instant;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNotNull;
@@ -244,6 +244,6 @@ public class ChannelPublisherTest {
             fail("Did not finish in time");
         }
 
-        System.out.println("final time " + (after.getMillis() - before.getMillis()));
+        System.out.println("final time " + (after.toEpochMilli() - before.toEpochMilli()));
     }
 }
