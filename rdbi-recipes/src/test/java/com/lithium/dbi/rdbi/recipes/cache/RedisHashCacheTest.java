@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
@@ -46,9 +47,9 @@ public class RedisHashCacheTest {
     @Test
     public void sniffTest() throws ExecutionException {
         final String key1 = "key1";
-        final TestContainer tc1 = new TestContainer(key1, UUID.randomUUID());
+        final TestContainer tc1 = new TestContainer(key1, UUID.randomUUID(), "sniff-1");
         final String key2 = "key2";
-        final TestContainer tc2 = new TestContainer(key2, UUID.randomUUID());
+        final TestContainer tc2 = new TestContainer(key2, UUID.randomUUID(), "sniff-2");
         final String barfKey = "barf";
 
         final ImmutableMap<String, TestContainer> mappings = ImmutableMap.of(key1, tc1, key2, tc2);
@@ -63,12 +64,7 @@ public class RedisHashCacheTest {
             }
         };
 
-        final Callable<Collection<TestContainer>> loadAll = new Callable<Collection<TestContainer>>() {
-            @Override
-            public Collection<TestContainer> call() throws Exception {
-                return mappings.values();
-            }
-        };
+        final Callable<Collection<TestContainer>> loadAll = mappings::values;
 
         final CounterRunnable hits = new CounterRunnable();
         final CounterRunnable misses = new CounterRunnable();
@@ -145,13 +141,13 @@ public class RedisHashCacheTest {
     @Test
     public void sniffTest2() throws ExecutionException, InterruptedException {
         final String key1 = "key1";
-        final TestContainer tc1 = new TestContainer(key1, UUID.randomUUID());
+        final TestContainer tc1 = new TestContainer(key1, UUID.randomUUID(), "sniff2-1");
 
         final String key2 = "key2";
-        final TestContainer tc2 = new TestContainer(key2, UUID.randomUUID());
+        final TestContainer tc2 = new TestContainer(key2, UUID.randomUUID(), "sniff2-2");
 
         final String key3 = "key3";
-        final TestContainer tc3 = new TestContainer(key3, UUID.randomUUID());
+        final TestContainer tc3 = new TestContainer(key3, UUID.randomUUID(), "sniff2-3");
 
         final Map<String, TestContainer> dataSource = ImmutableMap.of(key1, tc1, key2, tc2, key3, tc3);
 
@@ -229,29 +225,19 @@ public class RedisHashCacheTest {
     @Test
     public void getAllPresentWorksWithDuplicateKeys() {
         final String key1 = "key1";
-        final TestContainer tc1 = new TestContainer(key1, UUID.randomUUID());
+        final TestContainer tc1 = new TestContainer(key1, UUID.randomUUID(), "with-dupes-1");
 
         final String key2 = "key2";
-        final TestContainer tc2 = new TestContainer(key2, UUID.randomUUID());
+        final TestContainer tc2 = new TestContainer(key2, UUID.randomUUID(), "with-dupes-2");
 
         final String key3 = "key3";
-        final TestContainer tc3 = new TestContainer(key3, UUID.randomUUID());
+        final TestContainer tc3 = new TestContainer(key3, UUID.randomUUID(), "with-dupes-3");
 
         final Map<String, TestContainer> dataSource = ImmutableMap.of(key1, tc1, key2, tc2, key3, tc3);
 
-        final Function<String, TestContainer> loader = new Function<String, TestContainer>() {
-            @Override
-            public TestContainer apply(@Nullable String s) {
-                return dataSource.get(s);
-            }
-        };
+        final Function<String, TestContainer> loader = dataSource::get;
 
-        final Callable<Collection<TestContainer>> loadAll = new Callable<Collection<TestContainer>>() {
-            @Override
-            public Collection<TestContainer> call() throws Exception {
-                return dataSource.values();
-            }
-        };
+        final Callable<Collection<TestContainer>> loadAll = dataSource::values;
 
         final RedisHashCache<String, TestContainer> cache =
                 new RedisHashCache<>(
@@ -294,7 +280,7 @@ public class RedisHashCacheTest {
         // it's a word
 
         final String key1 = "key1";
-        final TestContainer tc1 = new TestContainer(key1, UUID.randomUUID());
+        final TestContainer tc1 = new TestContainer(key1, UUID.randomUUID(), "async-1");
 
         final ArrayBlockingQueue<TestContainer> queue = new ArrayBlockingQueue<>(1);
         final Function<String, TestContainer> mrDeadlock = new Function<String, TestContainer>() {
@@ -308,12 +294,7 @@ public class RedisHashCacheTest {
                 }
             }
         };
-        final Callable<Collection<TestContainer>> loadAll = new Callable<Collection<TestContainer>>() {
-            @Override
-            public Collection<TestContainer> call() throws Exception {
-                return Collections.emptyList();
-            }
-        };
+        final Callable<Collection<TestContainer>> loadAll = Collections::emptyList;
 
         final CounterRunnable hits = new CounterRunnable();
         final CounterRunnable misses = new CounterRunnable();
@@ -364,10 +345,10 @@ public class RedisHashCacheTest {
     public void testRemove() throws ExecutionException {
 
         final String key1 = "key1";
-        final TestContainer originalValueForKey1 = new TestContainer(key1, UUID.randomUUID());
+        final TestContainer originalValueForKey1 = new TestContainer(key1, UUID.randomUUID(), "test-remove-1");
 
         final String key2 = "key2";
-        final TestContainer originalValueForKey2 = new TestContainer(key2, UUID.randomUUID());
+        final TestContainer originalValueForKey2 = new TestContainer(key2, UUID.randomUUID(), "test-remove-2");
 
         final Map<String, TestContainer> dataSource = Maps.newHashMap();
         dataSource.put(key1, originalValueForKey1);
@@ -402,7 +383,7 @@ public class RedisHashCacheTest {
         assertEquals(originalValueForKey2, cache.get(key2));
 
         // manipulate the data source for key1
-        final TestContainer newValueForKey1 = new TestContainer(key1, UUID.randomUUID());
+        final TestContainer newValueForKey1 = new TestContainer(key1, UUID.randomUUID(), "test-remove-new-value-for-key-1");
         dataSource.put(key1, newValueForKey1);
         assertEquals(originalValueForKey1, cache.get(key1));
 
@@ -446,10 +427,10 @@ public class RedisHashCacheTest {
     public void testInvalidateAll() throws ExecutionException {
 
         final String key1 = "key1";
-        final TestContainer originalValueForKey1 = new TestContainer(key1, UUID.randomUUID());
+        final TestContainer originalValueForKey1 = new TestContainer(key1, UUID.randomUUID(), "invalidate-1");
 
         final String key2 = "key2";
-        final TestContainer originalValueForKey2 = new TestContainer(key2, UUID.randomUUID());
+        final TestContainer originalValueForKey2 = new TestContainer(key2, UUID.randomUUID(), "invalidate-2");
 
         final Map<String, TestContainer> dataSource = Maps.newHashMap();
         dataSource.put(key1, originalValueForKey1);
@@ -493,7 +474,7 @@ public class RedisHashCacheTest {
         cache.invalidateAll();
 
         // manipulate the data source
-        final TestContainer newValueForKey1 = new TestContainer(key1, UUID.randomUUID());
+        final TestContainer newValueForKey1 = new TestContainer(key1, UUID.randomUUID(), "invalidate-3");
         dataSource.put(key1, newValueForKey1);
         assertEquals(newValueForKey1, cache.get(key1));
     }
@@ -502,10 +483,10 @@ public class RedisHashCacheTest {
     public void testSyncWithDataSource() throws ExecutionException, InterruptedException {
 
         final String key1 = "key1";
-        final TestContainer key1Value = new TestContainer(key1, UUID.randomUUID());
+        final TestContainer key1Value = new TestContainer(key1, UUID.randomUUID(), "sync-1");
 
         final String key2 = "key2";
-        final TestContainer key2Value = new TestContainer(key2, UUID.randomUUID());
+        final TestContainer key2Value = new TestContainer(key2, UUID.randomUUID(), "sync-2");
 
         final Map<String, TestContainer> dataSource = Maps.newHashMap();
         dataSource.put(key1, key1Value);
@@ -554,7 +535,7 @@ public class RedisHashCacheTest {
     public void testNullRefreshDiscarded() throws ExecutionException {
 
         final String key = "key";
-        final TestContainer value = new TestContainer(key, UUID.randomUUID());
+        final TestContainer value = new TestContainer(key, UUID.randomUUID(), "null-discarded");
 
         final Map<String, TestContainer> dataSource = Maps.newHashMap();
         dataSource.put(key, value);
@@ -608,7 +589,7 @@ public class RedisHashCacheTest {
     public void testFetchExceptionDoesNotBurnCache() throws ExecutionException, InterruptedException {
 
         final String key = "key";
-        final TestContainer value = new TestContainer(key, UUID.randomUUID());
+        final TestContainer value = new TestContainer(key, UUID.randomUUID(), "fetch-not-burn-1");
 
         final Map<String, TestContainer> dataSource = Maps.newHashMap();
         dataSource.put(key, value);
@@ -627,11 +608,8 @@ public class RedisHashCacheTest {
         };
 
 
-        final Callable<Collection<TestContainer>> fetchAllAlwaysFails = new Callable<Collection<TestContainer>>() {
-            @Override
-            public Collection<TestContainer> call() throws Exception {
-                throw new RuntimeException("oh-noes");
-            }
+        final Callable<Collection<TestContainer>> fetchAllAlwaysFails = () -> {
+            throw new RuntimeException("oh-noes");
         };
 
         final RedisHashCache<String, TestContainer> cache =
@@ -665,7 +643,7 @@ public class RedisHashCacheTest {
         assertEquals(1, cache.asMap().size());
 
         // update the data source and refresh cache
-        dataSource.put(key, new TestContainer(key, UUID.randomUUID()));
+        dataSource.put(key, new TestContainer(key, UUID.randomUUID(), "fetch-not-burn-2"));
         cache.refreshAll();
         cache.refresh(key);
 
@@ -678,7 +656,7 @@ public class RedisHashCacheTest {
     public void testFetchNullResultDoesNotBurnCache() throws ExecutionException, InterruptedException {
 
         final String key = "key";
-        final TestContainer value = new TestContainer(key, UUID.randomUUID());
+        final TestContainer value = new TestContainer(key, UUID.randomUUID(), "not-burn-1");
 
         final Map<String, TestContainer> dataSource = Maps.newHashMap();
         dataSource.put(key, value);
@@ -696,12 +674,7 @@ public class RedisHashCacheTest {
             }
         };
 
-        final Callable<Collection<TestContainer>> fetchAllAlwaysFails = new Callable<Collection<TestContainer>>() {
-            @Override
-            public Collection<TestContainer> call() throws Exception {
-                return null;
-            }
-        };
+        final Callable<Collection<TestContainer>> fetchAllAlwaysFails = () -> null;
 
         final RedisHashCache<String, TestContainer> cache =
                 new RedisHashCache<>(
@@ -734,7 +707,7 @@ public class RedisHashCacheTest {
         assertEquals(1, cache.asMap().size());
 
         // update the data source and refresh cache
-        dataSource.put(key, new TestContainer(key, UUID.randomUUID()));
+        dataSource.put(key, new TestContainer(key, UUID.randomUUID(), "not-burn-2"));
         cache.refreshAll();
         cache.refresh(key);
 
@@ -747,7 +720,7 @@ public class RedisHashCacheTest {
     public void testNeedsRefresh() throws InterruptedException, ExecutionException, TimeoutException {
 
         final String key = "key";
-        final TestContainer value = new TestContainer(key, UUID.randomUUID());
+        final TestContainer value = new TestContainer(key, UUID.randomUUID(), "needs-refresh-1");
 
         final Map<String, TestContainer> dataSource = Maps.newHashMap();
         dataSource.put(key, value);
@@ -795,10 +768,12 @@ public class RedisHashCacheTest {
 
         private final String key;
         private final UUID uuid;
+        private final String label;
 
-        public TestContainer(String key, UUID uuid) {
+        public TestContainer(String key, UUID uuid, String label) {
             this.key = key;
             this.uuid = uuid;
+            this.label = label;
         }
 
         public String getKey() {
@@ -811,30 +786,35 @@ public class RedisHashCacheTest {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
             TestContainer that = (TestContainer) o;
-
-            if (key != null ? !key.equals(that.key) : that.key != null) return false;
-            return !(uuid != null ? !uuid.equals(that.uuid) : that.uuid != null);
-
+            return Objects.equals(key, that.key) &&
+                    Objects.equals(uuid, that.uuid) &&
+                    Objects.equals(label, that.label);
         }
 
         @Override
         public int hashCode() {
-            int result = key != null ? key.hashCode() : 0;
-            result = 31 * result + (uuid != null ? uuid.hashCode() : 0);
-            return result;
+            return Objects.hash(key, uuid, label);
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("TestContainer{");
+            sb.append("key='").append(key).append('\'');
+            sb.append(", uuid=").append(uuid);
+            sb.append(", label='").append(label).append('\'');
+            sb.append('}');
+            return sb.toString();
         }
     }
 
-    public static final Runnable NOOP = new Runnable() {
-        @Override
-        public void run() {
-
-        }
-    };
+    public static final Runnable NOOP = () -> {};
 
     public static class CounterRunnable implements Runnable {
         private AtomicLong atomicLong = new AtomicLong();
@@ -853,12 +833,12 @@ public class RedisHashCacheTest {
         @Override
         public TestContainer decode(String string) {
             String[] data = string.split(",");
-            return new TestContainer(data[0], UUID.fromString(data[1]));
+            return new TestContainer(data[0], UUID.fromString(data[1]), data[2]);
         }
 
         @Override
         public String encode(TestContainer value) {
-            return value.getKey() + "," + value.getUuid().toString();
+            return value.getKey() + "," + value.getUuid().toString() + "," + value.label;
         }
     };
 
@@ -874,36 +854,16 @@ public class RedisHashCacheTest {
         }
     };
 
-    public static final Function<String, String> keyGenerator = new Function<String, String>() {
-        @Override
-        public String apply(String key) {
-            return "item-key:" + key;
-        }
-    };
+    public static final Function<String, String> keyGenerator = key -> "item-key:" + key;
 
-    public static final Function<TestContainer, String> valueGenerator = new Function<TestContainer, String>() {
-        @Override
-        public String apply(TestContainer value) {
-            return value.getKey();
-        }
-    };
+    public static final Function<TestContainer, String> valueGenerator = TestContainer::getKey;
 
     private <T> Function<String, T> fetchFromMap(final Map<String, T> dataSource) {
-        return new Function<String, T>() {
-            @Override
-            public T apply(@Nullable String s) {
-                return dataSource.get(s);
-            }
-        };
+        return dataSource::get;
     }
 
     private <T> Callable<Collection<T>> fetchAllFromMap(final Map<String, T> dataSource) {
-        return new Callable<Collection<T>>() {
-            @Override
-            public Collection<T> call() throws Exception {
-                return dataSource.values();
-            }
-        };
+        return dataSource::values;
     }
 
     @BeforeMethod
@@ -913,12 +873,9 @@ public class RedisHashCacheTest {
 
     @BeforeMethod
     public void clearRedis() {
-        createRdbi().withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().del(TEST_NAMESPACE);
-                return null;
-            }
+        createRdbi().withHandle((Callback<Void>) handle -> {
+            handle.jedis().del(TEST_NAMESPACE);
+            return null;
         });
     }
 
