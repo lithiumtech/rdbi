@@ -174,7 +174,7 @@ public class RedisCacheTest {
             cache.getUnchecked(barfKey);
         } catch (Exception ex) {
             thrown = true;
-            assertEquals(barfKey, ex.getMessage());
+            assertEquals(barfKey, ex.getCause().getMessage());
         }
         assertTrue(thrown);
         assertEquals(4, misses.get());

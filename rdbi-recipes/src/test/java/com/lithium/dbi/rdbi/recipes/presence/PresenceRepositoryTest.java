@@ -2,13 +2,11 @@ package com.lithium.dbi.rdbi.recipes.presence;
 
 import com.google.common.base.Optional;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Duration;
-import org.joda.time.Instant;
-import org.joda.time.Minutes;
-import org.joda.time.Seconds;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 
@@ -50,18 +48,18 @@ public class PresenceRepositoryTest {
             presenceRepository.addHeartbeat("mytube", "id" + i, 10 * 1000L);
         }
         Instant after = Instant.now();
-        System.out.println("Time for 10,000 heartbeats " + Long.toString(after.getMillis() - before.getMillis()));
+        System.out.println("Time for 10,000 heartbeats " + Long.toString(after.toEpochMilli() - before.toEpochMilli()));
 
-        assertTrue(after.getMillis() - before.getMillis() < 2000L);
+        assertTrue(after.toEpochMilli() - before.toEpochMilli() < 2000L);
 
         Instant before2 = Instant.now();
         for ( int i = 0; i < 10000; i++ ) {
             assertFalse(presenceRepository.expired("mytube", "id" + i));
         }
         Instant after2 = Instant.now();
-        System.out.println("Time for 10,000 expired " + Long.toString(after2.getMillis() - before2.getMillis()));
+        System.out.println("Time for 10,000 expired " + Long.toString(after2.toEpochMilli() - before2.toEpochMilli()));
 
-        assertTrue(after2.getMillis() - before2.getMillis() < 2000L);
+        assertTrue(after2.toEpochMilli() - before2.toEpochMilli() < 2000L);
 
         Thread.sleep(10 * 1000L);
 
@@ -70,16 +68,16 @@ public class PresenceRepositoryTest {
             assertTrue(presenceRepository.remove("mytube", "id" + i));
         }
         Instant after3 = Instant.now();
-        System.out.println("Time for 5000 removes " + Long.toString(after3.getMillis() - before3.getMillis()));
+        System.out.println("Time for 5000 removes " + Long.toString(after3.toEpochMilli() - before3.toEpochMilli()));
 
-        assertTrue(after3.getMillis() - before3.getMillis() < 1000L);
+        assertTrue(after3.toEpochMilli() - before3.toEpochMilli() < 1000L);
 
         Instant before4 = Instant.now();
         presenceRepository.cull("mytube");
         Instant after4 = Instant.now();
-        System.out.println("Time for 5000 cull " + Long.toString(after4.getMillis() - before4.getMillis()));
+        System.out.println("Time for 5000 cull " + Long.toString(after4.toEpochMilli() - before4.toEpochMilli()));
 
-        assertTrue(after4.getMillis() - before4.getMillis() < 500L);
+        assertTrue(after4.toEpochMilli() - before4.toEpochMilli() < 500L);
     }
 
     @Test
@@ -89,34 +87,34 @@ public class PresenceRepositoryTest {
         presenceRepository.nukeForTest(mytube);
 
         // assert set is empty at start
-        assertTrue(presenceRepository.getPresent(mytube, Optional.<Integer>absent()).isEmpty());
+        assertTrue(presenceRepository.getPresent(mytube, Optional.absent()).isEmpty());
 
         // put something in and verify we can get it back out
         final String uuid = UUID.randomUUID().toString();
-        presenceRepository.addHeartbeat(mytube, uuid, Seconds.seconds(1).toStandardDuration().getMillis());
-        final Set<String> presentSet = presenceRepository.getPresent(mytube, Optional.<Integer>absent());
+        presenceRepository.addHeartbeat(mytube, uuid, Duration.ofSeconds(1).toMillis());
+        final Set<String> presentSet = presenceRepository.getPresent(mytube, Optional.absent());
         assertEquals(uuid, presentSet.iterator().next(), "Expected to have one heartbeat with uuid: " + uuid);
 
         // call cull and verify heart beat is still present
         presenceRepository.cull(mytube);
-        final Set<String> stillpresentSet = presenceRepository.getPresent(mytube, Optional.<Integer>absent());
+        final Set<String> stillpresentSet = presenceRepository.getPresent(mytube, Optional.absent());
         assertEquals(stillpresentSet.iterator().next(), uuid, "Expected to still have one heartbeat with uuid: " + uuid);
 
         // wait a second and verify previous heartbeat is expired
         final Instant beforeSleep = Instant.now();
         while (true) {
-            Thread.sleep(Duration.standardSeconds(1).getMillis());
-            if (new Duration(beforeSleep, Instant.now()).isLongerThan(Duration.standardSeconds(1))) {
+            Thread.sleep(Duration.ofSeconds(1).toMillis());
+            if (Duration.between(beforeSleep, Instant.now()).compareTo(Duration.ofSeconds(1)) > 0) {
                 break;
             }
         }
-        assertTrue(presenceRepository.getPresent(mytube, Optional.<Integer>absent()).isEmpty());
+        assertTrue(presenceRepository.getPresent(mytube, Optional.absent()).isEmpty());
 
         // test with limit will not return full set
         for (int i = 0; i < 100; ++i) {
-            presenceRepository.addHeartbeat(mytube, UUID.randomUUID().toString(), Minutes.ONE.toStandardDuration().getMillis());
+            presenceRepository.addHeartbeat(mytube, UUID.randomUUID().toString(), Duration.ofMinutes(1).toMillis());
         }
-        assertEquals(100, presenceRepository.getPresent(mytube, Optional.<Integer>absent()).size());
+        assertEquals(100, presenceRepository.getPresent(mytube, Optional.absent()).size());
         assertEquals(10, presenceRepository.getPresent(mytube, Optional.of(10)).size());
     }
 
@@ -127,34 +125,34 @@ public class PresenceRepositoryTest {
         presenceRepository.nukeForTest(mytube);
 
         // assert set is empty at start
-        assertTrue(presenceRepository.getPresent(mytube, Optional.<Integer>absent()).isEmpty());
+        assertTrue(presenceRepository.getPresent(mytube, Optional.absent()).isEmpty());
 
         // put something in and verify we can get it back out
         final String uuid = UUID.randomUUID().toString();
-        presenceRepository.addHeartbeat(mytube, uuid, Seconds.seconds(1).toStandardDuration().getMillis());
-        final Set<String> presentSet = presenceRepository.getPresent(mytube, Optional.<Integer>absent());
+        presenceRepository.addHeartbeat(mytube, uuid, Duration.ofSeconds(1).toMillis());
+        final Set<String> presentSet = presenceRepository.getPresent(mytube, Optional.absent());
         assertEquals(uuid, presentSet.iterator().next(), "Expected to have one heartbeat with uuid: " + uuid);
 
         // call cull and verify heart beat is still present
         presenceRepository.cull(mytube);
-        final Set<String> stillpresentSet = presenceRepository.getPresent(mytube, Optional.<Integer>absent());
+        final Set<String> stillpresentSet = presenceRepository.getPresent(mytube, Optional.absent());
         assertEquals(stillpresentSet.iterator().next(), uuid, "Expected to still have one heartbeat with uuid: " + uuid);
 
         // wait a second and verify previous heartbeat is expired
         final Instant beforeSleep = Instant.now();
         while (true) {
-            Thread.sleep(Duration.standardSeconds(1).getMillis());
-            if (new Duration(beforeSleep, Instant.now()).isLongerThan(Duration.standardSeconds(1))) {
+            Thread.sleep(Duration.ofSeconds(1).toMillis());
+            if (Duration.between(beforeSleep, Instant.now()).compareTo(Duration.ofSeconds(1)) > 0) {
                 break;
             }
         }
-        assertFalse(presenceRepository.getExpired(mytube, Optional.<Integer>absent()).isEmpty());
+        assertFalse(presenceRepository.getExpired(mytube, Optional.absent()).isEmpty());
 
         // test with limit will not return full set
         for (int i = 0; i < 100; ++i) {
-            presenceRepository.addHeartbeat(mytube, UUID.randomUUID().toString(), Minutes.ONE.toStandardDuration().getMillis());
+            presenceRepository.addHeartbeat(mytube, UUID.randomUUID().toString(), Duration.ofMinutes(1).toMillis());
         }
-        assertEquals(100, presenceRepository.getPresent(mytube, Optional.<Integer>absent()).size());
+        assertEquals(100, presenceRepository.getPresent(mytube, Optional.absent()).size());
         assertEquals(10, presenceRepository.getPresent(mytube, Optional.of(10)).size());
     }
 }

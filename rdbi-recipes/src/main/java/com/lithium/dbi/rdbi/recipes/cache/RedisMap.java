@@ -4,12 +4,12 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -44,10 +44,10 @@ public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
         this.rdbi = rdbi;
         this.cacheName = cacheName;
         this.keyPrefix = keyPrefix;
-        if (valueTtl.getStandardSeconds() > Integer.MAX_VALUE) {
+        if (valueTtl.getSeconds() > Integer.MAX_VALUE) {
             throw new IllegalArgumentException("Duration outside of valid Jedis/redis expiry range.");
         }
-        this.valueTtl = (int)valueTtl.getStandardSeconds();
+        this.valueTtl = (int)valueTtl.getSeconds();
     }
 
     @Override

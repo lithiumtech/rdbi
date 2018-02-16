@@ -5,8 +5,8 @@ import com.google.common.base.Optional;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Instant;
 
+import java.time.Instant;
 import java.util.Set;
 
 public class PresenceRepository {
@@ -15,21 +15,14 @@ public class PresenceRepository {
     private final String prefix;
 
     public PresenceRepository(RDBI rdbi, String redisPrefixKey) {
-
         this.rdbi = rdbi;
         this.prefix = redisPrefixKey;
     }
 
     public void addHeartbeat(String tube, String id, long timeToExpireInMS) {
-
         Instant now = Instant.now();
-
-        Handle handle = rdbi.open();
-
-        try {
-            handle.jedis().zadd(getQueue(tube),  now.getMillis() + timeToExpireInMS, id);
-        } finally {
-            handle.close();
+        try (Handle handle = rdbi.open()) {
+            handle.jedis().zadd(getQueue(tube), now.toEpochMilli() + timeToExpireInMS, id);
         }
     }
 
@@ -44,9 +37,9 @@ public class PresenceRepository {
 
         try (final Handle handle = rdbi.open()) {
             if (limit != null && limit.isPresent()) {
-                return handle.jedis().zrangeByScore(getQueue(tube), Long.toString(now.getMillis()), "+inf", 0, limit.get());
+                return handle.jedis().zrangeByScore(getQueue(tube), Long.toString(now.toEpochMilli()), "+inf", 0, limit.get());
             } else {
-                return handle.jedis().zrangeByScore(getQueue(tube), Long.toString(now.getMillis()), "+inf");
+                return handle.jedis().zrangeByScore(getQueue(tube), Long.toString(now.toEpochMilli()), "+inf");
             }
         }
     }
@@ -62,9 +55,9 @@ public class PresenceRepository {
 
         try (final Handle handle = rdbi.open()) {
             if (limit != null && limit.isPresent()) {
-                return handle.jedis().zrangeByScore(getQueue(tube), "-inf", Long.toString(now.getMillis()), 0, limit.get());
+                return handle.jedis().zrangeByScore(getQueue(tube), "-inf", Long.toString(now.toEpochMilli()), 0, limit.get());
             } else {
-                return handle.jedis().zrangeByScore(getQueue(tube), "-inf", Long.toString(now.getMillis()));
+                return handle.jedis().zrangeByScore(getQueue(tube), "-inf", Long.toString(now.toEpochMilli()));
             }
         }
     }
@@ -73,49 +66,37 @@ public class PresenceRepository {
 
         Instant now = Instant.now();
 
-        Handle handle = rdbi.open();
-        try {
+        try (Handle handle = rdbi.open()) {
             Double score = handle.jedis().zscore(getQueue(tube), id);
-            if (score == null ) {
+            if (score == null) {
                 return true;
-            } else if (score < Double.valueOf(now.getMillis())) {
+            } else if (score < (double) now.toEpochMilli()) {
                 return true;
             } else {
                 return false;
             }
-        } finally {
-            handle.close();
         }
     }
 
     public boolean remove(String tube, String id) {
-        Handle handle = rdbi.open();
-        try {
+        try (Handle handle = rdbi.open()) {
             return 0L < handle.jedis().zrem(getQueue(tube), id);
-        } finally {
-            handle.close();
         }
     }
 
     public void cull(String tube) {
         Instant now = Instant.now();
 
-        Handle handle = rdbi.open();
-        try {
-            handle.jedis().zremrangeByScore(getQueue(tube), 0, now.getMillis());
-        } finally {
-            handle.close();
+        try (Handle handle = rdbi.open()) {
+            handle.jedis().zremrangeByScore(getQueue(tube), 0, now.toEpochMilli());
         }
     }
 
     @VisibleForTesting
     void nukeForTest(final String tube) {
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().del(getQueue(tube));
-                return null;
-            }
+        rdbi.withHandle((Callback<Void>) handle -> {
+            handle.jedis().del(getQueue(tube));
+            return null;
         });
     }
 

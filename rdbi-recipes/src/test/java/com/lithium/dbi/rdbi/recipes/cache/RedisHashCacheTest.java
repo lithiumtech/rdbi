@@ -9,13 +9,13 @@ import com.google.common.collect.Maps;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Duration;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
 import javax.annotation.Nullable;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -120,7 +120,7 @@ public class RedisHashCacheTest {
             cache.get(barfKey);
         } catch (ExecutionException ex) {
             thrown = true;
-            assertEquals(barfKey, ex.getCause().getMessage());
+            assertEquals(barfKey, ex.getCause().getCause().getMessage());
         }
         assertTrue(thrown);
         assertEquals(3, misses.get());
@@ -133,7 +133,7 @@ public class RedisHashCacheTest {
             cache.getUnchecked(barfKey);
         } catch (Exception ex) {
             thrown = true;
-            assertEquals(barfKey, ex.getMessage());
+            assertEquals(barfKey, ex.getCause().getMessage());
         }
         assertTrue(thrown);
         assertEquals(4, misses.get());
@@ -763,7 +763,7 @@ public class RedisHashCacheTest {
                         fetchAllFromMap(dataSource),
                         "testNeedsRefresh",
                         TEST_NAMESPACE,
-                        Duration.standardMinutes(10).getMillis(),
+                        Duration.ofMinutes(10).toMillis(),
                         0,
                         Optional.of(es),
                         NOOP,

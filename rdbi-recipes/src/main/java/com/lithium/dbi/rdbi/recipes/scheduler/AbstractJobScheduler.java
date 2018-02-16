@@ -1,12 +1,11 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
 import com.google.common.collect.Lists;
-import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import org.joda.time.Instant;
 import redis.clients.jedis.Tuple;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
@@ -90,19 +89,19 @@ public abstract class AbstractJobScheduler<T extends JobInfo> {
 
 
     public List<T> peekDelayed(String tube, int offset, int count) {
-        return peekInternal(getReadyQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+        return peekInternal(getReadyQueue(tube), (double) Instant.now().toEpochMilli(), Double.MAX_VALUE, offset, count);
     }
 
     public List<T> peekReady(String tube, int offset, int count) {
-        return peekInternal(getReadyQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+        return peekInternal(getReadyQueue(tube), 0.0d, (double) Instant.now().toEpochMilli(), offset, count);
     }
 
     public List<T> peekRunning(String tube, int offset, int count) {
-        return peekInternal(getRunningQueue(tube), new Double(Instant.now().getMillis()), Double.MAX_VALUE, offset, count);
+        return peekInternal(getRunningQueue(tube), (double) Instant.now().toEpochMilli(), Double.MAX_VALUE, offset, count);
     }
 
     public List<T> peekExpired(String tube, int offset, int count) {
-        return peekInternal(getRunningQueue(tube), 0.0d, new Double(Instant.now().getMillis()), offset, count);
+        return peekInternal(getRunningQueue(tube), 0.0d, (double) Instant.now().toEpochMilli(), offset, count);
     }
 
     protected String getRunningQueue(String tube) {
@@ -127,12 +126,7 @@ public abstract class AbstractJobScheduler<T extends JobInfo> {
     protected abstract T createJobInfo(String jobStr, double jobScore);
 
     private long getSortedSetSize(final String key) {
-        return rdbi.withHandle(new Callback<Long>() {
-            @Override
-            public Long run(Handle handle) {
-                return handle.jedis().zcard(key);
-            }
-        });
+        return rdbi.withHandle(handle -> handle.jedis().zcard(key));
     }
 
 }
