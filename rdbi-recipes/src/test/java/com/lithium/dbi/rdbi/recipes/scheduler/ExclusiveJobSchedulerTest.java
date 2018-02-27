@@ -1,7 +1,5 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
-import com.google.common.base.Function;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Sets;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
@@ -12,9 +10,9 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
-import javax.annotation.Nullable;
 import java.time.Instant;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
@@ -197,14 +195,9 @@ public class ExclusiveJobSchedulerTest {
         // Find all expired jobs = jobs that have been sitting in the ready queue for more than 500 millis
         List<TimeJobInfo> jobInfos = scheduledJobSystem.removeExpiredReadyJobs(tubeName, 500);
         assertEquals(jobInfos.size(), 2);
-        List<String> jobStrList = FluentIterable.from(jobInfos).transform(new Function<TimeJobInfo, String>() {
-            @Nullable
-            @Override
-            public String apply(TimeJobInfo timeJobInfo) {
-                return timeJobInfo.getJobStr();
-            }
-        }).toList();
-
+        List<String> jobStrList = jobInfos.stream()
+                                          .map(TimeJobInfo::getJobStr)
+                                          .collect(Collectors.toList());
         assertTrue(jobStrList.containsAll(Sets.newHashSet("{job1}", "{job2}")));
 
         // Wait for job3 to become available and confirm its still there.

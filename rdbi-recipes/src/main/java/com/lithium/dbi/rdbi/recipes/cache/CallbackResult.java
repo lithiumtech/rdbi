@@ -1,6 +1,7 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
-import com.google.common.base.Optional;
+
+import java.util.Optional;
 
 public class CallbackResult<ValueType> {
     private final Optional<ValueType> value;
@@ -8,16 +9,16 @@ public class CallbackResult<ValueType> {
 
     public CallbackResult(final ValueType value) {
         this.error = null;
-        this.value = Optional.fromNullable(value);
+        this.value = Optional.ofNullable(value);
     }
 
     public CallbackResult(final Exception ex) {
-        this.value = Optional.absent();
+        this.value = Optional.empty();
         this.error = ex;
     }
 
     public CallbackResult() {
-        this.value = Optional.absent();
+        this.value = Optional.empty();
         this.error = null;
     }
 
@@ -33,7 +34,7 @@ public class CallbackResult<ValueType> {
         if (error != null) {
             throw new RuntimeException(error);
         } else {
-            return value.orNull();
+            return value.orElse(null);
         }
     }
 }

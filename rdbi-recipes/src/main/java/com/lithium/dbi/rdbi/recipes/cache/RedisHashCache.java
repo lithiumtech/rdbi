@@ -1,15 +1,8 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Function;
-import com.google.common.base.Optional;
-import com.google.common.base.Predicate;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Futures;
-import com.lithium.dbi.rdbi.Callback;
-import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import com.lithium.dbi.rdbi.recipes.locking.RedisSemaphoreDAO;
 import org.slf4j.Logger;
@@ -23,6 +16,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
@@ -32,6 +26,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, ValueType> implements LoadAllCache<KeyType, ValueType> {
 
@@ -118,25 +114,16 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
 
     @Override
     public boolean acquireLock() {
-        return rdbi.withHandle(new Callback<Boolean>() {
-            @Override
-            public Boolean run(Handle handle) {
-                return 1 == handle.attach(RedisSemaphoreDAO.class)
-                                  .acquireSemaphore(
-                                          cacheLockKey(),
-                                          String.valueOf(System.currentTimeMillis()),
-                                          lockTimeoutSecs);
-            }
-        });
+        return rdbi.withHandle(handle ->
+               1 == handle.attach(RedisSemaphoreDAO.class)
+                          .acquireSemaphore(
+                                  cacheLockKey(),
+                                  String.valueOf(System.currentTimeMillis()),
+                                  lockTimeoutSecs));
     }
 
     boolean isLocked() {
-        return rdbi.withHandle(new Callback<Boolean>() {
-            @Override
-            public Boolean run(Handle handle) {
-                return handle.jedis().exists(cacheLockKey());
-            }
-        });
+        return rdbi.withHandle(handle -> handle.jedis().exists(cacheLockKey()));
     }
 
     private CallbackResult<ValueType> loadDataSynchronously(final KeyType key) {
@@ -161,13 +148,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
 
     @Override
     public void releaseLock() {
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                releaseLock(handle.jedis());
-                return null;
-            }
-        });
+        rdbi.consumeHandle(handle -> releaseLock(handle.jedis()));
     }
 
     @Override
@@ -187,12 +168,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
     }
 
     private ValueType getCachedDataNewJedis(final KeyType key) {
-        return rdbi.withHandle(new Callback<ValueType>() {
-            @Override
-            public ValueType run(Handle handle) {
-                return getCachedData(handle.jedis(), key);
-            }
-        });
+        return rdbi.withHandle(handle -> getCachedData(handle.jedis(), key));
     }
 
     private ValueType getCachedData(Jedis jedis, KeyType key) {
@@ -226,23 +202,20 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
             pipeline.hset(cacheKey, keyTypeToRedisKey.apply(key), valueTypeSerializationHelper.encode(data));
             // Encode typed key -> string to remove from missing set.
             pipeline.srem(cacheMissingKey(), keyTypeSerializationHelper.encode(key));
-        } catch(Exception jpe) {
+        } catch (Exception jpe) {
             throw new RuntimeException(jpe);
         }
     }
 
     @VisibleForTesting
     Set<KeyType> getMissing() {
-        return rdbi.withHandle(new Callback<Set<KeyType>>() {
-            @Override
-            public Set<KeyType> run(Handle handle) {
+        return rdbi.withHandle(handle -> {
                 Set<String> missing = handle.jedis().smembers(cacheMissingKey());
                 Set<KeyType> result = new HashSet<>();
                 for (String rawMissingKey : missing) {
                     result.add(keyTypeSerializationHelper.decode(rawMissingKey));
                 }
                 return result;
-            }
         });
     }
 
@@ -252,29 +225,22 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
     }
 
     private long loadTimestamp() {
-        return rdbi.withHandle(new Callback<Long>() {
-            @Override
-            public Long run(Handle handle) {
+        return rdbi.withHandle(handle -> {
                 String loadTimeStr = handle.jedis().get(cacheLoadTimeKey());
                 if (loadTimeStr != null) {
                     return Long.parseLong(loadTimeStr);
                 } else {
                     return 0L;
                 }
-            }
         });
     }
 
     @Override
     public void loadAllComplete() {
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
+        rdbi.consumeHandle(handle -> {
                 Jedis jedis = handle.jedis();
                 jedis.set(cacheLoadTimeKey(), String.valueOf(System.currentTimeMillis()));
                 jedis.del(cacheMissingKey());
-                return null;
-            }
         });
     }
 
@@ -289,7 +255,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
      */
     public Future<CallbackResult<Collection<ValueType>>> refreshAll() {
         if (needsRefresh()) {
-            AsyncCacheAllRefresher asyncCacheAllRefresher = new AsyncCacheAllRefresher<>(this);
+            AsyncCacheAllRefresher<KeyType, ValueType> asyncCacheAllRefresher = new AsyncCacheAllRefresher<>(this);
             if(asyncService.isPresent()) {
                 return asyncService.get().submit(asyncCacheAllRefresher);
             } else {
@@ -315,20 +281,12 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
     public ConcurrentMap<KeyType, ValueType> asMap() {
         // Refresh any invalidated keys before processing the data
         cleanUp();
-        return rdbi.withHandle(new Callback<ConcurrentMap<KeyType, ValueType>>() {
-            @Override
-            public ConcurrentMap<KeyType, ValueType> run(Handle handle) {
-                Iterable<String> cachedData = handle.jedis().hvals(cacheKey);
-                Iterable<ValueType> typedCachedData = Iterables.transform(cachedData, new Function<String, ValueType>() {
-                    @Nullable
-                    @Override
-                    public ValueType apply(String rawValue) {
-                        return valueTypeSerializationHelper.decode(rawValue);
-                    }
-                });
-                return new ConcurrentHashMap<>(uniqueIndex(typedCachedData));
-            }
-        });
+        List<ValueType> typedCachedData = rdbi
+                .withHandle(handle -> handle.jedis().hvals(cacheKey))
+                .stream()
+                .map(valueTypeSerializationHelper::decode)
+                .collect(Collectors.toList());
+        return new ConcurrentHashMap<>(uniqueIndex(typedCachedData));
     }
 
     @Nullable
@@ -381,9 +339,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
 
     @Override
     public ImmutableMap<KeyType, ValueType> getAllPresent(final Iterable<?> keys) {
-        return rdbi.withHandle(new Callback<ImmutableMap<KeyType, ValueType>>() {
-            @Override
-            public ImmutableMap<KeyType, ValueType> run(Handle handle) {
+        return rdbi.withHandle(handle -> {
                 /*
                  * The basic operation works like this:
                  *
@@ -429,33 +385,24 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
                     mapBuilder.put(typedKeys.get(i), typedValue);
                 }
                 return mapBuilder.build();
-            }
         });
     }
 
     @Override
     public void put(final KeyType key, final ValueType value) {
-        rdbi.withHandle(new Callback<Object>() {
-            @Override
-            public Object run(Handle handle) {
+        rdbi.consumeHandle(handle -> {
                 Pipeline pipeline = handle.jedis().pipelined();
                 cacheDataRaw(pipeline, key, value);
                 pipeline.sync();
-                return null;
-            }
         });
     }
 
     @Override
     public void putAll(final Map<? extends KeyType, ? extends ValueType> data) {
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
+        rdbi.consumeHandle(handle -> {
                 Pipeline pipeline = handle.jedis().pipelined();
                 putAllInternal(data, pipeline);
                 pipeline.sync();
-                return null;
-            }
         });
     }
 
@@ -475,52 +422,38 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
             log.warn("{}: Remove requested for null key", cacheName);
             return;
         }
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
+        rdbi.consumeHandle(handle -> {
                 Pipeline pipeline = handle.jedis().pipelined();
                 // remove the cached value (if any)
                 pipeline.hdel(cacheKey, itemKey(key));
                 // clear out missing cache key (if any)
                 pipeline.srem(cacheMissingKey(), keyTypeSerializationHelper.encode(key));
                 pipeline.sync();
-                return null;
-            }
         });
     }
 
-    private Map<KeyType, ValueType> uniqueIndex(Iterable<ValueType> values) {
-        return FluentIterable.from(values)
-                             .filter(new Predicate<ValueType>() {
-                                 @Override
-                                 public boolean apply(@Nullable ValueType value) {
-                                     if (value == null) {
-                                         log.warn("{}: Omitting a null value from the result set.", cacheName);
-                                     }
-                                     return value != null;
-                                 }
-                             })
-                             .uniqueIndex(new Function<ValueType, KeyType>() {
-                                 @Override
-                                 public KeyType apply(ValueType value) {
-                                     return keyFromValue(value);
-                                 }
-                             });
+    private Map<KeyType, ValueType> uniqueIndex(Collection<ValueType> values) {
+        return values.stream()
+                     .filter(value -> {
+                         if (value == null) {
+                             log.warn("{}: Omitting a null value from the result set.", cacheName);
+                         }
+                         return value != null;
+                     })
+                     .collect(Collectors.toMap(this::keyFromValue,
+                                               Function.identity(),
+                                               (a, b) -> a));
     }
 
     @Override
     public void applyFetchAll(Collection<ValueType> fetched) {
         final Map<KeyType, ValueType> fetchedAndIndexed = uniqueIndex(fetched);
 
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
+        rdbi.consumeHandle(handle -> {
                 Pipeline pipeline = handle.jedis().pipelined();
                 removeAllCachedData(pipeline);
                 putAllInternal(fetchedAndIndexed, pipeline);
                 pipeline.sync();
-                return null;
-            }
         });
     }
 
@@ -536,14 +469,10 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
             return;
         }
         final KeyType key = (KeyType) objKey;
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
+        rdbi.consumeHandle(handle -> {
                 Pipeline pipeline = handle.jedis().pipelined();
                 invalidate(pipeline, key);
                 pipeline.sync();
-                return null;
-            }
         });
         cacheEvictionCount.incrementAndGet();
     }
@@ -556,31 +485,23 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
 
     @Override
     public void invalidateAll(final Iterable<?> keys) {
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
+        rdbi.consumeHandle(handle -> {
                 Pipeline pipeline = handle.jedis().pipelined();
                 for (final Object objKey : keys) {
                     invalidate(pipeline, (KeyType) objKey);
                 }
                 pipeline.sync();
-                return null;
-            }
         });
     }
 
     @Override
     public void invalidateAll() {
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
+        rdbi.consumeHandle(handle -> {
                 Pipeline pipeline = handle.jedis().pipelined();
                 removeAllCachedData(pipeline);
                 pipeline.del(cacheLockKey());
                 pipeline.del(cacheLoadTimeKey());
                 pipeline.sync();
-                return null;
-            }
         });
     }
 
@@ -597,14 +518,11 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
 
     @Override
     public long size() {
-        return rdbi.withHandle(new Callback<Long>() {
-            @Override
-            public Long run(Handle handle) {
+        return rdbi.withHandle(handle -> {
                 Jedis jedis = handle.jedis();
                 long cachedValues = jedis.hlen(cacheKey);
                 long missingValues = jedis.scard(cacheMissingKey());
                 return cachedValues + missingValues;
-            }
         });
     }
 

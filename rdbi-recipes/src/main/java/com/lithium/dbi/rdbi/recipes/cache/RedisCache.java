@@ -1,12 +1,8 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Function;
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import com.lithium.dbi.rdbi.Callback;
-import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import com.lithium.dbi.rdbi.recipes.locking.RedisSemaphoreDAO;
 import org.slf4j.Logger;
@@ -15,11 +11,13 @@ import redis.clients.jedis.Jedis;
 
 import javax.annotation.Nullable;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, ValueType> implements LockingInstrumentedCache<KeyType, ValueType> {
 
@@ -84,15 +82,11 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
 
     @Override
     public boolean acquireLock(final KeyType key) {
-        return rdbi.withHandle(new Callback<Boolean>() {
-            @Override
-            public Boolean run(Handle handle) {
-                return 1 == handle.attach(RedisSemaphoreDAO.class)
-                                  .acquireSemaphore(redisLockKey(generateRedisKey(key)),
-                                                    String.valueOf(System.currentTimeMillis()),
-                                                    lockTimeoutSecs);
-            }
-        });
+        return rdbi.withHandle(handle ->
+                1 == handle.attach(RedisSemaphoreDAO.class)
+                           .acquireSemaphore(redisLockKey(generateRedisKey(key)),
+                                             String.valueOf(System.currentTimeMillis()),
+                                             lockTimeoutSecs));
     }
 
     public boolean acquireLockPatiently(KeyType key, int maxWaitMillis) {
@@ -115,12 +109,7 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
     boolean isLocked(KeyType key) {
         final String redisKey = generateRedisKey(key);
         final String redisLockKey = redisLockKey(redisKey);
-        return rdbi.withHandle(new Callback<Boolean>() {
-            @Override
-            public Boolean run(Handle handle) {
-                return handle.jedis().exists(redisLockKey);
-            }
-        });
+        return rdbi.withHandle(handle -> handle.jedis().exists(redisLockKey));
     }
 
     private CallbackResult<ValueType> loadDataSynchronously(final KeyType key) {
@@ -145,22 +134,11 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
 
     @Override
     public void releaseLock(final KeyType key) {
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                releaseLock(key, handle.jedis());
-                return null;
-            }
-        });
+        rdbi.consumeHandle(handle -> releaseLock(key, handle.jedis()));
     }
 
     CachedData<ValueType> getCachedDataNewJedis(final KeyType key) {
-        return rdbi.withHandle(new Callback<CachedData<ValueType>>() {
-            @Override
-            public CachedData<ValueType> run(Handle handle) {
-                return getCachedData(handle.jedis(), key);
-            }
-        });
+        return rdbi.withHandle(handle -> getCachedData(handle.jedis(), key));
     }
 
     CachedData<ValueType> getCachedData(Jedis jedis, KeyType key) {
@@ -369,13 +347,7 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
 
     @Override
     public void put(final KeyType key, final ValueType value) {
-        rdbi.withHandle(new Callback<Object>() {
-            @Override
-            public Object run(Handle handle) {
-                cacheData(key, handle.jedis(), value, valueTtl);
-                return null;
-            }
-        });
+        rdbi.consumeHandle(handle -> cacheData(key, handle.jedis(), value, valueTtl));
     }
 
     @Override
@@ -393,13 +365,7 @@ public class RedisCache<KeyType, ValueType> extends AbstractRedisCache<KeyType, 
         }
         KeyType key = (KeyType) objKey;
         final String redisKey = generateRedisKey(key);
-        rdbi.withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                handle.jedis().del(redisKey);
-                return null;
-            }
-        });
+        rdbi.consumeHandle(handle -> handle.jedis().del(redisKey));
         cacheEvictionCount.incrementAndGet();
     }
 
