@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.lithium.dbi.rdbi</groupId>
         <artifactId>rdbi-parent</artifactId>
-        <version>0.82-SNAPSHOT</version>
+        <version>0.82</version>
         <relativePath>../rdbi-parent/pom.xml</relativePath>
     </parent>
 

@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.lithium.dbi.rdbi</groupId>
         <artifactId>rdbi-parent</artifactId>
-        <version>0.82-SNAPSHOT</version>
+        <version>0.82</version>
         <relativePath>rdbi-parent/pom.xml</relativePath>
     </parent>
 
@@ -18,7 +18,7 @@
         <url>scm:git:git@github.com:lithiumtech/rdbi.git</url>
         <connection>scm:git:git@github.com:lithiumtech/rdbi.git</connection>
         <developerConnection>scm:git:git@github.com:lithiumtech/rdbi.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>rdbi-0.82</tag>
     </scm>
 
     <modules>
