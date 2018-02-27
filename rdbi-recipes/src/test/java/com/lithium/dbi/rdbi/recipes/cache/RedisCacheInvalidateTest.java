@@ -1,18 +1,18 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
-import com.google.common.base.Function;
-import com.google.common.base.Optional;
 import com.lithium.dbi.rdbi.RDBI;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -60,13 +60,10 @@ public class RedisCacheInvalidateTest {
 
         sharedMutableState = new AtomicInteger(0);
         loadDelayMillis = 100;
-        final Function<String, Integer> loader = new Function<String, Integer>() {
-            @Override
-            public Integer apply(String key) {
+        final Function<String, Integer> loader = key -> {
                 int readState = sharedMutableState.get();
                 sleep(loadDelayMillis);
                 return readState;
-            }
         };
 
         final ExecutorService exeService = Executors.newCachedThreadPool();

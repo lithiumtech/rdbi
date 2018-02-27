@@ -1,7 +1,5 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
-import com.google.common.base.Function;
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.lithium.dbi.rdbi.RDBI;
@@ -10,6 +8,7 @@ import redis.clients.jedis.JedisPool;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutionException;
@@ -17,6 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
@@ -94,15 +94,11 @@ public class RedisCacheTest {
         final String barfKey = "barf";
 
         final ImmutableMap<String, TestContainer> mappings = ImmutableMap.of(key1, tc1, key2, tc2);
-        final Function<String, TestContainer> loader = new Function<String, TestContainer>() {
-            @Nullable
-            @Override
-            public TestContainer apply(@Nullable String s) {
+        final Function<String, TestContainer> loader = s -> {
                 if (barfKey.equals(s)) {
                     throw new RuntimeException(barfKey);
                 }
                 return mappings.get(s);
-            }
         };
 
         final RDBI rdbi = new RDBI(new JedisPool("localhost"));
@@ -119,19 +115,19 @@ public class RedisCacheTest {
                                                           new ArrayBlockingQueue<Runnable>(10));
 
         final RedisCache<String, TestContainer> cache = new RedisCache<>(keyGenerator,
-                             helper,
-                             rdbi,
-                             loader,
-                             "superFancyCache",
-                             "prefix",
-                             120,
-                             0,
-                             60,
-                             Optional.of(es),
-                             hits,
-                             misses,
-                             loadSuccess,
-                             loadFailure);
+                                                                         helper,
+                                                                         rdbi,
+                                                                         loader,
+                                                                         "superFancyCache",
+                                                                         "prefix",
+                                                                         120,
+                                                                         0,
+                                                                         60,
+                                                                         Optional.of(es),
+                                                                         hits,
+                                                                         misses,
+                                                                         loadSuccess,
+                                                                         loadFailure);
 
         cache.invalidateAll(mappings.keySet());
         cache.releaseLock(key1); // just in case...

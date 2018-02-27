@@ -1,13 +1,10 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
-import com.google.common.base.Function;
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.lithium.dbi.rdbi.Callback;
-import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -20,6 +17,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
@@ -31,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
@@ -40,8 +39,8 @@ import static org.testng.Assert.assertTrue;
 @Test(groups = "integration")
 public class RedisHashCacheTest {
 
-    private static final String TEST_NAMESPACE = RedisHashCacheTest.class.getSimpleName(); 
-    
+    private static final String TEST_NAMESPACE = RedisHashCacheTest.class.getSimpleName();
+
     private ExecutorService es;
 
     @Test
@@ -53,15 +52,11 @@ public class RedisHashCacheTest {
         final String barfKey = "barf";
 
         final ImmutableMap<String, TestContainer> mappings = ImmutableMap.of(key1, tc1, key2, tc2);
-        final Function<String, TestContainer> loader = new Function<String, TestContainer>() {
-            @Nullable
-            @Override
-            public TestContainer apply(@Nullable String s) {
+        final Function<String, TestContainer> loader = s -> {
                 if (barfKey.equals(s)) {
                     throw new RuntimeException(barfKey);
                 }
                 return mappings.get(s);
-            }
         };
 
         final Callable<Collection<TestContainer>> loadAll = mappings::values;
@@ -164,7 +159,7 @@ public class RedisHashCacheTest {
                         TEST_NAMESPACE,
                         120,
                         0,
-                        Optional.<ExecutorService>absent(), // Force synchronous calls!
+                        Optional.<ExecutorService>empty(), // Force synchronous calls!
                         NOOP,
                         NOOP,
                         NOOP,
@@ -252,7 +247,7 @@ public class RedisHashCacheTest {
                         TEST_NAMESPACE,
                         120,
                         0,
-                        Optional.<ExecutorService>absent(), // Force synchronous calls!
+                        Optional.<ExecutorService>empty(), // Force synchronous calls!
                         NOOP,
                         NOOP,
                         NOOP,
@@ -625,7 +620,7 @@ public class RedisHashCacheTest {
                         TEST_NAMESPACE,
                         Integer.MAX_VALUE,
                         0,
-                        Optional.<ExecutorService>absent(),
+                        Optional.<ExecutorService>empty(),
                         NOOP,
                         NOOP,
                         NOOP,
@@ -689,7 +684,7 @@ public class RedisHashCacheTest {
                         TEST_NAMESPACE,
                         120,
                         0,
-                        Optional.<ExecutorService>absent(),
+                        Optional.<ExecutorService>empty(),
                         NOOP,
                         NOOP,
                         NOOP,

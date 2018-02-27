@@ -1,12 +1,12 @@
 package com.lithium.dbi.rdbi.recipes.presence;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Optional;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.Set;
 
 public class PresenceRepository {

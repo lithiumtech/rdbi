@@ -1,6 +1,5 @@
 package com.lithium.dbi.rdbi.recipes.cache;
 
-import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -18,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import static org.testng.Assert.assertEquals;
 
@@ -209,12 +209,7 @@ public class RedisMultiCacheTest {
     }
 
     private Function<Long, Short> valueKeyGenerator() {
-        return new Function<Long, Short>() {
-            @Override
-            public Short apply(Long value) {
-                return (short) (value / 2);
-            }
-        };
+        return value -> (short) (value / 2);
     }
 
     private CountingLoader successLoader() {
