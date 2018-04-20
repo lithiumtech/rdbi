@@ -3,8 +3,6 @@ package com.lithium.dbi.rdbi.recipes.cache;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.lithium.dbi.rdbi.Callback;
-import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -32,14 +30,11 @@ public class RedisMultiCacheTest {
 
     @BeforeMethod
     public void clearRedis() {
-        createRdbi().withHandle(new Callback<Void>() {
-            @Override
-            public Void run(Handle handle) {
-                for (String keyToPurge : handle.jedis().keys(TEST_NAMESPACE + "*")) {
-                    handle.jedis().del(keyToPurge);
-                }
-                return null;
+        createRdbi().withHandle((handle) -> {
+            for (String keyToPurge : handle.jedis().keys(TEST_NAMESPACE + "*")) {
+                handle.jedis().del(keyToPurge);
             }
+            return null;
         });
     }
 
@@ -200,12 +195,7 @@ public class RedisMultiCacheTest {
     }
 
     private Function<Short, String> fieldGenerator() {
-        return new Function<Short, String>() {
-            @Override
-            public String apply(Short input) {
-                return input.toString();
-            }
-        };
+        return Object::toString;
     }
 
     private Function<Long, Short> valueKeyGenerator() {
