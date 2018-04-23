@@ -8,6 +8,8 @@ import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.Response;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
@@ -138,19 +140,21 @@ public class RedisMultiCache<KeyType, ValueType> {
         }
 
         if(!resolvedMisses.isEmpty()) {
-
             final Map<String, String> redisKeyValues = generateRedisKeyValuePairs(resolvedMisses);
-            final List<String> flatRedisKeyValues = Lists.newArrayListWithExpectedSize(redisKeyValues.size() * 2);
-            for (Map.Entry<String, String> redisKeyAndValue : generateRedisKeyValuePairs(resolvedMisses).entrySet()) {
-                flatRedisKeyValues.add(redisKeyAndValue.getKey());
-                flatRedisKeyValues.add(redisKeyAndValue.getValue());
-            }
-
             try (Handle handle = rdbi.open()) {
-                handle.jedis().mset(flatRedisKeyValues.toArray(new String[flatRedisKeyValues.size()]));
-                for (String key : redisKeyValues.keySet()) {
-                    handle.jedis().expire(key, cacheTtlSeconds);
-                }
+                // we're (potentially) going to set many keys, so execute in single round trip to redis server
+                final Pipeline pipeline = handle.jedis().pipelined();
+
+                // prepare to set all the key/values and include an explicit TTL
+                final List<Response<String>> responses = Lists.newLinkedList();
+                redisKeyValues.forEach((key, value) -> responses.add(pipeline.setex(key, cacheTtlSeconds, value)));
+
+                // sync to redis-server
+                pipeline.sync();
+
+                // calling get() on each response so that any obscured exception will now be thrown
+                responses.forEach(Response::get);
+
             } catch (Exception ex) {
                 log.error("{}: failed to persist resolved cache misses", cacheName, ex);
             }
