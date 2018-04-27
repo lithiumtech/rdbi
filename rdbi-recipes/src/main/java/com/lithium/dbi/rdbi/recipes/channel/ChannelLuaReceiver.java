@@ -17,7 +17,7 @@ public class ChannelLuaReceiver implements ChannelReceiver {
 
     private final RDBI rdbi;
 
-    public static interface DAO {
+    public interface DAO {
         @Query(
             "local current_count = redis.call(\"GET\", $countKey$)\n" +
             "if not current_count then\n" +
@@ -33,7 +33,7 @@ public class ChannelLuaReceiver implements ChannelReceiver {
             "return results"
         )
         @Mapper(GetResultMapper.class)
-        public GetResult get(
+        GetResult get(
             @BindKey("countKey") String countKey,
             @BindKey("listKey") String listKey,
             @BindArg("lastSeenCount") Long lastSeenCount
@@ -56,7 +56,7 @@ public class ChannelLuaReceiver implements ChannelReceiver {
             "return results"
         )
         @Mapper(GetResultMapper.class)
-        public GetResult get(
+        GetResult get(
             @BindKey("countKey") String countKey,
             @BindKey("listKey") String listKey,
             @BindArg("lastSeenCount") Long lastSeenCount,
@@ -84,7 +84,7 @@ public class ChannelLuaReceiver implements ChannelReceiver {
             "return bulk_result;"
         )
         @Mapper(GetBulkResultMapper.class)
-        public GetBulkResult getMulti(
+        GetBulkResult getMulti(
                 @BindKey("allKeys") List<String> inputKeys,
                 @BindArg("allArgs") List<String> inputArgs
         );
@@ -98,7 +98,7 @@ public class ChannelLuaReceiver implements ChannelReceiver {
             "end\n" +
             "return current_count"
         )
-        public Long getDepth(@BindKey("countKey") String countKey);
+        Long getDepth(@BindKey("countKey") String countKey);
 
         @Query(
             "local current_count = redis.call(\"GET\", $countKey$)\n" +
@@ -110,8 +110,8 @@ public class ChannelLuaReceiver implements ChannelReceiver {
             "redis.call(\"SET\", $copyDepthToKey$, current_count)\n" +
             "return current_count"
         )
-        public Long getDepth(@BindKey("countKey") String countKey,
-                             @BindKey("copyDepthToKey") String copyDepthToKey);
+        Long getDepth(@BindKey("countKey") String countKey,
+                      @BindKey("copyDepthToKey") String copyDepthToKey);
     }
 
     public static class GetResultMapper implements ResultMapper<GetResult,List<String>> {
@@ -164,9 +164,7 @@ public class ChannelLuaReceiver implements ChannelReceiver {
 
     @Override
     public GetResult get(String channel, Long lastSeenId, String copyDepthToKey) {
-        Handle handle = rdbi.open();
-
-        try {
+        try (Handle handle = rdbi.open()) {
             DAO dao = handle.attach(DAO.class);
             if (copyDepthToKey == null) {
                 return dao.get(ChannelPublisher.getChannelDepthKey(channel),
@@ -178,32 +176,26 @@ public class ChannelLuaReceiver implements ChannelReceiver {
                         lastSeenId,
                         copyDepthToKey);
             }
-        } finally {
-            handle.close();
         }
     }
 
     public GetBulkResult getMulti(List<String> channels, List<Long> lastSeenIds) {
-        Handle handle = rdbi.open();
-
-        try {
+        try (Handle handle = rdbi.open()) {
             DAO dao = handle.attach(DAO.class);
-                List<String> depthKeys = channels.stream().map(eachChannel -> ChannelPublisher.getChannelDepthKey(eachChannel)).collect(Collectors.toList());
-                List<String>  queueKeys = channels.stream().map(eachChannel -> ChannelPublisher.getChannelQueueKey(eachChannel)).collect(Collectors.toList());
+            List<String> depthKeys = channels.stream().map(ChannelPublisher::getChannelDepthKey).collect(Collectors.toList());
+            List<String> queueKeys = channels.stream().map(ChannelPublisher::getChannelQueueKey).collect(Collectors.toList());
 
-                List<String> keysList = new ArrayList<>(depthKeys.size()*2);
-                List<String> argsList = new ArrayList<>(depthKeys.size());
-                argsList.add(String.valueOf(depthKeys.size()));
+            List<String> keysList = new ArrayList<>(depthKeys.size() * 2);
+            List<String> argsList = new ArrayList<>(depthKeys.size());
+            argsList.add(String.valueOf(depthKeys.size()));
 
-                for (int i = 0; i < channels.size(); i++) {
-                    keysList.add(queueKeys.get(i));
-                    keysList.add(depthKeys.get(i));
-                    argsList.add(String.valueOf(lastSeenIds.get(i)));
-                }
+            for (int i = 0; i < channels.size(); i++) {
+                keysList.add(queueKeys.get(i));
+                keysList.add(depthKeys.get(i));
+                argsList.add(String.valueOf(lastSeenIds.get(i)));
+            }
 
-                return dao.getMulti(keysList, argsList);
-        } finally {
-            handle.close();
+            return dao.getMulti(keysList, argsList);
         }
     }
 
@@ -214,17 +206,13 @@ public class ChannelLuaReceiver implements ChannelReceiver {
 
     @Override
     public Long getDepth(String channel, String copyDepthToKey) {
-        Handle handle = rdbi.open();
-
-        try {
-            DAO dao = handle.attach(DAO.class);
+        try (Handle handle = rdbi.open()) {
+            final DAO dao = handle.attach(DAO.class);
             if (copyDepthToKey == null) {
                 return dao.getDepth(ChannelPublisher.getChannelDepthKey(channel));
             } else {
                 return dao.getDepth(ChannelPublisher.getChannelDepthKey(channel), copyDepthToKey);
             }
-        } finally {
-            handle.close();
         }
     }
 }
