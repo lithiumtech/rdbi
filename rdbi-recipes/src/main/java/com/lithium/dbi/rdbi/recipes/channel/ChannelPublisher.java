@@ -36,7 +36,7 @@ public class ChannelPublisher {
 
     /**
      * LTRIM sets the list to exactly the elements specified. We want to keep
-     * channelDepth elements, so we keep 0 - (channelDepth - 1).
+     * channelDepth elements, so we keep 0 through (channelDepth - 1).
      *
      * @return index last element to keep.
      */
