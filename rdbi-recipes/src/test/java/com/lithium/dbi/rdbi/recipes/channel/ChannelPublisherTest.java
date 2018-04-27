@@ -21,6 +21,8 @@ import static org.testng.AssertJUnit.fail;
 @Test(groups = "integration")
 public class ChannelPublisherTest {
 
+
+
     @Test
     public void testPublishChannelLuaPerformanceTest() throws InterruptedException {
 
@@ -71,13 +73,11 @@ public class ChannelPublisherTest {
     @Test
     public void simpleInsertTest() {
 
-        final Set<String> channel = ImmutableSet.of("channel1");
-
         final RDBI rdbi = new RDBI(new JedisPool("localhost"));
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
-        channelPublisher.resetChannels(channel);
-
-        channelPublisher.publish(channel, ImmutableList.of("Hello", "World") );
+        channelPublisher.resetChannel("channel1");
+        channelPublisher.publish("channel1", "Hello");
+        channelPublisher.publish("channel1", ImmutableList.of("World"));
 
         final ChannelReceiver receiver = new ChannelLuaReceiver(rdbi);
         GetResult result = receiver.get("channel1", 0L);

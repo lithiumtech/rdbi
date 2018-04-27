@@ -55,6 +55,14 @@ public class ChannelPublisher {
     }
 
     /**
+     * Sugar method for deleting all data in a single channel.
+     * @param channel to be deleted.
+     */
+    public void resetChannel(final String channel) {
+        resetChannels(Collections.singleton(channel));
+    }
+
+    /**
      * Deletes all data in the specified channels.
      * @param channels to be deleted.
      */
@@ -62,8 +70,8 @@ public class ChannelPublisher {
         try (Handle handle = rdbi.open()) {
             Pipeline pipeline = handle.jedis().pipelined();
             for (String channel : channels) {
-                pipeline.del(channel + ":queue");
-                pipeline.del(channel + ":depth");
+                pipeline.del(getChannelQueueKey(channel));
+                pipeline.del(getChannelDepthKey(channel));
             }
             pipeline.sync();
         }
@@ -71,11 +79,20 @@ public class ChannelPublisher {
 
     /**
      * Sugar method for publishing a single message to a single channel.
-     * @param channel channel to publish to.
-     * @param message message to send to channel.
+     * @param channel to publish to.
+     * @param message sent to channel.
      */
     public void publish(final String channel, final String message) {
         publish(Collections.singleton(channel), Collections.singletonList(message));
+    }
+
+    /**
+     * Sugar method for publishing multiple messages to a single channel.
+     * @param channel to publish to.
+     * @param messages sent to channel.
+     */
+    public void publish(final String channel, final List<String> messages) {
+        publish(Collections.singleton(channel), messages);
     }
 
     /**
@@ -85,13 +102,10 @@ public class ChannelPublisher {
      * @param messages the messages to send to each channel.
      */
     public void publish(final Set<String> channels, final List<String> messages) {
+        if (messages.isEmpty() || channels.isEmpty()) {
+            return;
+        }
         try (Handle handle = rdbi.open()) {
-            if (messages.isEmpty()) {
-                return;
-            }
-            if (channels.isEmpty()) {
-                return;
-            }
             final Transaction transaction = handle.jedis().multi();
             for (String channel : channels) {
                 final String channelQueueKey = getChannelQueueKey(channel);
