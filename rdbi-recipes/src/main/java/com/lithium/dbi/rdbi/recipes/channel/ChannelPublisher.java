@@ -13,7 +13,7 @@ import java.util.Set;
 public class ChannelPublisher {
 
     private static final int DEFAULT_CHANNEL_DEPTH = 100;
-    private static final int DEFAULT_CHANNEL_EXPIRE_SECONDS = 60 * 60; // 1 hour
+    private static final int DEFAULT_CHANNEL_EXPIRE_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
     private final RDBI rdbi;
 
