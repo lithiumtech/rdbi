@@ -19,24 +19,24 @@ public class ChannelLuaReceiver implements ChannelReceiver {
 
     public interface DAO {
         @Query(
-                "local current_count = redis.call(\"GET\", $countKey$)\n" +
-                "if not current_count then\n" +
-                "    current_count = 0\n" +
-                "else\n" +
-                "   current_count = tonumber(current_count)\n" +
-                "end\n" +
-                "if current_count <= tonumber($lastSeenCount$) then\n" +
-                "    return {tostring(0)}\n" +
-                "end\n" +
-                "local results = redis.call(\"LRANGE\", $listKey$, 0, current_count - tonumber($lastSeenCount$) - 1)\n" +
-                "results[#results + 1] = tostring(current_count)\n" +
-                "return results"
+            "local current_count = redis.call(\"GET\", $countKey$)\n" +
+            "if not current_count then\n" +
+            "    current_count = 0\n" +
+            "else\n" +
+            "   current_count = tonumber(current_count)\n" +
+            "end\n" +
+            "if current_count <= tonumber($lastSeenCount$) then\n" +
+            "    return {tostring(0)}\n" +
+            "end\n" +
+            "local results = redis.call(\"LRANGE\", $listKey$, 0, current_count - tonumber($lastSeenCount$) - 1)\n" +
+            "results[#results + 1] = tostring(current_count)\n" +
+            "return results"
         )
         @Mapper(GetResultMapper.class)
         GetResult get(
-                @BindKey("countKey") String countKey,
-                @BindKey("listKey") String listKey,
-                @BindArg("lastSeenCount") Long lastSeenCount
+            @BindKey("countKey") String countKey,
+            @BindKey("listKey") String listKey,
+            @BindArg("lastSeenCount") Long lastSeenCount
         );
 
         @Query(
@@ -55,81 +55,81 @@ public class ChannelLuaReceiver implements ChannelReceiver {
         )
         @Mapper(GetWithDepthResultMapper.class)
         GetResult getAndReturnCurrentDepth(
-                @BindKey("countKey") String countKey,
-                @BindKey("listKey") String listKey,
-                @BindArg("lastSeenCount") Long lastSeenCount
+            @BindKey("countKey") String countKey,
+            @BindKey("listKey") String listKey,
+            @BindArg("lastSeenCount") Long lastSeenCount
         );
 
         @Query(
-                "local current_count = redis.call(\"GET\", $countKey$)\n" +
-                "if not current_count then\n" +
-                "    current_count = 0\n" +
-                "else\n" +
-                "   current_count = tonumber(current_count)\n" +
-                "end\n" +
-                "if current_count <= tonumber($lastSeenCount$) then\n" +
-                "    redis.call(\"SET\", $copyDepthToKey$, current_count)\n" +
-                "    return {tostring(0)}\n" +
-                "end\n" +
-                "local results = redis.call(\"LRANGE\", $listKey$, 0, current_count - tonumber($lastSeenCount$) - 1)\n" +
-                "results[#results + 1] = tostring(current_count)\n" +
-                "redis.call(\"SET\", $copyDepthToKey$, current_count)\n" +
-                "return results"
+            "local current_count = redis.call(\"GET\", $countKey$)\n" +
+            "if not current_count then\n" +
+            "    current_count = 0\n" +
+            "else\n" +
+            "   current_count = tonumber(current_count)\n" +
+            "end\n" +
+            "if current_count <= tonumber($lastSeenCount$) then\n" +
+            "    redis.call(\"SET\", $copyDepthToKey$, current_count)\n" +
+            "    return {tostring(0)}\n" +
+            "end\n" +
+            "local results = redis.call(\"LRANGE\", $listKey$, 0, current_count - tonumber($lastSeenCount$) - 1)\n" +
+            "results[#results + 1] = tostring(current_count)\n" +
+            "redis.call(\"SET\", $copyDepthToKey$, current_count)\n" +
+            "return results"
         )
         @Mapper(GetResultMapper.class)
         GetResult get(
-                @BindKey("countKey") String countKey,
-                @BindKey("listKey") String listKey,
-                @BindArg("lastSeenCount") Long lastSeenCount,
-                @BindArg("copyDepthToKey") String copyDepthToKey
+            @BindKey("countKey") String countKey,
+            @BindKey("listKey") String listKey,
+            @BindArg("lastSeenCount") Long lastSeenCount,
+            @BindArg("copyDepthToKey") String copyDepthToKey
         );
 
         @Query(
-                "local number_of_channels = ARGV[1]\n" +
-                "local bulk_result = {}\n" +
-                "for i = 1, number_of_channels do\n" +
-                "    local current_count = redis.call(\"GET\", tostring(KEYS[i*2]))\n" +
-                "    if not current_count then\n" +
-                "        current_count = 0\n" +
-                "    else\n" +
-                "        current_count = tonumber(current_count)\n" +
-                "    end\n" +
-                "    if current_count <= tonumber(ARGV[i+1]) then\n" +
-                "        bulk_result[i] = {}\n" +
-                "    else\n" +
-                "        local results = redis.call(\"LRANGE\", KEYS[i*2-1], 0, current_count - tonumber(ARGV[i+1]) + 1)\n" +
-                "        results[#results + 1] = tostring(current_count)\n" +
-                "        bulk_result[i] = results\n" +
-                "    end\n" +
-                "end\n" +
-                "return bulk_result;"
+            "local number_of_channels = ARGV[1]\n" +
+            "local bulk_result = {}\n" +
+            "for i = 1, number_of_channels do\n" +
+            "    local current_count = redis.call(\"GET\", tostring(KEYS[i*2]))\n" +
+            "    if not current_count then\n" +
+            "        current_count = 0\n" +
+            "    else\n" +
+            "        current_count = tonumber(current_count)\n" +
+            "    end\n" +
+            "    if current_count <= tonumber(ARGV[i+1]) then\n" +
+            "        bulk_result[i] = {}\n" +
+            "    else\n" +
+            "        local results = redis.call(\"LRANGE\", KEYS[i*2-1], 0, current_count - tonumber(ARGV[i+1]) + 1)\n" +
+            "        results[#results + 1] = tostring(current_count)\n" +
+            "        bulk_result[i] = results\n" +
+            "    end\n" +
+            "end\n" +
+            "return bulk_result;"
         )
         @Mapper(GetBulkResultMapper.class)
         GetBulkResult getMulti(
-                @BindKey("allKeys") List<String> inputKeys,
-                @BindArg("allArgs") List<String> inputArgs
+            @BindKey("allKeys") List<String> inputKeys,
+            @BindArg("allArgs") List<String> inputArgs
         );
 
         @Query(
-                "local current_count = redis.call(\"GET\", $countKey$)\n" +
-                "if not current_count then\n" +
-                "    current_count = 0\n" +
-                "else\n" +
-                "    current_count = tonumber(current_count)\n" +
-                "end\n" +
-                "return current_count"
+            "local current_count = redis.call(\"GET\", $countKey$)\n" +
+            "if not current_count then\n" +
+            "    current_count = 0\n" +
+            "else\n" +
+            "    current_count = tonumber(current_count)\n" +
+            "end\n" +
+            "return current_count"
         )
         Long getDepth(@BindKey("countKey") String countKey);
 
         @Query(
-                "local current_count = redis.call(\"GET\", $countKey$)\n" +
-                "if not current_count then\n" +
-                "    current_count = 0\n" +
-                "else\n" +
-                "    current_count = tonumber(current_count)\n" +
-                "end\n" +
-                "redis.call(\"SET\", $copyDepthToKey$, current_count)\n" +
-                "return current_count"
+            "local current_count = redis.call(\"GET\", $countKey$)\n" +
+            "if not current_count then\n" +
+            "    current_count = 0\n" +
+            "else\n" +
+            "    current_count = tonumber(current_count)\n" +
+            "end\n" +
+            "redis.call(\"SET\", $copyDepthToKey$, current_count)\n" +
+            "return current_count"
         )
         Long getDepth(@BindKey("countKey") String countKey,
                       @BindKey("copyDepthToKey") String copyDepthToKey);
