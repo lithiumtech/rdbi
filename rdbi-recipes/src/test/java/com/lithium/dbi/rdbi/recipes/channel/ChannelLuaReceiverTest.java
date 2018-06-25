@@ -2,6 +2,7 @@ package com.lithium.dbi.rdbi.recipes.channel;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import com.lithium.dbi.rdbi.RDBI;
 import org.junit.Ignore;
 import org.testng.annotations.Test;
@@ -18,9 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.stream.Collectors.toList;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
-import static org.testng.AssertJUnit.fail;
+import static org.testng.AssertJUnit.*;
 
 public class ChannelLuaReceiverTest {
 
@@ -159,6 +158,37 @@ public class ChannelLuaReceiverTest {
 
         channelPublisher.resetChannels(channelSet);
 
+    }
+
+    @Test
+    public void testGetAndReturnCurrentCount() {
+
+        final String channel = "channel1";
+
+        RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
+        channelPublisher.resetChannel(channel);
+
+        try {
+            final ChannelReceiver channelReceiver = new ChannelLuaReceiver(rdbi);
+            GetResult result = channelReceiver.getAndReturnCurrentCount(channel, 0L);
+
+            assertEquals((Long) 0L, result.getDepth());
+
+            channelPublisher.publish(channel, "1");
+            GetResult result2 = channelReceiver.getAndReturnCurrentCount(channel, 0L);
+
+            assertEquals((Long) 1L, result2.getDepth());
+            assertEquals(1, result2.getMessages().size());
+            assertEquals("1", result2.getMessages().get(0));
+
+            GetResult result3 = channelReceiver.getAndReturnCurrentCount(channel, 1000L);
+            assertEquals((Long) 1L, result3.getDepth());
+            assertNull(result3.getMessages());
+
+        } finally {
+            channelPublisher.resetChannel(channel);
+        }
     }
 
     @Test
