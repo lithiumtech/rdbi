@@ -2,7 +2,6 @@ package com.lithium.dbi.rdbi.recipes.channel;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 import com.lithium.dbi.rdbi.RDBI;
 import org.junit.Ignore;
 import org.testng.annotations.Test;
@@ -19,7 +18,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.stream.Collectors.toList;
-import static org.testng.AssertJUnit.*;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
+
 
 public class ChannelLuaReceiverTest {
 
@@ -206,39 +209,8 @@ public class ChannelLuaReceiverTest {
 
         Map<String, Integer> uuidMap = new HashMap<>();
 
-        Thread thread1 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < messageAmount; i++) {
-                    String stringVal = "value" + UUID.randomUUID();
-                    uuidMap.put(stringVal, 0);
-                    final List<String> value = ImmutableList.of(stringVal);
-                    channelPublisher.publish(channelSet, value);
-
-                    if (Thread.interrupted()) {
-                        return;
-                    }
-                }
-                thread1Finished.set(true);
-            }
-        });
-
-        Thread thread2 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < messageAmount; i++) {
-                    String stringVal = "value" + UUID.randomUUID();
-                    uuidMap.put(stringVal, 0);
-                    final List<String> value = ImmutableList.of(stringVal);
-                    channelPublisher.publish(channelSet, value);
-
-                    if (Thread.interrupted()) {
-                        return;
-                    }
-                }
-                thread2Finished.set(true);
-            }
-        });
+        Thread thread1 = randomPublish(channelSet, messageAmount, channelPublisher, thread1Finished, uuidMap);
+        Thread thread2 = randomPublish(channelSet, messageAmount, channelPublisher, thread2Finished, uuidMap);
 
         thread1.start();
         thread2.start();
@@ -271,6 +243,22 @@ public class ChannelLuaReceiverTest {
             assertTrue(uuidMap.get(key) == channels.size());
         }
 
+    }
+
+    private Thread randomPublish(Set<String> channelSet, int messageAmount, ChannelPublisher channelPublisher, AtomicBoolean thread1Finished, Map<String, Integer> uuidMap) {
+        return new Thread(() -> {
+            for (int i = 0; i < messageAmount; i++) {
+                String stringVal = "value" + UUID.randomUUID();
+                uuidMap.put(stringVal, 0);
+                final List<String> value = ImmutableList.of(stringVal);
+                channelPublisher.publish(channelSet, value);
+
+                if (Thread.interrupted()) {
+                    return;
+                }
+            }
+            thread1Finished.set(true);
+        });
     }
 
     //ignored because this is a test to compare consecutive single channel gets vs. batch channel gets
