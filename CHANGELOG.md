@@ -1,5 +1,8 @@
 # Change Log
 
+## [rdbi-0.85](https://github.com/lithiumtech/rdbi/tree/rdbi-0.85) (2018-06-26)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.84...rdbi-0.85)
+
 ## [rdbi-0.84](https://github.com/lithiumtech/rdbi/tree/rdbi-0.84) (2018-06-22)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.83...rdbi-0.84)
 
