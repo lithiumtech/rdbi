@@ -82,6 +82,35 @@ public class TokenBucketRateLimiter implements RateLimiter {
       return getWaitTimeForPermits(1);
     }
 
+    /**
+     * Blocking method.  For use when using batch operations that need to request a token per operation
+     * within the batch.
+     *
+     * @param numTokens     number of tokens requested
+     * @param timeout       duration willing to wait for the tokens
+     * @return true if acquired within the timeout, or false otherwise
+     */
+    public boolean acquirePatiently(int numTokens, Duration timeout) {
+        long timeWaited = 0L;
+        while (timeWaited < timeout.toMillis()) {
+            final OptionalLong waitTime = getWaitTimeForPermits(numTokens);
+            if (!waitTime.isPresent()) {
+                return true;
+            } else {
+                final long timeAvailableToWait = timeout.toMillis() - timeWaited;
+                final long timeToSleep = Math.min(timeAvailableToWait, waitTime.getAsLong());
+                try {
+                    Thread.sleep(timeToSleep);
+                    timeWaited += timeToSleep;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        return false;
+    }
+
     @VisibleForTesting
     OptionalLong getWaitTimeForPermits(int requestedPermits) {
 
