@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.86](https://github.com/lithiumtech/rdbi/tree/rdbi-0.86) (2018-11-05)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.85...rdbi-0.86)
+
+**Merged pull requests:**
+
+- LSWR-6238 TokenBucketRateLimiter supports batch operations [\#80](https://github.com/lithiumtech/rdbi/pull/80) ([shadowsight1](https://github.com/shadowsight1))
+
 ## [rdbi-0.85](https://github.com/lithiumtech/rdbi/tree/rdbi-0.85) (2018-06-26)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.84...rdbi-0.85)
 
