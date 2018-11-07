@@ -60,9 +60,16 @@ public class MultiChannelSchedulerTest {
 
         assertThat(job2).isEmpty();
 
-        boolean ack1 = scheduledJobSystem.ackJob(tube1, job1.get(0).getJobStr());
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(1);
+        boolean ack1 = scheduledJobSystem.ackJob(channel1, tube1, job1.get(0).getJobStr());
 
         assertThat(ack1).isTrue();
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(0);
+        ack1 = scheduledJobSystem.ackJob(channel1, tube1, job1.get(0).getJobStr());
+        assertThat(ack1).isFalse();
+        // no negative
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(0);
+
     }
 
 
@@ -124,6 +131,9 @@ public class MultiChannelSchedulerTest {
         assertThat(scheduledJobSystem.getReadyJobCount("B", tube1)).isEqualTo(5);
         assertThat(scheduledJobSystem.getReadyJobCount("C", tube1)).isEqualTo(1);
 
+        assertThat(scheduledJobSystem.getRunningCountForChannel("A", tube1)).isEqualTo(0);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("B", tube1)).isEqualTo(0);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("C", tube1)).isEqualTo(0);
 
         final Consumer<String> reserveAndAssert = channel -> {
             List<TimeJobInfo> job1 = scheduledJobSystem.reserveMulti(tube1, 1000, 1);
@@ -141,6 +151,11 @@ public class MultiChannelSchedulerTest {
         reserveAndAssert.accept("B");
         reserveAndAssert.accept("C");
 
+        assertThat(scheduledJobSystem.getRunningCountForChannel("A", tube1)).isEqualTo(1);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("B", tube1)).isEqualTo(1);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("C", tube1)).isEqualTo(1);
+
+
         assertThat(scheduledJobSystem.getAllReadyChannels(tube1))
                 .containsExactlyInAnyOrder("A", "B");
 
@@ -156,11 +171,20 @@ public class MultiChannelSchedulerTest {
         reserveAndAssert.accept("A");
         reserveAndAssert.accept("B");
 
+        assertThat(scheduledJobSystem.getRunningCountForChannel("A", tube1)).isEqualTo(5);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("B", tube1)).isEqualTo(5);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("C", tube1)).isEqualTo(1);
+
+
         assertThat(scheduledJobSystem.getAllReadyChannels(tube1))
                 .containsExactlyInAnyOrder("A");
 
         reserveAndAssert.accept("A");
         reserveAndAssert.accept("A");
+
+        assertThat(scheduledJobSystem.getRunningCountForChannel("A", tube1)).isEqualTo(7);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("B", tube1)).isEqualTo(5);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("C", tube1)).isEqualTo(1);
 
         // now we have only A jobs with 3 remaining.
         // if we schedule a C job now, it should run
@@ -176,16 +200,25 @@ public class MultiChannelSchedulerTest {
         reserveAndAssert.accept("A");
         reserveAndAssert.accept("C");
 
+        assertThat(scheduledJobSystem.getRunningCountForChannel("A", tube1)).isEqualTo(8);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("B", tube1)).isEqualTo(5);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("C", tube1)).isEqualTo(2);
+
         assertThat(scheduledJobSystem.getAllReadyChannels(tube1))
                 .containsExactlyInAnyOrder("A");
 
         reserveAndAssert.accept("A");
         reserveAndAssert.accept("A");
 
+        assertThat(scheduledJobSystem.getRunningCountForChannel("A", tube1)).isEqualTo(10);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("B", tube1)).isEqualTo(5);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("C", tube1)).isEqualTo(2);
+
         assertThat(scheduledJobSystem.getAllReadyChannels(tube1))
                 .isEmpty();
 
         assertThat(scheduledJobSystem.getRunningJobCount(tube1)).isEqualTo(17);
+
     }
 
     @Test
@@ -249,7 +282,6 @@ public class MultiChannelSchedulerTest {
 
         assertThat(scheduledJobSystem.getAllReadyJobCount(tube1)).isEqualTo(0);
         assertThat(scheduledJobSystem.getRunningJobCount(tube1)).isEqualTo(3);
-
     }
 
 
@@ -425,7 +457,13 @@ public class MultiChannelSchedulerTest {
         assertThat(scheduledJobSystem.inRunningQueue(tube1, jobId)).isTrue();
         assertThat(scheduledJobSystem.inReadyQueue("A", tube1, jobId)).isTrue();
 
+        assertThat(scheduledJobSystem.getRunningCountForChannel("A", tube1)).isEqualTo(1);
         assertThat(scheduledJobSystem.deleteJob("A", tube1, jobId)).isTrue();
+        assertThat(scheduledJobSystem.getRunningCountForChannel("A", tube1)).isEqualTo(0);
+
+        assertThat(scheduledJobSystem.deleteJob("A", tube1, jobId)).isFalse();
+        assertThat(scheduledJobSystem.getRunningCountForChannel("A", tube1)).isEqualTo(0);
+
 
         // submit & reserve a job in another channel to make sure we cleaned up internal state
         scheduledJobSystem.schedule("B", tube1, jobId + "_1", 0);
@@ -440,6 +478,9 @@ public class MultiChannelSchedulerTest {
                 .hasSize(1)
                 .extracting(JobInfo::getJobStr)
                 .containsExactly(jobId + "_1");
+        assertThat(scheduledJobSystem.getRunningCountForChannel("A", tube1)).isEqualTo(0);
+        assertThat(scheduledJobSystem.getRunningCountForChannel("B", tube1)).isEqualTo(1);
+
     }
 
     @Test
@@ -609,7 +650,7 @@ public class MultiChannelSchedulerTest {
         // tried to reserve 1 but 2 + 1 running would be > 2
         assertThat(reserved).isEmpty();
 
-        scheduledJobSystem.ackJob(tube1, jobId + "_1");
+        scheduledJobSystem.ackJob(channel1, tube1, jobId + "_1");
         reserved = scheduledJobSystem.reserveMulti(tube1, 1_0000L, 1, 2);
         // tried to reserve 1 but 1 + 1  <= 2 so we're good
         assertThat(reserved).hasSize(1)

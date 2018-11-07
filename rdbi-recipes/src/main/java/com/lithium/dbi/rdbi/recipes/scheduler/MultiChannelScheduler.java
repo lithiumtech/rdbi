@@ -1,10 +1,12 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
+import com.google.common.primitives.Ints;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import redis.clients.jedis.Tuple;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
@@ -108,6 +110,7 @@ public class MultiChannelScheduler {
                     getReadyQueue(channel, tube),
                     getRunningQueue(tube),
                     getPausedKey(channel, tube),
+                    getRunningCountKey(channel, tube),
                     maxNumberOfJobs,
                     runningLimit,
                     clock.getAsLong(),
@@ -141,10 +144,12 @@ public class MultiChannelScheduler {
     /**
      * See {@link StateDedupedJobScheduler#ackJob(java.lang.String, java.lang.String)}
      */
-    public boolean ackJob(String tube, String job) {
+    public boolean ackJob(String channel, String tube, String job) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(MultiChannelSchedulerDAO.class)
-                              .ackJob(getRunningQueue(tube), job);
+                              .ackJob(getRunningQueue(tube),
+                                      getRunningCountKey(channel, tube),
+                                      job);
         }
     }
 
@@ -154,7 +159,8 @@ public class MultiChannelScheduler {
     public List<TimeJobInfo> removeExpiredRunningJobs(String tube) {
         try (Handle handle = rdbi.open()) {
             return handle.attach(MultiChannelSchedulerDAO.class)
-                         .removeExpiredJobs(getRunningQueue(tube), clock.getAsLong());
+                         .removeExpiredJobs(getRunningQueue(tube),
+                                            clock.getAsLong());
         }
     }
 
@@ -180,6 +186,7 @@ public class MultiChannelScheduler {
                                          getMultiChannelSet(tube),
                                          getReadyQueue(channel, tube),
                                          getRunningQueue(tube),
+                                         getRunningCountKey(channel, tube),
                                          getTubePrefix(channel, tube),
                                          job
                                         );
@@ -267,6 +274,14 @@ public class MultiChannelScheduler {
         return peekInternal(getRunningQueue(tube), 0.0d, (double) clock.getAsLong(), offset, count);
     }
 
+    public Integer getRunningCountForChannel(String channel, String tube) {
+       final String key = getRunningCountKey(channel, tube);
+       final String count = rdbi.withHandle(h -> h.jedis().get(key));
+       return Optional.ofNullable(count)
+               .map(Ints::tryParse)
+               .orElse(0);
+    }
+
     private List<TimeJobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
         try (Handle handle = rdbi.open()) {
             Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
@@ -313,5 +328,9 @@ public class MultiChannelScheduler {
 
     private String getPausedKey(String channel, String tube) {
         return getTubePrefix(channel, tube) + ":paused";
+    }
+
+    private String getRunningCountKey(String channel, String tube) {
+        return getTubePrefix(channel, tube) + ":running_count";
     }
 }
