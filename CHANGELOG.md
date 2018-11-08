@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.87](https://github.com/lithiumtech/rdbi/tree/rdbi-0.87) (2018-11-08)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.86...rdbi-0.87)
+
+**Merged pull requests:**
+
+- NUC-2025: per-channel limit support [\#81](https://github.com/lithiumtech/rdbi/pull/81) ([gjesse](https://github.com/gjesse))
+
 ## [rdbi-0.86](https://github.com/lithiumtech/rdbi/tree/rdbi-0.86) (2018-11-05)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.85...rdbi-0.86)
 
