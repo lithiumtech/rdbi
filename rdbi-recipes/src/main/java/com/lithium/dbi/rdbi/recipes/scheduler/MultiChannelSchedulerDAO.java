@@ -49,6 +49,7 @@ public interface MultiChannelSchedulerDAO {
             "local nextLimit = tonumber($limit$)\n" +
             "local reserved = {}\n" +
             "local runningLimit = tonumber($runningLimit$)\n" +
+            "local perChannelLimit = tonumber($perChannelLimit$)\n" +
             "if runningLimit > 0 then\n" +
             "  local nowRunning = redis.call('ZCARD', $runningQueue$)\n" +
             "  if nextLimit + nowRunning > runningLimit then\n" +
@@ -62,7 +63,6 @@ public interface MultiChannelSchedulerDAO {
             "for chanIdx = 1, channelCount do\n" +
             "  local nextChannel = redis.call('RPOPLPUSH', $multiChannelCircularBuffer$, $multiChannelCircularBuffer$)\n" +
             "  local readyQueue = nextChannel .. \":ready_queue\"\n" +
-                    // todo also add a param to limit by channel and check it after this
             "  local runningCount = nextChannel .. \":running_count\"\n" +
             "  local pausedTube = nextChannel .. \":paused\"\n" +
             "  local isPaused = redis.call('GET', pausedTube) \n" +
@@ -81,10 +81,14 @@ public interface MultiChannelSchedulerDAO {
             "     for i=1,#jobs,2 do\n" +
             "        local inRunningQueue = redis.call('ZSCORE', $runningQueue$, jobs[i])\n" +
             "        if not inRunningQueue then\n" +
+            "            if perChannelLimit > 0 then\n" +
+            "              local runningForChannel = redis.call('GET', runningCount)\n" +
+            "              if runningForChannel and tonumber(runningForChannel) >= perChannelLimit then\n" +
+            "                break\n" +
+            "              end\n" +
+            "            end\n" +
             "            reserved[reservedIndex] = jobs[i]\n" +
             "            reserved[reservedIndex + 1] = jobs[i + 1]\n" +
-                    // todo add a param to determine if we are limiting by channel - if so check 'runningCount' here
-                    // and bail out if needed
             "            redis.call('ZREM', readyQueue, reserved[reservedIndex])\n" +
             "            redis.call('ZADD', $runningQueue$, $ttl$, reserved[reservedIndex])\n" +
             "            redis.call('INCR', runningCount)\n" +
@@ -113,6 +117,7 @@ public interface MultiChannelSchedulerDAO {
             @BindKey("runningQueue") String runningQueue,
             @BindArg("limit") int limit,
             @BindArg("runningLimit") int runningLimit,
+            @BindArg("perChannelLimit") int perChannelLimit,
             @BindArg("now") long now,
             @BindArg("ttl") long ttl);
 

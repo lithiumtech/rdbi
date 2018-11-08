@@ -650,12 +650,70 @@ public class MultiChannelSchedulerTest {
         // tried to reserve 1 but 2 + 1 running would be > 2
         assertThat(reserved).isEmpty();
 
-        scheduledJobSystem.ackJob(channel1, tube1, jobId + "_1");
+        scheduledJobSystem.ackJob("A", tube1, jobId + "_1");
         reserved = scheduledJobSystem.reserveMulti(tube1, 1_0000L, 1, 2);
         // tried to reserve 1 but 1 + 1  <= 2 so we're good
         assertThat(reserved).hasSize(1)
                             .extracting(JobInfo::getJobStr)
                             .containsExactly(jobId + "_3");
+    }
+
+
+
+    @Test
+    public void testReserveWithPerChannelRunningLimit() {
+        MultiChannelScheduler scheduledJobSystem  = new MultiChannelScheduler(rdbi, prefix);
+        String jobId = "doesnt-matter" + ":" + tube1;
+
+        scheduledJobSystem.schedule("A", tube1, jobId + "_A1", 0);
+        scheduledJobSystem.schedule("B", tube1, jobId + "_B1", 0);
+        scheduledJobSystem.schedule("C", tube1, jobId + "_C1", 0);
+
+        scheduledJobSystem.schedule("A", tube1, jobId + "_A2", 0);
+        scheduledJobSystem.schedule("A", tube1, jobId + "_A3", 0);
+        scheduledJobSystem.schedule("A", tube1, jobId + "_A4", 0);
+
+        List<TimeJobInfo> reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 3, 0, 2);
+
+        System.out.println(scheduledJobSystem.getRunningCountForChannel("A", tube1));
+        // we reserved 2 from a1 channel then hit our limit
+        assertThat(reserved)
+                .hasSize(3)
+                .extracting(JobInfo::getJobStr)
+                .containsExactly(jobId + "_A1", jobId + "_A2", jobId + "_B1");
+
+
+        assertThat(scheduledJobSystem.getRunningCountForChannel("A", tube1)).isEqualTo(2);
+
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_0000L, 2, 0, 2);
+        // tried to reserve 2 but, should get none for A but the one for C
+        assertThat(reserved)
+                .hasSize(1)
+                .extracting(JobInfo::getJobStr)
+                .containsExactly(jobId + "_C1");
+
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_0000L, 1, 0, 2);
+        // tried to reserve 1 but still cannot
+        assertThat(reserved).isEmpty();
+
+        // if we add a job for another channel
+        scheduledJobSystem.schedule("B", tube1, jobId + "_B2", 0);
+
+        // we should get it but not the A job
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_0000L, 2, 0, 2);
+        // tried to reserve 2 but, should get 1 for channel A but not the other one
+        assertThat(reserved)
+                .hasSize(1)
+                .extracting(JobInfo::getJobStr)
+                .containsExactly(jobId + "_B2");
+
+        // now lets ack one
+        scheduledJobSystem.ackJob("A", tube1, jobId + "_A1");
+        reserved = scheduledJobSystem.reserveMulti(tube1, 1_0000L, 1, 0, 2);
+        // we should be good
+        assertThat(reserved).hasSize(1)
+                            .extracting(JobInfo::getJobStr)
+                            .containsExactly(jobId + "_A3");
     }
 
     @Test
