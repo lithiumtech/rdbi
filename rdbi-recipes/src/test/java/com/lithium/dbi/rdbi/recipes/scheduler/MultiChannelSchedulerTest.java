@@ -72,6 +72,46 @@ public class MultiChannelSchedulerTest {
 
     }
 
+    @Test
+    public void testPerChannelTrackingNotNegative() {
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+
+        String jobId = channel1 + ":" + tube1 + "_1";
+        scheduledJobSystem.schedule(channel1, tube1, jobId, 0);
+        scheduledJobSystem.reserveMulti(tube1, 1000, 1);
+
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(1);
+
+        // artificially decrement
+        rdbi.withHandle(h -> h.jedis().decr(prefix + ":" + channel1 + ":" + tube1 + ":running_count"));
+
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(0);
+
+        scheduledJobSystem.ackJob(channel1, tube1, jobId);
+        // not negative
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(0);
+    }
+
+    @Test
+    public void testPerChannelTrackingNotNegative2() {
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+
+        String jobId = channel1 + ":" + tube1 + "_1";
+        scheduledJobSystem.schedule(channel1, tube1, jobId, 0);
+        scheduledJobSystem.reserveMulti(tube1, 1000, 1);
+
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(1);
+
+        // artificially remove
+        rdbi.withHandle(h -> h.jedis().del(prefix + ":" + channel1 + ":" + tube1 + ":running_count"));
+
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(0);
+
+        scheduledJobSystem.ackJob(channel1, tube1, jobId);
+        // not negative
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(0);
+    }
+
 
     // test reserve multi works within a single channel.
     // it's a known limitation that it doesn't work across channels
