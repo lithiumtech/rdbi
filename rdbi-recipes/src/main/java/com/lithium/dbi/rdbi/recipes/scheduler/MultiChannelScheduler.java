@@ -109,7 +109,7 @@ public class MultiChannelScheduler {
      * @param runningLimit if &gt; 0, a limit of jobs we want to allow running for this particular tube type. If &lt;= 0, no limit will be enforced.
      * @param perChannelLimit if &gt; 0, a limit of jobs we want to allow running for any particular channel / tube combination. If &lt;= 0, no limit will be enforced.
      *                        Note that prior to using this, you must have called {@link #enablePerChannelTracking()}, otherwise this parameter will be ignored.
-     *                        Before enabling this, all scheduler clients should be upgraded to a version that supports per-channel tracking & limits
+     *                        Before enabling this, all scheduler clients should be upgraded to a version that supports per-channel tracking &amp; limits
      * @return list of jobs reserved (now considered "running",) or empty list if none.
      */
     public List<TimeJobInfo> reserveMulti(String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs, final int runningLimit, final int perChannelLimit) {
@@ -329,7 +329,7 @@ public class MultiChannelScheduler {
 
     /**
      * enables per-channel tracking. This must be called before per channel limits can be honored
-     * Before enabling this, all scheduler clients should be upgraded to a version that supports per-channel tracking & limits
+     * Before enabling this, all scheduler clients should be upgraded to a version that supports per-channel tracking &amp; limits
      *
      * @return true if tracking was previously disabled, false if the tracking had already been enabled
      */
