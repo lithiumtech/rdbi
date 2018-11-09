@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.88](https://github.com/lithiumtech/rdbi/tree/rdbi-0.88) (2018-11-09)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.87...rdbi-0.88)
+
+**Merged pull requests:**
+
+- NUC-2025 / don't go negative [\#82](https://github.com/lithiumtech/rdbi/pull/82) ([gjesse](https://github.com/gjesse))
+
 ## [rdbi-0.87](https://github.com/lithiumtech/rdbi/tree/rdbi-0.87) (2018-11-08)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.86...rdbi-0.87)
 
