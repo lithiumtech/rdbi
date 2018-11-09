@@ -123,6 +123,7 @@ public interface MultiChannelSchedulerDAO {
 
     /**
      * Will attempt to reserve up to $limit jobs for only 1 channel
+     * This method does not honor any per-channel limitations at present time
      */
     @Mapper(TimeJobInfoListMapper.class)
     @Query(
@@ -151,9 +152,6 @@ public interface MultiChannelSchedulerDAO {
             "      if not inRunningQueue then\n" +
             "          reserved[reservedIndex] = jobs[i]\n" +
             "          reserved[reservedIndex + 1] = jobs[i + 1]\n" +
-                    // todo consider adding a param to determine if we are limiting by channel - if so check 'runningCount' here
-                    // and bail out if needed. I kinda think that for this method where you are reserving by channel (eg dedicated gopher)
-                    // then we shouldn't limit it. that would help us shunt all of the trouble traffic for a customer onto one node
             "          redis.call('ZREM', $readyQueue$, reserved[reservedIndex])\n" +
             "          redis.call('ZADD', $runningQueue$, $ttl$, reserved[reservedIndex])\n" +
             "          redis.call('INCR', $runningCount$)\n" +
@@ -223,7 +221,13 @@ public interface MultiChannelSchedulerDAO {
      */
     @Query(
             "local removed = redis.call('ZREM', $runningQueue$, $job$)" +
-            "redis.call('DECRBY', $runningCount$, removed)\n" +
+            "local running = redis.call('GET', $runningCount$)\n" +
+            "if running and tonumber(running) > 0 then \n" +
+            "  redis.call('DECRBY', $runningCount$, removed)\n" +
+            "end\n" +
+            "if running and tonumber(running) < 0 then \n" +
+            "  redis.call('SET', $runningCount$, 0)\n" +
+            "end\n" +
             "return removed"
     )
     int ackJob(
@@ -284,8 +288,14 @@ public interface MultiChannelSchedulerDAO {
             "     redis.call('SREM', $multiChannelSet$, $channelPrefix$)\n" +
             "  end\n" +
             "end\n" +
-            "if removed > 0 then\n" +
-            "  redis.call('DECRBY', $runningCount$, removed)\n" +
+            "if removedFromRunning > 0 then\n" +
+            "  local running = redis.call('GET', $runningCount$)\n" +
+            "  if running and tonumber(running) > 0 then \n" +
+            "    redis.call('DECRBY', $runningCount$, removed)\n" +
+            "  end\n" +
+            "  if running and tonumber(running) < 0 then \n" +
+            "    redis.call('SET', $runningCount$, 0)\n" +
+            "  end\n" +
             "end\n" +
             "if removed == 0 and removedFromRunning == 0 then\n" +
             "  return 0\n" +
