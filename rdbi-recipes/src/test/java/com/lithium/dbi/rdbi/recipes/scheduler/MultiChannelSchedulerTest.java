@@ -34,6 +34,7 @@ public class MultiChannelSchedulerTest {
     @Test
     public void basicTest() {
         MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        scheduledJobSystem.enablePerChannelTracking();
 
         String jobId = channel1 + ":" + tube1 + "_1";
         boolean schedule1 = scheduledJobSystem.schedule(channel1, tube1, jobId, 0);
@@ -73,8 +74,60 @@ public class MultiChannelSchedulerTest {
     }
 
     @Test
+    public void testPerChannelTrackingToggles() {
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        assertThat(scheduledJobSystem.isPerChannelTrackingEnabled()).isFalse();
+
+
+        String jobId = channel1 + ":" + tube1 + "_1";
+        scheduledJobSystem.schedule(channel1, tube1, jobId, 0);
+        scheduledJobSystem.reserveMulti(tube1, 1000, 1);
+
+        // we aren't tracking yet
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(0);
+
+        // now enable
+        assertThat(scheduledJobSystem.enablePerChannelTracking()).isTrue();
+        assertThat(scheduledJobSystem.isPerChannelTrackingEnabled()).isTrue();
+        // if we tried to enable again, we get a false but are still enabled
+        assertThat(scheduledJobSystem.enablePerChannelTracking()).isFalse();
+        assertThat(scheduledJobSystem.isPerChannelTrackingEnabled()).isTrue();
+
+        // we don't automagically track things that were already running
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(0);
+
+        scheduledJobSystem.ackJob(channel1, tube1, jobId);
+
+        // even though we're tracking, negatives can't happen
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(0);
+
+        scheduledJobSystem.schedule(channel1, tube1, jobId, 0);
+        scheduledJobSystem.reserveMulti(tube1, 1000, 1);
+
+        // we are tracking yet
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(1);
+
+        // now disable
+        assertThat(scheduledJobSystem.disablePerChannelTracking()).isTrue();
+        assertThat(scheduledJobSystem.isPerChannelTrackingEnabled()).isFalse();
+        // if we tried to disable again we get false but still disabled
+        assertThat(scheduledJobSystem.disablePerChannelTracking()).isFalse();
+        assertThat(scheduledJobSystem.isPerChannelTrackingEnabled()).isFalse();
+
+        // we can't automagically untrack things
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(1);
+
+
+        scheduledJobSystem.ackJob(channel1, tube1, jobId);
+
+        // even though we're not tracking anymore we still decrement on exit
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(0);
+    }
+
+    @Test
     public void testPerChannelTrackingNotNegative() {
         MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        scheduledJobSystem.enablePerChannelTracking();
 
         String jobId = channel1 + ":" + tube1 + "_1";
         scheduledJobSystem.schedule(channel1, tube1, jobId, 0);
@@ -95,6 +148,7 @@ public class MultiChannelSchedulerTest {
     @Test
     public void testPerChannelTrackingNotNegative2() {
         MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        scheduledJobSystem.enablePerChannelTracking();
 
         String jobId = channel1 + ":" + tube1 + "_1";
         scheduledJobSystem.schedule(channel1, tube1, jobId, 0);
@@ -146,7 +200,7 @@ public class MultiChannelSchedulerTest {
         TestClock clock = new TestClock(System.currentTimeMillis() - 30, 1L);
 
         MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix, clock);
-
+        scheduledJobSystem.enablePerChannelTracking();
 
         boolean allScheduled = IntStream.rangeClosed(1, 10).mapToObj(i -> {
             clock.tick(); // make sure time passes between each submitted job
@@ -487,6 +541,8 @@ public class MultiChannelSchedulerTest {
     @Test
     public void testDeleteJob() {
         MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        scheduledJobSystem.enablePerChannelTracking();
+
         String jobId = "doesnt-matter" + ":" + tube1;
         scheduledJobSystem.schedule("A", tube1, jobId, 0);
 
@@ -703,6 +759,8 @@ public class MultiChannelSchedulerTest {
     @Test
     public void testReserveWithPerChannelRunningLimit() {
         MultiChannelScheduler scheduledJobSystem  = new MultiChannelScheduler(rdbi, prefix);
+        scheduledJobSystem.enablePerChannelTracking();
+
         String jobId = "doesnt-matter" + ":" + tube1;
 
         scheduledJobSystem.schedule("A", tube1, jobId + "_A1", 0);

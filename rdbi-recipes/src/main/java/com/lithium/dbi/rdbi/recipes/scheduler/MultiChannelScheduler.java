@@ -108,6 +108,8 @@ public class MultiChannelScheduler {
      * @param maxNumberOfJobs number of jobs to reserve.
      * @param runningLimit if &gt; 0, a limit of jobs we want to allow running for this particular tube type. If &lt;= 0, no limit will be enforced.
      * @param perChannelLimit if &gt; 0, a limit of jobs we want to allow running for any particular channel / tube combination. If &lt;= 0, no limit will be enforced.
+     *                        Note that prior to using this, you must have called {@link #enablePerChannelTracking()}, otherwise this parameter will be ignored.
+     *                        Before enabling this, all scheduler clients should be upgraded to a version that supports per-channel tracking & limits
      * @return list of jobs reserved (now considered "running",) or empty list if none.
      */
     public List<TimeJobInfo> reserveMulti(String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs, final int runningLimit, final int perChannelLimit) {
@@ -116,6 +118,7 @@ public class MultiChannelScheduler {
                     getMultiChannelCircularBuffer(tube),
                     getMultiChannelSet(tube),
                     getRunningQueue(tube),
+                    getPerChannelTrackingEnabled(),
                     maxNumberOfJobs,
                     runningLimit,
                     perChannelLimit,
@@ -129,6 +132,7 @@ public class MultiChannelScheduler {
             return handle.attach(MultiChannelSchedulerDAO.class).reserveJobsForChannel(
                     getReadyQueue(channel, tube),
                     getRunningQueue(tube),
+                    getPerChannelTrackingEnabled(),
                     getPausedKey(channel, tube),
                     getRunningCountKey(channel, tube),
                     maxNumberOfJobs,
@@ -319,6 +323,31 @@ public class MultiChannelScheduler {
         return inQueue(getRunningQueue(tube), job);
     }
 
+    public boolean isPerChannelTrackingEnabled() {
+        return rdbi.withHandle(h -> h.jedis().get(getPerChannelTrackingEnabled()) != null);
+    }
+
+    /**
+     * enables per-channel tracking. This must be called before per channel limits can be honored
+     * Before enabling this, all scheduler clients should be upgraded to a version that supports per-channel tracking & limits
+     *
+     * @return true if tracking was previously disabled, false if the tracking had already been enabled
+     */
+    public boolean enablePerChannelTracking() {
+        return rdbi.withHandle(h -> h.jedis().setnx(getPerChannelTrackingEnabled(), "1") == 1 );
+    }
+
+
+    /**
+     * disabled per-channel tracking.
+     * @return true if tracking was previously enabled, false if the tracking had already been disabled
+     */
+    public boolean disablePerChannelTracking() {
+        return rdbi.withHandle(h -> h.jedis().del(getPerChannelTrackingEnabled()) != 0 );
+    }
+
+
+
     private boolean inQueue(String queueName, String job) {
         try (Handle handle = rdbi.open()) {
             return 1 == handle.attach(MultiChannelSchedulerDAO.class)
@@ -352,5 +381,9 @@ public class MultiChannelScheduler {
 
     private String getRunningCountKey(String channel, String tube) {
         return getTubePrefix(channel, tube) + ":running_count";
+    }
+
+    private String getPerChannelTrackingEnabled() {
+        return prefix + ":per_channel_tracking_enabled";
     }
 }
