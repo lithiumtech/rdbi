@@ -1,5 +1,13 @@
 # Change Log
 
+## [rdbi-0.89](https://github.com/lithiumtech/rdbi/tree/rdbi-0.89) (2018-11-09)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.88...rdbi-0.89)
+
+**Merged pull requests:**
+
+- grrr [\#84](https://github.com/lithiumtech/rdbi/pull/84) ([gjesse](https://github.com/gjesse))
+- NUC-2025: add a switch to turn this on simultaneously [\#83](https://github.com/lithiumtech/rdbi/pull/83) ([gjesse](https://github.com/gjesse))
+
 ## [rdbi-0.88](https://github.com/lithiumtech/rdbi/tree/rdbi-0.88) (2018-11-09)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.87...rdbi-0.88)
 
