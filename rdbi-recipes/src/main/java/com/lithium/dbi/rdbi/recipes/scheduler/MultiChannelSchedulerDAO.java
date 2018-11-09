@@ -60,6 +60,7 @@ public interface MultiChannelSchedulerDAO {
             "if channelCount == 0 then\n" +
             "  return reserved\n" +
             "end\n" +
+            "local perChannelTracking = redis.call('GET', $perChannelTracking$)\n" +
             "for chanIdx = 1, channelCount do\n" +
             "  local nextChannel = redis.call('RPOPLPUSH', $multiChannelCircularBuffer$, $multiChannelCircularBuffer$)\n" +
             "  local readyQueue = nextChannel .. \":ready_queue\"\n" +
@@ -81,7 +82,7 @@ public interface MultiChannelSchedulerDAO {
             "     for i=1,#jobs,2 do\n" +
             "        local inRunningQueue = redis.call('ZSCORE', $runningQueue$, jobs[i])\n" +
             "        if not inRunningQueue then\n" +
-            "            if perChannelLimit > 0 then\n" +
+            "            if perChannelTracking and perChannelLimit > 0 then\n" +
             "              local runningForChannel = redis.call('GET', runningCount)\n" +
             "              if runningForChannel and tonumber(runningForChannel) >= perChannelLimit then\n" +
             "                break\n" +
@@ -91,7 +92,9 @@ public interface MultiChannelSchedulerDAO {
             "            reserved[reservedIndex + 1] = jobs[i + 1]\n" +
             "            redis.call('ZREM', readyQueue, reserved[reservedIndex])\n" +
             "            redis.call('ZADD', $runningQueue$, $ttl$, reserved[reservedIndex])\n" +
-            "            redis.call('INCR', runningCount)\n" +
+            "            if perChannelTracking then \n" +
+            "              redis.call('INCR', runningCount)\n" +
+            "            end\n" +
             "            reservedIndex = reservedIndex + 2\n" +
             "            nextLimit = nextLimit - 1\n" +
             "            local hasReady = redis.call('ZCARD', readyQueue)\n" +
@@ -115,6 +118,7 @@ public interface MultiChannelSchedulerDAO {
             @BindKey("multiChannelCircularBuffer") String multiChannelCircularBuffer,
             @BindKey("multiChannelSet") String multiChannelSet,
             @BindKey("runningQueue") String runningQueue,
+            @BindKey("perChannelTracking") String perChannelTracking,
             @BindArg("limit") int limit,
             @BindArg("runningLimit") int runningLimit,
             @BindArg("perChannelLimit") int perChannelLimit,
@@ -140,6 +144,7 @@ public interface MultiChannelSchedulerDAO {
             "    return reserved\n" +
             "  end\n" +
             "end\n" +
+            "local perChannelTracking = redis.call('GET', $perChannelTracking$)\n" +
             "local reservedIndex = 1\n" +
             "local nextOffset = 0\n" +
             "while nextLimit > 0 do\n" +
@@ -154,7 +159,9 @@ public interface MultiChannelSchedulerDAO {
             "          reserved[reservedIndex + 1] = jobs[i + 1]\n" +
             "          redis.call('ZREM', $readyQueue$, reserved[reservedIndex])\n" +
             "          redis.call('ZADD', $runningQueue$, $ttl$, reserved[reservedIndex])\n" +
-            "          redis.call('INCR', $runningCount$)\n" +
+            "          if perChannelTracking then \n" +
+            "            redis.call('INCR', $runningCount$)\n" +
+            "          end\n" +
             "          reservedIndex = reservedIndex + 2\n" +
             "          nextLimit = nextLimit - 1\n" +
             "      end\n" +
@@ -166,6 +173,7 @@ public interface MultiChannelSchedulerDAO {
     List<TimeJobInfo> reserveJobsForChannel(
             @BindKey("readyQueue") String readyQueue,
             @BindKey("runningQueue") String runningQueue,
+            @BindKey("perChannelTracking") String perChannelTracking,
             @BindKey("pausedTube") String pausedTube,
             @BindKey("runningCount") String runningCountKey,
             @BindArg("limit") int limit,
