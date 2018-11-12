@@ -1,5 +1,13 @@
 # Change Log
 
+## [rdbi-0.90](https://github.com/lithiumtech/rdbi/tree/rdbi-0.90) (2018-11-12)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.89...rdbi-0.90)
+
+**Merged pull requests:**
+
+- close one [\#86](https://github.com/lithiumtech/rdbi/pull/86) ([gjesse](https://github.com/gjesse))
+- NUC-2025: add some expiration so we clean up after ourselves for one … [\#85](https://github.com/lithiumtech/rdbi/pull/85) ([gjesse](https://github.com/gjesse))
+
 ## [rdbi-0.89](https://github.com/lithiumtech/rdbi/tree/rdbi-0.89) (2018-11-09)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.88...rdbi-0.89)
 
