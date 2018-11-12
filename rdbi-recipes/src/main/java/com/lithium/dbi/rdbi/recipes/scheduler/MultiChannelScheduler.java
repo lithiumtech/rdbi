@@ -8,6 +8,7 @@ import redis.clients.jedis.Tuple;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 
@@ -179,13 +180,60 @@ public class MultiChannelScheduler {
 
     /**
      * See {@link StateDedupedJobScheduler#removeExpiredRunningJobs(java.lang.String)}
+     * <br/><br/>
+     * <b>IMPORTANT:</b> in addition, clients should iterate through the results of these, and call {@link #decrementRunningCount(String, String)}
+     * for each job that was expired. RDBI scheduler is at present unable to positively match up a job id with the
+     * channel / tube that it was scheduled for, so it cannot decrement that value on its own. Failure to do this
+     * will result in overcounting of running jobs by channel and tube, and possibly lead to inability to reserve
+     * jobs if you are also attempting to limit jobs by type and company.
+     * <p>
+     * {@link #removeExpiredRunningJobsAndDecrementCount(String, Function)} is provided as a convenience to
+     * bundle these operations - it is recommended to use that method instead of this one.
      **/
     public List<TimeJobInfo> removeExpiredRunningJobs(String tube) {
         try (Handle handle = rdbi.open()) {
             return handle.attach(MultiChannelSchedulerDAO.class)
-                         .removeExpiredJobs(getRunningQueue(tube),
-                                            clock.getAsLong());
+                         .removeExpiredRunningJobs(getRunningQueue(tube),
+                                                   clock.getAsLong());
         }
+    }
+
+    /**
+     * Attempts to decrement the running count for a channel/tube combo, unless the count is already at zero
+     * <p>
+     * most likely to be used after calling {@link #removeExpiredRunningJobs(String)}
+     * <p>
+     * It is not recommended to use this directly, but use {@link #removeExpiredRunningJobsAndDecrementCount(String, Function)}
+     * instead.
+     * <p>
+     *
+     * @param channel the channel to operate on
+     * @param tube    the tube to operate on
+     * @return the amount the running count was decremented by (1 or 0)
+     */
+    public long decrementRunningCount(String channel, String tube) {
+        try (Handle handle = rdbi.open()) {
+            return handle.attach(MultiChannelSchedulerDAO.class)
+                         .decrementRunningCount(getRunningCountKey(channel, tube));
+        }
+    }
+
+    /**
+     * will remove any expired running jobs and update the associated counters for those jobs
+     * so that we can keep accurate track by channel and tube of what's running.
+     *
+     * @param tube the tube to operate on
+     * @param jobToChannelFunction client-provided function to convert a TimeJobInfo object into a channel that must be used to
+     *                             update running counts
+     * @return
+     */
+    public List<TimeJobInfo> removeExpiredRunningJobsAndDecrementCount(String tube, Function<TimeJobInfo, String> jobToChannelFunction) {
+        final List<TimeJobInfo> timeJobInfoList = removeExpiredRunningJobs(tube);
+        timeJobInfoList.stream()
+                       .map(jobToChannelFunction)
+                       .forEach(channel -> decrementRunningCount(channel, tube));
+
+        return timeJobInfoList;
     }
 
     /**

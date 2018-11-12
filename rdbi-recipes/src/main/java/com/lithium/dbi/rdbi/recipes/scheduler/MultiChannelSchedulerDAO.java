@@ -183,12 +183,12 @@ public interface MultiChannelSchedulerDAO {
 
     @Mapper(TimeJobInfoListMapper.class)
     @Query(
-            "local expiredJobs = redis.call('ZRANGEBYSCORE', $queue$, 0, $expirationTimeInMillis$, 'WITHSCORES')\n" +
-            "redis.call('ZREMRANGEBYSCORE', $queue$, 0, $expirationTimeInMillis$)\n" +
+            "local expiredJobs = redis.call('ZRANGEBYSCORE', $runningQueue$, 0, $expirationTimeInMillis$, 'WITHSCORES')\n" +
+            "redis.call('ZREMRANGEBYSCORE', $runningQueue$, 0, $expirationTimeInMillis$)\n" +
             "return expiredJobs"
     )
-    List<TimeJobInfo> removeExpiredJobs(@BindKey("queue") String queue,
-                                        @BindArg("expirationTimeInMillis") Long expirationTimeInMillis);
+    List<TimeJobInfo> removeExpiredRunningJobs(@BindKey("runningQueue") String runningQueue,
+                                               @BindArg("expirationTimeInMillis") Long expirationTimeInMillis);
 
     @Mapper(TimeJobInfoListMapper.class)
     @Query(
@@ -233,7 +233,7 @@ public interface MultiChannelSchedulerDAO {
             "if running and tonumber(running) > 0 then \n" +
             "  local remaining = redis.call('DECRBY', $runningCount$, removed)\n" +
             "  if tonumber(remaining) == 0 then\n" +
-            "    redis.call('EXPIRE', $runningCount$, 86400)\n" +
+            "    redis.call('DEL', $runningCount$)\n" +
             "  end\n" +
             "end\n" +
             "if running and tonumber(running) < 0 then \n" +
@@ -304,11 +304,11 @@ public interface MultiChannelSchedulerDAO {
             "  if running and tonumber(running) > 0 then \n" +
             "    local remaining = redis.call('DECRBY', $runningCount$, removed)\n" +
             "    if tonumber(remaining) == 0 then\n" +
-            "      redis.call('EXPIRE', $runningCount$, 86400)\n" +
+            "      redis.call('DEL', $runningCount$)\n" +
             "    end\n" +
             "  end\n" +
             "  if running and tonumber(running) < 0 then \n" +
-            "    redis.call('SET', $runningCount$, 0)\n" +
+            "    redis.call('DEL', $runningCount$)\n" +
             "  end\n" +
             "end\n" +
             "if removed == 0 and removedFromRunning == 0 then\n" +
@@ -325,4 +325,21 @@ public interface MultiChannelSchedulerDAO {
             @BindKey("runningCount") String runningCountKey,
             @BindArg("channelPrefix") String channelPrefix,
             @BindArg("job") String job);
+
+    @Query(
+            "local running = redis.call('GET', $runningCount$)\n" +
+            "if running and tonumber(running) > 0 then \n" +
+            "  local remaining = redis.call('DECR', $runningCount$)\n" +
+            "  if tonumber(remaining) == 0 then\n" +
+            "    redis.call('DEL', $runningCount$)\n" +
+            "  end\n" +
+            "  return 1\n" +
+            "end\n" +
+            "if running and tonumber(running) < 0 then\n" +
+            "  redis.call('DEL', $runningCount$)\n" +
+            "end\n" +
+            "return 0\n"
+    )
+    long decrementRunningCount(@BindKey("runningCount") String runningCountKey);
+
 }
