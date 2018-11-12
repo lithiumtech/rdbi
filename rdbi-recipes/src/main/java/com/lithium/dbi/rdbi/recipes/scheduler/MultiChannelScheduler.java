@@ -180,7 +180,7 @@ public class MultiChannelScheduler {
 
     /**
      * See {@link StateDedupedJobScheduler#removeExpiredRunningJobs(java.lang.String)}
-     * <br/><br/>
+     * <p>
      * <b>IMPORTANT:</b> in addition, clients should iterate through the results of these, and call {@link #decrementRunningCount(String, String)}
      * for each job that was expired. RDBI scheduler is at present unable to positively match up a job id with the
      * channel / tube that it was scheduled for, so it cannot decrement that value on its own. Failure to do this
