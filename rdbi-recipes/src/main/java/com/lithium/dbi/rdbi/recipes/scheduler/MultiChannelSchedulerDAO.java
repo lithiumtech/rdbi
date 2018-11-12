@@ -231,7 +231,10 @@ public interface MultiChannelSchedulerDAO {
             "local removed = redis.call('ZREM', $runningQueue$, $job$)" +
             "local running = redis.call('GET', $runningCount$)\n" +
             "if running and tonumber(running) > 0 then \n" +
-            "  redis.call('DECRBY', $runningCount$, removed)\n" +
+            "  local remaining = redis.call('DECRBY', $runningCount$, removed)\n" +
+            "  if tonumber(remaining) == 0 then\n" +
+            "    redis.call('EXPIRE', $runningCount$, 86400)\n" +
+            "  end\n" +
             "end\n" +
             "if running and tonumber(running) < 0 then \n" +
             "  redis.call('SET', $runningCount$, 0)\n" +
@@ -299,7 +302,10 @@ public interface MultiChannelSchedulerDAO {
             "if removedFromRunning > 0 then\n" +
             "  local running = redis.call('GET', $runningCount$)\n" +
             "  if running and tonumber(running) > 0 then \n" +
-            "    redis.call('DECRBY', $runningCount$, removed)\n" +
+            "    local remaining = redis.call('DECRBY', $runningCount$, removed)\n" +
+            "    if tonumber(remaining) == 0 then\n" +
+            "      redis.call('EXPIRE', $runningCount$, 86400)\n" +
+            "    end\n" +
             "  end\n" +
             "  if running and tonumber(running) < 0 then \n" +
             "    redis.call('SET', $runningCount$, 0)\n" +

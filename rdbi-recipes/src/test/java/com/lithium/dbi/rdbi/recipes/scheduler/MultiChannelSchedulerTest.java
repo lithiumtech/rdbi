@@ -146,6 +146,42 @@ public class MultiChannelSchedulerTest {
     }
 
     @Test
+    public void testPerChannelTrackingTTL() {
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        scheduledJobSystem.enablePerChannelTracking();
+
+        String jobId = channel1 + ":" + tube1 + "_1";
+        String jobId2 = channel1 + ":" + tube1 + "_2";
+
+        scheduledJobSystem.schedule(channel1, tube1, jobId, 0);
+        scheduledJobSystem.reserveMulti(tube1, 1000, 1);
+
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(1);
+
+        long ttl = rdbi.withHandle(h -> h.jedis().ttl(prefix + ":" + channel1 + ":" + tube1 + ":running_count"));
+        assertThat(ttl).isEqualTo(-1L);
+
+        scheduledJobSystem.schedule(channel1, tube1, jobId2, 0);
+        scheduledJobSystem.reserveMulti(tube1, 1000, 1);
+
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(2);
+
+        scheduledJobSystem.ackJob(channel1, tube1, jobId);
+
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(1);
+        ttl = rdbi.withHandle(h -> h.jedis().ttl(prefix + ":" + channel1 + ":" + tube1 + ":running_count"));
+        assertThat(ttl).isEqualTo(-1L);
+
+
+        scheduledJobSystem.ackJob(channel1, tube1, jobId2);
+
+        assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(0);
+        ttl = rdbi.withHandle(h -> h.jedis().ttl(prefix + ":" + channel1 + ":" + tube1 + ":running_count"));
+        assertThat(ttl).isBetween(86398L, 86400L);
+
+    }
+
+    @Test
     public void testPerChannelTrackingNotNegative2() {
         MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
         scheduledJobSystem.enablePerChannelTracking();
