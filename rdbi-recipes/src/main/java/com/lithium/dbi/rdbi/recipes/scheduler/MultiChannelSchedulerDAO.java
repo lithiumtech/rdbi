@@ -50,6 +50,10 @@ public interface MultiChannelSchedulerDAO {
             "local reserved = {}\n" +
             "local runningLimit = tonumber($runningLimit$)\n" +
             "local perChannelLimit = tonumber($perChannelLimit$)\n" +
+            "local perChannelTracking = redis.call('GET', $perChannelTracking$)\n" +
+            "local function perChannelLimitReached(running) \n" +
+            "  return perChannelTracking and perChannelLimit > 0 and running >= perChannelLimit\n" +
+            "end\n" +
             "if runningLimit > 0 then\n" +
             "  local nowRunning = redis.call('ZCARD', $runningQueue$)\n" +
             "  if nextLimit + nowRunning > runningLimit then\n" +
@@ -60,7 +64,6 @@ public interface MultiChannelSchedulerDAO {
             "if channelCount == 0 then\n" +
             "  return reserved\n" +
             "end\n" +
-            "local perChannelTracking = redis.call('GET', $perChannelTracking$)\n" +
             "for chanIdx = 1, channelCount do\n" +
             "  local nextChannel = redis.call('RPOPLPUSH', $multiChannelCircularBuffer$, $multiChannelCircularBuffer$)\n" +
             "  local readyQueue = nextChannel .. \":ready_queue\"\n" +
@@ -68,44 +71,48 @@ public interface MultiChannelSchedulerDAO {
             "  local pausedTube = nextChannel .. \":paused\"\n" +
             "  local isPaused = redis.call('GET', pausedTube) \n" +
             "  local hasReady = redis.call('ZCARD', readyQueue)\n" +
+            "  local runningForChannel = redis.call('GET', runningCount)\n" +
+            "  if runningForChannel then\n" +
+            "    runningForChannel = tonumber(runningForChannel)\n" +
+            "  else \n" +
+            "    runningForChannel = 0\n" +
+            "  end\n" +
             "  if hasReady == 0 then\n" +
             //   as a result of RPOPLPUSH call above we know our channel is at the head of the list
             "    redis.call('LPOP', $multiChannelCircularBuffer$)\n" +
             "    redis.call('SREM', $multiChannelSet$, nextChannel)\n" +
             "  end\n" +
             "  local nextOffset = 0\n" +
-            "  while nextLimit > 0 and not isPaused and hasReady > 0 do\n" +
-            "     local jobs = redis.call('ZRANGEBYSCORE', readyQueue, 0, $now$, 'WITHSCORES', 'LIMIT', nextOffset, nextLimit)\n" +
-            "     if next(jobs) == nil then\n" +
-            "       break\n" +
-            "     end\n" +
-            "     for i=1,#jobs,2 do\n" +
-            "        local inRunningQueue = redis.call('ZSCORE', $runningQueue$, jobs[i])\n" +
-            "        if not inRunningQueue then\n" +
-            "            if perChannelTracking and perChannelLimit > 0 then\n" +
-            "              local runningForChannel = redis.call('GET', runningCount)\n" +
-            "              if runningForChannel and tonumber(runningForChannel) >= perChannelLimit then\n" +
-            "                break\n" +
-            "              end\n" +
-            "            end\n" +
-            "            reserved[reservedIndex] = jobs[i]\n" +
-            "            reserved[reservedIndex + 1] = jobs[i + 1]\n" +
-            "            redis.call('ZREM', readyQueue, reserved[reservedIndex])\n" +
-            "            redis.call('ZADD', $runningQueue$, $ttl$, reserved[reservedIndex])\n" +
-            "            if perChannelTracking then \n" +
-            "              redis.call('INCR', runningCount)\n" +
-            "            end\n" +
-            "            reservedIndex = reservedIndex + 2\n" +
-            "            nextLimit = nextLimit - 1\n" +
-            "            local hasReady = redis.call('ZCARD', readyQueue)\n" +
-            "            if hasReady == 0 then\n" +
-            //             as a result of RPOPLPUSH call above we know our channel is at the head of the list
-            "              redis.call('LPOP', $multiChannelCircularBuffer$)\n" +
-            "              redis.call('SREM', $multiChannelSet$, nextChannel)\n" +
-            "            end\n" +
-            "        end\n" +
-            "     end\n" +
-            "     nextOffset = nextOffset + nextLimit\n" +
+            "  while nextLimit > 0 and not isPaused and hasReady > 0 and not perChannelLimitReached(runningForChannel) do\n" +
+            "    local jobs = redis.call('ZRANGEBYSCORE', readyQueue, 0, $now$, 'WITHSCORES', 'LIMIT', nextOffset, nextLimit)\n" +
+            "    if next(jobs) == nil then\n" +
+            "      break\n" +
+            "    end\n" +
+            "    for i=1,#jobs,2 do\n" +
+                    "if perChannelLimitReached(runningForChannel) then\n" +
+                    "  break\n" +
+                    "end\n" +
+            "       local inRunningQueue = redis.call('ZSCORE', $runningQueue$, jobs[i])\n" +
+            "       if not inRunningQueue then\n" +
+            "           reserved[reservedIndex] = jobs[i]\n" +
+            "           reserved[reservedIndex + 1] = jobs[i + 1]\n" +
+            "           redis.call('ZREM', readyQueue, reserved[reservedIndex])\n" +
+            "           redis.call('ZADD', $runningQueue$, $ttl$, reserved[reservedIndex])\n" +
+            "           if perChannelTracking then \n" +
+            "             redis.call('INCR', runningCount)\n" +
+            "             runningForChannel = runningForChannel + 1\n" +
+            "           end\n" +
+            "           reservedIndex = reservedIndex + 2\n" +
+            "           nextLimit = nextLimit - 1\n" +
+            "           local hasReady = redis.call('ZCARD', readyQueue)\n" +
+            "           if hasReady == 0 then\n" +
+            //            as a result of RPOPLPUSH call above we know our channel is at the head of the list
+            "             redis.call('LPOP', $multiChannelCircularBuffer$)\n" +
+            "             redis.call('SREM', $multiChannelSet$, nextChannel)\n" +
+            "           end\n" +
+            "       end\n" +
+            "    end\n" +
+            "    nextOffset = nextOffset + nextLimit\n" +
             "  end\n" +
             // return early if we have enough jobs
             "  if nextLimit == 0 then\n" +

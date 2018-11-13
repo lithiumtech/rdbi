@@ -105,7 +105,7 @@ public class MultiChannelSchedulerTest {
         scheduledJobSystem.schedule(channel1, tube1, jobId, 0);
         scheduledJobSystem.reserveMulti(tube1, 1000, 1);
 
-        // we are tracking yet
+        // we are tracking now
         assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(1);
 
         // now disable
@@ -817,6 +817,32 @@ public class MultiChannelSchedulerTest {
     }
 
 
+    @Test
+    public void testReserveWithPerChannelAtScaleRunningLimit() {
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        scheduledJobSystem.enablePerChannelTracking();
+
+        String jobId = "doesnt-matter" + ":" + tube1;
+
+
+        IntStream.range(1, 3000).forEach(i -> {
+            scheduledJobSystem.schedule("A", tube1, jobId + "_A" + i, 0);
+        });
+
+        // reserve 1
+        scheduledJobSystem.reserveMulti(tube1, 1_000L, 1, 0, 1);
+
+        System.out.println("Starting second reserve:");
+        long start = System.currentTimeMillis();
+
+        // attempt reserve another
+        List<TimeJobInfo> reserved = scheduledJobSystem.reserveMulti(tube1, 1_000L, 1, 0, 1);
+        long elapsed = System.currentTimeMillis() - start;
+        System.out.println("Finished reserve. elapsed = " + elapsed);
+
+        assertThat(reserved).isEmpty();
+        assertThat(elapsed).isLessThanOrEqualTo(10L);
+    }
 
     @Test
     public void testReserveWithPerChannelRunningLimit() {
