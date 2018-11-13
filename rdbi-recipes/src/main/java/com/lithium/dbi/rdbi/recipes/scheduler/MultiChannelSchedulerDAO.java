@@ -89,28 +89,28 @@ public interface MultiChannelSchedulerDAO {
             "      break\n" +
             "    end\n" +
             "    for i=1,#jobs,2 do\n" +
-                    "if perChannelLimitReached(runningForChannel) then\n" +
-                    "  break\n" +
-                    "end\n" +
-            "       local inRunningQueue = redis.call('ZSCORE', $runningQueue$, jobs[i])\n" +
-            "       if not inRunningQueue then\n" +
-            "           reserved[reservedIndex] = jobs[i]\n" +
-            "           reserved[reservedIndex + 1] = jobs[i + 1]\n" +
-            "           redis.call('ZREM', readyQueue, reserved[reservedIndex])\n" +
-            "           redis.call('ZADD', $runningQueue$, $ttl$, reserved[reservedIndex])\n" +
-            "           if perChannelTracking then \n" +
-            "             redis.call('INCR', runningCount)\n" +
-            "             runningForChannel = runningForChannel + 1\n" +
-            "           end\n" +
-            "           reservedIndex = reservedIndex + 2\n" +
-            "           nextLimit = nextLimit - 1\n" +
-            "           local hasReady = redis.call('ZCARD', readyQueue)\n" +
-            "           if hasReady == 0 then\n" +
-            //            as a result of RPOPLPUSH call above we know our channel is at the head of the list
-            "             redis.call('LPOP', $multiChannelCircularBuffer$)\n" +
-            "             redis.call('SREM', $multiChannelSet$, nextChannel)\n" +
-            "           end\n" +
-            "       end\n" +
+            "      if perChannelLimitReached(runningForChannel) then\n" +
+            "        break\n" +
+            "      end\n" +
+            "      local inRunningQueue = redis.call('ZSCORE', $runningQueue$, jobs[i])\n" +
+            "      if not inRunningQueue then\n" +
+            "        reserved[reservedIndex] = jobs[i]\n" +
+            "        reserved[reservedIndex + 1] = jobs[i + 1]\n" +
+            "        redis.call('ZREM', readyQueue, reserved[reservedIndex])\n" +
+            "        redis.call('ZADD', $runningQueue$, $ttl$, reserved[reservedIndex])\n" +
+            "        if perChannelTracking then \n" +
+            "          redis.call('INCR', runningCount)\n" +
+            "          runningForChannel = runningForChannel + 1\n" +
+            "        end\n" +
+            "        reservedIndex = reservedIndex + 2\n" +
+            "        nextLimit = nextLimit - 1\n" +
+            "        local hasReady = redis.call('ZCARD', readyQueue)\n" +
+            "        if hasReady == 0 then\n" +
+            //         as a result of RPOPLPUSH call above we know our channel is at the head of the list
+            "          redis.call('LPOP', $multiChannelCircularBuffer$)\n" +
+            "          redis.call('SREM', $multiChannelSet$, nextChannel)\n" +
+            "        end\n" +
+            "      end\n" +
             "    end\n" +
             "    nextOffset = nextOffset + nextLimit\n" +
             "  end\n" +
