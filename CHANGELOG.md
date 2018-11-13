@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.91](https://github.com/lithiumtech/rdbi/tree/rdbi-0.91) (2018-11-13)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.90...rdbi-0.91)
+
+**Merged pull requests:**
+
+- security - update jackson [\#87](https://github.com/lithiumtech/rdbi/pull/87) ([gjesse](https://github.com/gjesse))
+
 ## [rdbi-0.90](https://github.com/lithiumtech/rdbi/tree/rdbi-0.90) (2018-11-12)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.89...rdbi-0.90)
 
