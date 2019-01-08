@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.92](https://github.com/lithiumtech/rdbi/tree/rdbi-0.92) (2019-01-08)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.91...rdbi-0.92)
+
+**Merged pull requests:**
+
+- Armalota make constructor public [\#88](https://github.com/lithiumtech/rdbi/pull/88) ([2bitoperations](https://github.com/2bitoperations))
+
 ## [rdbi-0.91](https://github.com/lithiumtech/rdbi/tree/rdbi-0.91) (2018-11-13)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.90...rdbi-0.91)
 
