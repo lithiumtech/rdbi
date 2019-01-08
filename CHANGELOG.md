@@ -1,5 +1,223 @@
 # Change Log
 
+## [rdbi-0.91](https://github.com/lithiumtech/rdbi/tree/rdbi-0.91) (2018-11-13)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.90...rdbi-0.91)
+
+**Merged pull requests:**
+
+- security - update jackson [\#87](https://github.com/lithiumtech/rdbi/pull/87) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.90](https://github.com/lithiumtech/rdbi/tree/rdbi-0.90) (2018-11-12)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.89...rdbi-0.90)
+
+**Merged pull requests:**
+
+- close one [\#86](https://github.com/lithiumtech/rdbi/pull/86) ([gjesse](https://github.com/gjesse))
+- NUC-2025: add some expiration so we clean up after ourselves for one … [\#85](https://github.com/lithiumtech/rdbi/pull/85) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.89](https://github.com/lithiumtech/rdbi/tree/rdbi-0.89) (2018-11-09)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.88...rdbi-0.89)
+
+**Merged pull requests:**
+
+- grrr [\#84](https://github.com/lithiumtech/rdbi/pull/84) ([gjesse](https://github.com/gjesse))
+- NUC-2025: add a switch to turn this on simultaneously [\#83](https://github.com/lithiumtech/rdbi/pull/83) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.88](https://github.com/lithiumtech/rdbi/tree/rdbi-0.88) (2018-11-09)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.87...rdbi-0.88)
+
+**Merged pull requests:**
+
+- NUC-2025 / don't go negative [\#82](https://github.com/lithiumtech/rdbi/pull/82) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.87](https://github.com/lithiumtech/rdbi/tree/rdbi-0.87) (2018-11-08)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.86...rdbi-0.87)
+
+**Merged pull requests:**
+
+- NUC-2025: per-channel limit support [\#81](https://github.com/lithiumtech/rdbi/pull/81) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.86](https://github.com/lithiumtech/rdbi/tree/rdbi-0.86) (2018-11-05)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.85...rdbi-0.86)
+
+**Merged pull requests:**
+
+- LSWR-6238 TokenBucketRateLimiter supports batch operations [\#80](https://github.com/lithiumtech/rdbi/pull/80) ([shadowsight1](https://github.com/shadowsight1))
+
+## [rdbi-0.85](https://github.com/lithiumtech/rdbi/tree/rdbi-0.85) (2018-06-26)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.84...rdbi-0.85)
+
+## [rdbi-0.84](https://github.com/lithiumtech/rdbi/tree/rdbi-0.84) (2018-06-22)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.83...rdbi-0.84)
+
+**Merged pull requests:**
+
+- CRUXX-580 up the expire timeout for expire and channel and depth [\#78](https://github.com/lithiumtech/rdbi/pull/78) ([phutwo](https://github.com/phutwo))
+
+## [rdbi-0.83](https://github.com/lithiumtech/rdbi/tree/rdbi-0.83) (2018-04-27)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.82...rdbi-0.83)
+
+**Merged pull requests:**
+
+- LAKE-873: Clean up channel recipes [\#77](https://github.com/lithiumtech/rdbi/pull/77) ([cschellenger](https://github.com/cschellenger))
+- LSWR-5322 ensure that all multi cache keys get TTL [\#76](https://github.com/lithiumtech/rdbi/pull/76) ([davewingate](https://github.com/davewingate))
+
+## [rdbi-0.82](https://github.com/lithiumtech/rdbi/tree/rdbi-0.82) (2018-02-27)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.81...rdbi-0.82)
+
+**Merged pull requests:**
+
+- Use Java Optional and Stream instead of Guava [\#75](https://github.com/lithiumtech/rdbi/pull/75) ([cschellenger](https://github.com/cschellenger))
+
+## [rdbi-0.81](https://github.com/lithiumtech/rdbi/tree/rdbi-0.81) (2018-02-16)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.80...rdbi-0.81)
+
+**Merged pull requests:**
+
+- Add git scm thing back to parent pom to try to fix deploy [\#74](https://github.com/lithiumtech/rdbi/pull/74) ([mrhota](https://github.com/mrhota))
+- updating this test because it frequently fails and we don't know why [\#73](https://github.com/lithiumtech/rdbi/pull/73) ([gjesse](https://github.com/gjesse))
+- Bump a couple deps; proactively deal with Throwables deprecation [\#72](https://github.com/lithiumtech/rdbi/pull/72) ([mrhota](https://github.com/mrhota))
+
+## [rdbi-0.80](https://github.com/lithiumtech/rdbi/tree/rdbi-0.80) (2018-01-11)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.79...rdbi-0.80)
+
+**Merged pull requests:**
+
+- Add a method to reserve for a specific channel [\#71](https://github.com/lithiumtech/rdbi/pull/71) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.79](https://github.com/lithiumtech/rdbi/tree/rdbi-0.79) (2018-01-09)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.78...rdbi-0.79)
+
+**Merged pull requests:**
+
+- don't use brackets in comments [\#70](https://github.com/lithiumtech/rdbi/pull/70) ([gjesse](https://github.com/gjesse))
+- Add a global max param [\#69](https://github.com/lithiumtech/rdbi/pull/69) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.78](https://github.com/lithiumtech/rdbi/tree/rdbi-0.78) (2018-01-04)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.77...rdbi-0.78)
+
+## [rdbi-0.77](https://github.com/lithiumtech/rdbi/tree/rdbi-0.77) (2018-01-04)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.76...rdbi-0.77)
+
+**Merged pull requests:**
+
+- RES-404 - allow the TimeBasedJobScheduler to have an optional maximum ready queue size [\#68](https://github.com/lithiumtech/rdbi/pull/68) ([matthewbogner](https://github.com/matthewbogner))
+
+## [rdbi-0.76](https://github.com/lithiumtech/rdbi/tree/rdbi-0.76) (2018-01-04)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.75...rdbi-0.76)
+
+**Merged pull requests:**
+
+- NUC-1447: look through additional channels for runnable jobs [\#67](https://github.com/lithiumtech/rdbi/pull/67) ([gjesse](https://github.com/gjesse))
+- NUC-1446: use ZCOUNT to assess ready count [\#66](https://github.com/lithiumtech/rdbi/pull/66) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.75](https://github.com/lithiumtech/rdbi/tree/rdbi-0.75) (2018-01-03)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.74...rdbi-0.75)
+
+**Merged pull requests:**
+
+- MultiChannel Scheduler [\#65](https://github.com/lithiumtech/rdbi/pull/65) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.74](https://github.com/lithiumtech/rdbi/tree/rdbi-0.74) (2017-12-20)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.73...rdbi-0.74)
+
+**Merged pull requests:**
+
+- Add a secondary ready queue for jobs that are already running [\#64](https://github.com/lithiumtech/rdbi/pull/64) ([gjesse](https://github.com/gjesse))
+- token bucket rate limiter refuses to be constructed with invalid input [\#62](https://github.com/lithiumtech/rdbi/pull/62) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.73](https://github.com/lithiumtech/rdbi/tree/rdbi-0.73) (2017-12-11)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.72...rdbi-0.73)
+
+**Merged pull requests:**
+
+- NUC-1348 add method to delete job from \*only\* the ready queue [\#61](https://github.com/lithiumtech/rdbi/pull/61) ([2bitoperations](https://github.com/2bitoperations))
+
+## [rdbi-0.72](https://github.com/lithiumtech/rdbi/tree/rdbi-0.72) (2017-12-10)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.71...rdbi-0.72)
+
+**Merged pull requests:**
+
+- tbrl-handle-flots: make sure we handle config values such that the ex… [\#60](https://github.com/lithiumtech/rdbi/pull/60) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.71](https://github.com/lithiumtech/rdbi/tree/rdbi-0.71) (2017-11-28)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.70...rdbi-0.71)
+
+**Merged pull requests:**
+
+- prevent possible race condition by tuning cache under test to \_not\_ r… [\#59](https://github.com/lithiumtech/rdbi/pull/59) ([davewingate](https://github.com/davewingate))
+-     Found an issue with bulk get where empty results were being retur… [\#58](https://github.com/lithiumtech/rdbi/pull/58) ([rhkwong](https://github.com/rhkwong))
+
+## [rdbi-0.70](https://github.com/lithiumtech/rdbi/tree/rdbi-0.70) (2017-11-14)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.69...rdbi-0.70)
+
+**Merged pull requests:**
+
+- comui-4546 add bulk get to channel reciever [\#57](https://github.com/lithiumtech/rdbi/pull/57) ([rhkwong](https://github.com/rhkwong))
+
+## [rdbi-0.69](https://github.com/lithiumtech/rdbi/tree/rdbi-0.69) (2017-08-29)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.68...rdbi-0.69)
+
+**Merged pull requests:**
+
+- CUSS-1135 add some javadoc to the scheduler recipes + j8 only [\#56](https://github.com/lithiumtech/rdbi/pull/56) ([2bitoperations](https://github.com/2bitoperations))
+
+## [rdbi-0.68](https://github.com/lithiumtech/rdbi/tree/rdbi-0.68) (2017-06-20)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.67...rdbi-0.68)
+
+## [rdbi-0.67](https://github.com/lithiumtech/rdbi/tree/rdbi-0.67) (2017-06-20)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.66...rdbi-0.67)
+
+**Merged pull requests:**
+
+- retain-original-class-as-interface: rename interface as RateLimiter t… [\#55](https://github.com/lithiumtech/rdbi/pull/55) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.66](https://github.com/lithiumtech/rdbi/tree/rdbi-0.66) (2017-06-09)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.65...rdbi-0.66)
+
+**Merged pull requests:**
+
+- fix-potential-test-issue: hopefully fix flaky test [\#54](https://github.com/lithiumtech/rdbi/pull/54) ([gjesse](https://github.com/gjesse))
+- Nuc 869/create a token bucket rate limiter implementation [\#52](https://github.com/lithiumtech/rdbi/pull/52) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.65](https://github.com/lithiumtech/rdbi/tree/rdbi-0.65) (2017-06-06)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.64...rdbi-0.65)
+
+**Merged pull requests:**
+
+- invalidate-acquires-refresh-lock: offer invalidatePatientlyThenForcibly for callers that want to invalidate and ensure next read is not dirty [\#53](https://github.com/lithiumtech/rdbi/pull/53) ([davewingate](https://github.com/davewingate))
+
+## [rdbi-0.64](https://github.com/lithiumtech/rdbi/tree/rdbi-0.64) (2017-05-02)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.63...rdbi-0.64)
+
+## [rdbi-0.63](https://github.com/lithiumtech/rdbi/tree/rdbi-0.63) (2017-05-02)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.62...rdbi-0.63)
+
+**Merged pull requests:**
+
+- minor-key-bug: add keyName to set call [\#51](https://github.com/lithiumtech/rdbi/pull/51) ([gjesse](https://github.com/gjesse))
+
+## [rdbi-0.62](https://github.com/lithiumtech/rdbi/tree/rdbi-0.62) (2017-04-21)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.61...rdbi-0.62)
+
+**Merged pull requests:**
+
+- add a version of redis map that's expire-after-write rather than -access [\#50](https://github.com/lithiumtech/rdbi/pull/50) ([2bitoperations](https://github.com/2bitoperations))
+
+## [rdbi-0.61](https://github.com/lithiumtech/rdbi/tree/rdbi-0.61) (2017-04-14)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.60...rdbi-0.61)
+
+**Merged pull requests:**
+
+- multi-cache-expire-fix: individual keys in multi cache should expire … [\#49](https://github.com/lithiumtech/rdbi/pull/49) ([davewingate](https://github.com/davewingate))
+
+## [rdbi-0.60](https://github.com/lithiumtech/rdbi/tree/rdbi-0.60) (2017-02-22)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.59...rdbi-0.60)
+
+**Merged pull requests:**
+
+- CUSS-763 don't use zcount when we really want zcard [\#48](https://github.com/lithiumtech/rdbi/pull/48) ([2bitoperations](https://github.com/2bitoperations))
+
 ## [rdbi-0.59](https://github.com/lithiumtech/rdbi/tree/rdbi-0.59) (2016-10-26)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.58...rdbi-0.59)
 

@@ -5,6 +5,7 @@ import com.lithium.dbi.rdbi.RDBI;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Transaction;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -13,7 +14,7 @@ import java.util.Set;
 public class ChannelPublisher {
 
     private static final int DEFAULT_CHANNEL_DEPTH = 100;
-    private static final int DEFAULT_CHANNEL_EXPIRE_SECONDS = 60 * 60; // 1 hour
+    private static final int DEFAULT_CHANNEL_EXPIRE_SECONDS = (int) Duration.ofDays(30).getSeconds();
 
     private final RDBI rdbi;
 

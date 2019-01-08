@@ -83,7 +83,6 @@ public class TokenBucketRateLimiterTest {
         assertTrue(oneMore.isPresent());
     }
 
-
     @Test
     public void testLongRunAverageWithSmallAdvance() {
 
@@ -280,10 +279,6 @@ public class TokenBucketRateLimiterTest {
 
     @Test
     public void testAcquireTimesOutButNotTooLong() {
-        // clock that advances 100ms / tick
-        long start = 10_000L;
-        TestClock clock = new TestClock(start, 100);
-
         // limiter with refill rate of 2/second
         // burstable up to 20 requests
         TokenBucketRateLimiter tokenBucketRateLimiter = buildRateLimiter(System::currentTimeMillis, 20, 1, Duration.ofMinutes(1));
@@ -302,6 +297,7 @@ public class TokenBucketRateLimiterTest {
         assertFalse(tokenBucketRateLimiter.acquirePatiently(Duration.ofMillis(500)));
         assertTrue("at least 500ms passed before the method returned, but not more than 600ms", System.currentTimeMillis() - now >= 500 && System.currentTimeMillis() - now <= 600);
     }
+
     @Test
     public void testRealTime() {
         // do it live
@@ -328,6 +324,66 @@ public class TokenBucketRateLimiterTest {
         }
         double meanRate2 = getMeanRate(rate, startTime);
         assertTrue(meanRate2 < 12.5 && meanRate2 < meanRate && meanRate2 > 10.0);
+    }
+
+    @Test
+    public void testAcquireMultiPermit() {
+        // clock that advances 100ms / tick
+        long start = 10_000L;
+        TestClock clock = new TestClock(start, 100);
+
+        // limiter with refill rate of 2/second
+        // burstable up to 20 requests
+        TokenBucketRateLimiter tokenBucketRateLimiter = buildRateLimiter(clock, 20, 2, Duration.ofSeconds(1));
+
+        // we can get 20 permits at the same time
+        assertTrue(tokenBucketRateLimiter.acquirePatiently(20, Duration.ofMillis(1)));
+        // but not 2 more
+        long now = System.currentTimeMillis();
+        assertFalse(tokenBucketRateLimiter.acquirePatiently(2, Duration.ofMillis(250)));
+        assertTrue("at least 250ms passed before the method returned", System.currentTimeMillis() - now >= 250);
+
+        // waiting 900ms won't do it
+        for (int i = 1; i < 10; i++) {
+            clock.tick();
+            assertFalse(tokenBucketRateLimiter.acquirePatiently(2, Duration.ofMillis(1)));
+        }
+
+        // and then finally we can get 2 more
+        clock.tick();
+        assertTrue(tokenBucketRateLimiter.acquirePatiently(2, Duration.ofMillis(1)));
+
+        // but not 2 more
+        assertFalse(tokenBucketRateLimiter.acquirePatiently(2, Duration.ofMillis(1)));
+    }
+
+    /**
+     * Virtually identical to testRealTime but requests multiple tokens per iteration.
+     */
+    @Test
+    public void testRealTimeMultiPermit() {
+        // do it live
+        // 10 max,
+        // 10 per second refill rate
+        // so ~ 40 requests in 3 seconds or ~ 13.333
+        TokenBucketRateLimiter limiter = buildRateLimiter(System::currentTimeMillis, 10, 10, Duration.ofSeconds(1));
+        double rate = 0.0;
+        long startTime = System.nanoTime();
+        for (int i = 0; i < 4; ++i) {
+            assertTrue(limiter.acquirePatiently(10, Duration.ofMinutes(1)));
+            rate+=10;
+        }
+        double meanRate = getMeanRate(rate, startTime);
+        assertTrue(String.format("Mean Rate: %.1f is out of bounds.", meanRate), meanRate < 13.5 && meanRate > 10.0);
+
+        // if we do 20 more, our bucket should be 'empty'
+        // so will take about 2 more seconds, or ~12 per second
+        for (int i = 0; i < 2; ++i) {
+            assertTrue(limiter.acquirePatiently(10, Duration.ofMinutes(1)));
+            rate+=10;
+        }
+        double meanRate2 = getMeanRate(rate, startTime);
+        assertTrue(String.format("Mean Rate: %.1f is out of bounds.", meanRate), meanRate2 < 12.5 && meanRate2 < meanRate && meanRate2 > 10.0);
     }
 
     @Test
