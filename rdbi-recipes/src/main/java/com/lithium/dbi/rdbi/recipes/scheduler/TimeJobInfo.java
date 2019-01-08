@@ -12,7 +12,7 @@ public class TimeJobInfo extends JobInfo {
 
     private final Instant time;
 
-    TimeJobInfo(String jobStr, double jobScore) {
+    public TimeJobInfo(String jobStr, double jobScore) {
         super(jobStr, jobScore);
         time = Instant.ofEpochMilli((long) jobScore);
     }

@@ -5,7 +5,7 @@ public class JobInfo {
     protected final String jobStr;
     protected final double jobScore;
 
-    JobInfo(String jobStr, double jobScore) {
+    public JobInfo(String jobStr, double jobScore) {
         this.jobStr = jobStr;
         this.jobScore = jobScore;
     }
