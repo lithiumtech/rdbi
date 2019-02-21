@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.93](https://github.com/lithiumtech/rdbi/tree/rdbi-0.93) (2019-02-21)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.92...rdbi-0.93)
+
+**Merged pull requests:**
+
+- Nuc 2400 [\#89](https://github.com/lithiumtech/rdbi/pull/89) ([gjesse](https://github.com/gjesse))
+
 ## [rdbi-0.92](https://github.com/lithiumtech/rdbi/tree/rdbi-0.92) (2019-01-08)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.91...rdbi-0.92)
 
