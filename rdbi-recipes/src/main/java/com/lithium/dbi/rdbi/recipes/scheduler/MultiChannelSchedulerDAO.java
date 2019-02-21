@@ -296,8 +296,7 @@ public interface MultiChannelSchedulerDAO {
             @BindArg("channelPrefix") String channelPrefix,
             @BindArg("job") String job);
 
-    @Query( "redis.log(redis.LOG_WARNING, \"deleting job \" .. $job$)\n" +
-            "local removedFromRunning = redis.call('ZREM', $runningQueue$, $job$)\n" +
+    @Query( "local removedFromRunning = redis.call('ZREM', $runningQueue$, $job$)\n" +
             "local removedFromReady = redis.call('ZREM', $readyQueue$, $job$)\n" +
             "if removedFromReady > 0 then\n" +
             "  local hasReady = redis.call('ZCARD', $readyQueue$)\n" +
