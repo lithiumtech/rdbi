@@ -601,6 +601,23 @@ public class MultiChannelSchedulerTest {
     }
 
     @Test
+    public void testDeleteRunningWithoutReadyJob() {
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
+        scheduledJobSystem.enablePerChannelTracking();
+
+        String jobId = "doesnt-matter" + ":" + tube1;
+        scheduledJobSystem.schedule("A", tube1, jobId, 0);
+
+        scheduledJobSystem.reserveMulti(tube1, 1_000L, 1);
+
+        assertThat(scheduledJobSystem.inRunningQueue(tube1, jobId)).isTrue();
+        assertThat(scheduledJobSystem.inReadyQueue("A", tube1, jobId)).isFalse();
+
+        assertThat(scheduledJobSystem.deleteJob("A", tube1, jobId)).isTrue();
+        assertThat(scheduledJobSystem.getRunningCountForChannel("A", tube1)).isEqualTo(0);
+    }
+
+    @Test
     public void testDeleteJob() {
         MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix);
         scheduledJobSystem.enablePerChannelTracking();
