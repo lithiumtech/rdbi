@@ -72,7 +72,6 @@ public class MultiChannelScheduler {
 
     /**
      * see {@link AbstractDedupJobScheduler#reserveMulti(String, long, int)}
-     *
      */
     public List<TimeJobInfo> reserveMulti(String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs) {
         return reserveMulti(tube, considerExpiredAfterMillis, maxNumberOfJobs, 0);
@@ -80,16 +79,16 @@ public class MultiChannelScheduler {
 
     /**
      * attempt to reserve 1 or more jobs while also specifying a global running limit on jobs for this tube.
-     *
+     * <p>
      * if the current # of running jobs + maxNumberOfJobs attempted to reserve is &gt; runningLimit, no jobs
      * will be reserved.
-     *
+     * <p>
      * see also {@link AbstractDedupJobScheduler#reserveMulti(String, long, int)}
      *
-     * @param tube job group. we will only grab ready jobs from this group.
+     * @param tube                       job group. we will only grab ready jobs from this group.
      * @param considerExpiredAfterMillis if jobs haven't been deleted after being reserved for this many millis, consider them expired.
-     * @param maxNumberOfJobs number of jobs to reserve.
-     * @param runningLimit if &gt; 0, a limit of jobs we want to allow running for this particular tube type. If &lt;= 0, no limit will be enforced.
+     * @param maxNumberOfJobs            number of jobs to reserve.
+     * @param runningLimit               if &gt; 0, a limit of jobs we want to allow running for this particular tube type. If &lt;= 0, no limit will be enforced.
      * @return list of jobs reserved (now considered "running",) or empty list if none.
      */
     public List<TimeJobInfo> reserveMulti(String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs, final int runningLimit) {
@@ -98,19 +97,19 @@ public class MultiChannelScheduler {
 
     /**
      * attempt to reserve 1 or more jobs while also specifying a global running limit on jobs for this tube.
-     *
+     * <p>
      * if the current # of running jobs + maxNumberOfJobs attempted to reserve is &gt; runningLimit, no jobs
      * will be reserved.
-     *
+     * <p>
      * see also {@link AbstractDedupJobScheduler#reserveMulti(String, long, int)}
      *
-     * @param tube job group. we will only grab ready jobs from this group.
+     * @param tube                       job group. we will only grab ready jobs from this group.
      * @param considerExpiredAfterMillis if jobs haven't been deleted after being reserved for this many millis, consider them expired.
-     * @param maxNumberOfJobs number of jobs to reserve.
-     * @param runningLimit if &gt; 0, a limit of jobs we want to allow running for this particular tube type. If &lt;= 0, no limit will be enforced.
-     * @param perChannelLimit if &gt; 0, a limit of jobs we want to allow running for any particular channel / tube combination. If &lt;= 0, no limit will be enforced.
-     *                        Note that prior to using this, you must have called {@link #enablePerChannelTracking()}, otherwise this parameter will be ignored.
-     *                        Before enabling this, all scheduler clients should be upgraded to a version that supports per-channel tracking &amp; limits
+     * @param maxNumberOfJobs            number of jobs to reserve.
+     * @param runningLimit               if &gt; 0, a limit of jobs we want to allow running for this particular tube type. If &lt;= 0, no limit will be enforced.
+     * @param perChannelLimit            if &gt; 0, a limit of jobs we want to allow running for any particular channel / tube combination. If &lt;= 0, no limit will be enforced.
+     *                                   Note that prior to using this, you must have called {@link #enablePerChannelTracking()}, otherwise this parameter will be ignored.
+     *                                   Before enabling this, all scheduler clients should be upgraded to a version that supports per-channel tracking &amp; limits
      * @return list of jobs reserved (now considered "running",) or empty list if none.
      */
     public List<TimeJobInfo> reserveMulti(String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs, final int runningLimit, final int perChannelLimit) {
@@ -129,7 +128,7 @@ public class MultiChannelScheduler {
     }
 
     public List<TimeJobInfo> reserveMultiForChannel(String channel, String tube, long considerExpiredAfterMillis, final int maxNumberOfJobs, final int runningLimit) {
-        try(Handle handle = rdbi.open()) {
+        try (Handle handle = rdbi.open()) {
             return handle.attach(MultiChannelSchedulerDAO.class).reserveJobsForChannel(
                     getReadyQueue(channel, tube),
                     getRunningQueue(tube),
@@ -148,12 +147,12 @@ public class MultiChannelScheduler {
             // mc buffer holds the prefixes, we have to
             // decompose them to get the channel only
             return handle.jedis().lrange(getMultiChannelCircularBuffer(tube), 0, -1)
-                    .stream()
-                    // rm our prefix
-                    .map(chPrefix -> chPrefix.replaceFirst(prefix + ":", ""))
-                    // rm tube suffix
-                    .map(channelAndTube -> channelAndTube.replace(":" + tube, ""))
-                    .collect(Collectors.toList());
+                         .stream()
+                         // rm our prefix
+                         .map(chPrefix -> chPrefix.replaceFirst(prefix + ":", ""))
+                         // rm tube suffix
+                         .map(channelAndTube -> channelAndTube.replace(":" + tube, ""))
+                         .collect(Collectors.toList());
         }
     }
 
@@ -222,7 +221,7 @@ public class MultiChannelScheduler {
      * will remove any expired running jobs and update the associated counters for those jobs
      * so that we can keep accurate track by channel and tube of what's running.
      *
-     * @param tube the tube to operate on
+     * @param tube                 the tube to operate on
      * @param jobToChannelFunction client-provided function to convert a TimeJobInfo object into a channel that must be used to
      *                             update running counts
      * @return
@@ -234,6 +233,27 @@ public class MultiChannelScheduler {
                        .forEach(channel -> decrementRunningCount(channel, tube));
 
         return timeJobInfoList;
+    }
+
+    /**
+     * if your job is running longer than you indicated when you reserved it,
+     * you will want to call this to update the job timeout, so that you can run it longer
+     * and the system will not expire it in the meantime, and possibly reschedule it
+     * for another worker to pick up.
+     *
+     * @param channel      the channel to operate on
+     * @param tube         the tube
+     * @param job          the job identifier
+     * @param ttlIncrement the amount in ms you want to increment the ttl by
+     * @return boolean if the item was updated, false means it didn't exist
+     */
+    public boolean incrementRunningTTL(String channel, String tube, String job, long ttlIncrement) {
+        try (Handle handle = rdbi.open()) {
+            return handle.attach(MultiChannelSchedulerDAO.class).incrementTTL(
+                    getRunningQueue(tube),
+                    ttlIncrement,
+                    job) == 1;
+        }
     }
 
     /**
@@ -347,11 +367,11 @@ public class MultiChannelScheduler {
     }
 
     public Integer getRunningCountForChannel(String channel, String tube) {
-       final String key = getRunningCountKey(channel, tube);
-       final String count = rdbi.withHandle(h -> h.jedis().get(key));
-       return Optional.ofNullable(count)
-               .map(Ints::tryParse)
-               .orElse(0);
+        final String key = getRunningCountKey(channel, tube);
+        final String count = rdbi.withHandle(h -> h.jedis().get(key));
+        return Optional.ofNullable(count)
+                       .map(Ints::tryParse)
+                       .orElse(0);
     }
 
     private List<TimeJobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
@@ -382,18 +402,18 @@ public class MultiChannelScheduler {
      * @return true if tracking was previously disabled, false if the tracking had already been enabled
      */
     public boolean enablePerChannelTracking() {
-        return rdbi.withHandle(h -> h.jedis().setnx(getPerChannelTrackingEnabled(), "1") == 1 );
+        return rdbi.withHandle(h -> h.jedis().setnx(getPerChannelTrackingEnabled(), "1") == 1);
     }
 
 
     /**
      * disabled per-channel tracking.
+     *
      * @return true if tracking was previously enabled, false if the tracking had already been disabled
      */
     public boolean disablePerChannelTracking() {
-        return rdbi.withHandle(h -> h.jedis().del(getPerChannelTrackingEnabled()) != 0 );
+        return rdbi.withHandle(h -> h.jedis().del(getPerChannelTrackingEnabled()) != 0);
     }
-
 
 
     private boolean inQueue(String queueName, String job) {
