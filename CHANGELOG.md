@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.94](https://github.com/lithiumtech/rdbi/tree/rdbi-0.94) (2019-08-13)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.93...rdbi-0.94)
+
+**Merged pull requests:**
+
+- NUC-2401: support an option to update the running job TTL [\#90](https://github.com/lithiumtech/rdbi/pull/90) ([gjesse](https://github.com/gjesse))
+
 ## [rdbi-0.93](https://github.com/lithiumtech/rdbi/tree/rdbi-0.93) (2019-02-21)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.92...rdbi-0.93)
 
