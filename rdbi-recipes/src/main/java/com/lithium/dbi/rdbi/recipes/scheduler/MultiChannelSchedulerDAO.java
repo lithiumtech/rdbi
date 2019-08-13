@@ -253,6 +253,21 @@ public interface MultiChannelSchedulerDAO {
             @BindKey("runningCount") String runningCountKey,
             @BindArg("job") String job);
 
+
+    @Query(
+            "local increment = redis.call('ZINCRBY', $runningQueue$, $ttlIncrement$, $job$)\n" +
+            "if increment == $ttlIncrement$ then \n" +
+            "  redis.call('ZREM', $runningQueue$, $job$)\n" +
+            "  return 0\n" +
+            "else\n" +
+            "  return 1\n" +
+            "end"
+    )
+    int incrementTTL(@BindKey("runningQueue") String runningQueue,
+                     @BindArg("ttlIncrement") long ttlIncrement,
+                     @BindArg("job") String job);
+
+
     @Query(
             "local inQueue = redis.call('ZSCORE', $queue$, $job$)\n" +
             "if inQueue then\n" +
@@ -347,5 +362,4 @@ public interface MultiChannelSchedulerDAO {
             "return 0\n"
     )
     long decrementRunningCount(@BindKey("runningCount") String runningCountKey);
-
 }

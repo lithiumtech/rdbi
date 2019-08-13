@@ -398,7 +398,52 @@ public class MultiChannelSchedulerTest {
         assertThat(scheduledJobSystem.getRunningCountForChannel(channel1, tube1)).isEqualTo(0);
         boolean exists = rdbi.withHandle(h -> h.jedis().exists(prefix + ":" + channel1 + ":" + tube1 + ":running_count"));
         assertThat(exists).isFalse();
+    }
 
+    @Test
+    public void testUpdateTTL() {
+
+        TestClock clock = new TestClock(System.currentTimeMillis(), 20L);
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix, clock);
+        String jobId = channel1 + ":" + tube1;
+
+        assertThat(scheduledJobSystem.schedule(channel1, tube1, jobId, 0)).isTrue();
+
+        scheduledJobSystem.reserveMulti(tube1, 10L, 1);
+
+        assertThat(scheduledJobSystem.peekExpired(tube1, 0, 1)).isEmpty();
+
+        // pre-tick, removing expired has no effect
+        assertThat(scheduledJobSystem.removeExpiredRunningJobs(tube1)).isEmpty();
+
+
+        // update our ttl
+        boolean incremented = scheduledJobSystem.incrementRunningTTL(channel1, tube1, jobId, 20);
+        assertThat(incremented).isTrue();
+
+        // ticking forward 20ms would have put this job as expired
+        clock.tick();
+        assertThat(scheduledJobSystem.peekExpired(tube1, 0, 1)).isEmpty();
+
+        // ticking forward 20ms will now put this job as expired
+        clock.tick();
+
+        assertThat(scheduledJobSystem.removeExpiredRunningJobs(tube1)).hasSize(1);
+        assertThat(scheduledJobSystem.peekRunning(tube1, 0, 1)).isEmpty();
+    }
+
+    @Test
+    public void testUpdateTTLNotExists() {
+
+        TestClock clock = new TestClock(System.currentTimeMillis(), 20L);
+        MultiChannelScheduler scheduledJobSystem = new MultiChannelScheduler(rdbi, prefix, clock);
+        String jobId = channel1 + ":" + tube1;
+        // update our ttl
+        boolean incremented = scheduledJobSystem.incrementRunningTTL(channel1, tube1, jobId, 20);
+        // nothing happened
+        assertThat(incremented).isFalse();
+        // we didn't create anything
+        assertThat(scheduledJobSystem.peekRunning(tube1, 0, 1)).isEmpty();
     }
 
     @Test
