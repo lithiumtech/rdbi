@@ -2,17 +2,24 @@ package com.lithium.dbi.rdbi.recipes.queue;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import com.lithium.dbi.rdbi.recipes.cache.SerializationHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.Response;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
+import java.util.Set;
 
 /**
  * A circular buffer in redis. Head of the queue is the element at index 0 in redis.
@@ -87,23 +94,23 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
     @Override
     public boolean containsAll(Collection<?> c) {
         try (final Handle handle = rdbi.open()) {
-            for (final Object obj : c) {
-                final ValueType valueToFind = (ValueType) obj;
-                final String valueToFindStr = serializationHelper.encode(valueToFind);
-                boolean found = false;
-                for (int i = 0; i < size(); i++) {
-                    String valueAtIndex = handle.jedis().lindex(key, i);
-                    if (valueToFindStr.equals(valueAtIndex)) {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    return false;
-                }
+            final Pipeline pipeline = handle.jedis().pipelined();
+            Set<ValueType> currentSet = new HashSet<ValueType>();
+            final int size = handle.jedis().llen(key).intValue();
+            final Set<Response<String>> responses = Sets.newHashSetWithExpectedSize(size);
+
+            for (int i = 0; i < size; i++) {
+                responses.add(pipeline.lindex(key, i));
             }
+            pipeline.sync();
+
+            for(final Response<String> res : responses) {
+                ValueType value = serializationHelper.decode(res.get());
+                currentSet.add(value);
+            }
+
+            return currentSet.containsAll(c);
         }
-        return true;
     }
 
     @Override
@@ -112,7 +119,8 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
             for (final ValueType value : toAdd) {
                 final String valueAsString = serializationHelper.encode(value);
                 handle.jedis().rpush(key, valueAsString);
-                if (size() > maxSize) {
+                final int size = handle.jedis().llen(key).intValue();
+                if (size > maxSize) {
                     handle.jedis().lpop(key);
                 }
             }
