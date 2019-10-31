@@ -144,13 +144,11 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
 
     @Override
     public ValueType remove() {
-        try (final Handle handle = rdbi.open()) {
-            final String removedStr = handle.jedis().lpop(key);
-            if (removedStr == null) {
-                throw new NoSuchElementException("Circular buffer is empty, cannot remove");
-            }
-            final ValueType removedValue = serializationHelper.decode(removedStr);
-            return removedValue;
+        ValueType element = remove();
+        if (element == null) {
+            throw new NoSuchElementException("Circular buffer is empty, cannot remove first element");
+        } else {
+            return element;
         }
     }
 
@@ -168,12 +166,10 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
 
     @Override
     public ValueType element() {
-        try (final Handle handle = rdbi.open()) {
-            final String elementStr = handle.jedis().lindex(key, 0);
-            if (elementStr == null) {
-                throw new NoSuchElementException("Circular buffer is empty, cannot retrieve head");
-            }
-            final ValueType element = serializationHelper.decode(elementStr);
+        ValueType element = peek();
+        if (element == null) {
+            throw new NoSuchElementException("Circular buffer is empty, cannot retrieve head");
+        } else {
             return element;
         }
     }
