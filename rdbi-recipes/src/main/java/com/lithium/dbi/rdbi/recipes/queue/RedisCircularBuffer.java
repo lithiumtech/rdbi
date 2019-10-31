@@ -112,7 +112,7 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
             for (final ValueType value : toAdd) {
                 final String valueAsString = serializationHelper.encode(value);
                 handle.jedis().rpush(key, valueAsString);
-                if (size() >= maxSize) {
+                if (size() > maxSize) {
                     handle.jedis().lpop(key);
                 }
             }
