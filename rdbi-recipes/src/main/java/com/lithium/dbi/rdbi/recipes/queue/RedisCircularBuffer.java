@@ -11,8 +11,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
+import sun.awt.SunHints;
 
 import javax.annotation.Nonnull;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -191,6 +193,27 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
             }
             final ValueType removedValue = serializationHelper.decode(removedStr);
             return removedValue;
+        }
+    }
+
+    public List<ValueType> peekAll() {
+        try (final Handle handle = rdbi.open()) {
+            final Pipeline pipeline = handle.jedis().pipelined();
+            List<ValueType> currentList = new ArrayList<ValueType>();
+            final int size = handle.jedis().llen(key).intValue();
+            final List<Response<String>> responses = Lists.newArrayListWithCapacity(size);
+
+            for (int i = 0; i < size; i++) {
+                responses.add(pipeline.lindex(key, i));
+            }
+            pipeline.sync();
+
+            for(final Response<String> res : responses) {
+                ValueType value = serializationHelper.decode(res.get());
+                currentList.add(value);
+            }
+
+            return currentList;
         }
     }
 }
