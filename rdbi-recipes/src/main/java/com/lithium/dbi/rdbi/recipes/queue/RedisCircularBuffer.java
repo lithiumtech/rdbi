@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
-import sun.awt.SunHints;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -43,6 +42,7 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
         this.key = key;
         this.maxSize = maxSize;
         this.serializationHelper = serializationHelper;
+
         Preconditions.checkNotNull(key, "A null value was supplied for 'key'.");
     }
 
@@ -117,13 +117,13 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
 
     @Override
     public boolean addAll(Collection<? extends ValueType> toAdd) {
-        try (final Handle handle = rdbi.open()) {
+        try (Handle handle = rdbi.open()) {
             for (final ValueType value : toAdd) {
                 final String valueAsString = serializationHelper.encode(value);
-                handle.jedis().rpush(key, valueAsString);
-                final int size = handle.jedis().llen(key).intValue();
-                if (size > maxSize) {
-                    handle.jedis().lpop(key);
+                final boolean success = handle.attach(RedisCircularBufferDAO.class)
+                      .add(key, valueAsString, maxSize);
+                if (!success) {
+                    return false;
                 }
             }
         }
@@ -154,7 +154,7 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
 
     @Override
     public ValueType remove() {
-        ValueType element = remove();
+        ValueType element = poll();
         if (element == null) {
             throw new NoSuchElementException("Circular buffer is empty, cannot remove first element");
         } else {
@@ -164,7 +164,7 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
 
     @Override
     public ValueType poll() {
-        try (final Handle handle = rdbi.open()) {
+        try (Handle handle = rdbi.open()) {
             final String removedStr = handle.jedis().lpop(key);
             if (removedStr == null) {
                 return null;
@@ -216,4 +216,5 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
             return currentList;
         }
     }
+
 }
