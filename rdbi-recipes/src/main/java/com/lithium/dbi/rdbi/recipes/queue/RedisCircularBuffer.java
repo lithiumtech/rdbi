@@ -111,7 +111,7 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
             }
             pipeline.sync();
 
-            for(final Response<String> res : responses) {
+            for (final Response<String> res : responses) {
                 ValueType value = serializationHelper.decode(res.get());
                 currentSet.add(value);
             }
@@ -127,7 +127,7 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
             try (Handle handle = rdbi.open()) {
                 String valueStr = serializationHelper.encode(value);
                 final int newSize = handle.attach(RedisCircularBufferDAO.class).add(key, valueStr, maxSize);
-                boolean success =  newSize >= 0 && newSize <= maxSize;
+                boolean success = newSize >= 0 && newSize <= maxSize;
                 if (!success) {
                     return false;
                 }
@@ -214,7 +214,7 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
             }
             pipeline.sync();
 
-            for(final Response<String> res : responses) {
+            for (final Response<String> res : responses) {
                 ValueType value = serializationHelper.decode(res.get());
                 currentList.add(value);
             }
