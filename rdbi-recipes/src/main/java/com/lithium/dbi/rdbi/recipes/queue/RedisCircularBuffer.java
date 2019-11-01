@@ -2,25 +2,18 @@ package com.lithium.dbi.rdbi.recipes.queue;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import com.lithium.dbi.rdbi.recipes.cache.SerializationHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Pipeline;
-import redis.clients.jedis.Response;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
-import java.util.Set;
 
 import static java.util.stream.Collectors.toList;
 
@@ -109,7 +102,6 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
     @Override
     public boolean addAll(Collection<? extends ValueType> toAdd) {
         for (final ValueType value : toAdd) {
-            final String valueAsString = serializationHelper.encode(value);
             try (Handle handle = rdbi.open()) {
                 String valueStr = serializationHelper.encode(value);
                 final int newSize = handle.attach(RedisCircularBufferDAO.class).add(key, valueStr, maxSize);
