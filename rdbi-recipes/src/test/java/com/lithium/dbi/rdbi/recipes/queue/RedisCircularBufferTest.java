@@ -266,7 +266,7 @@ public class RedisCircularBufferTest {
 
     @Test
     public void basicPeekAllTest() {
-        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 3, new UUIDSerialHelper());
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 5, new UUIDSerialHelper());
 
         circularBuffer.clear();
         assertTrue(circularBuffer.isEmpty());

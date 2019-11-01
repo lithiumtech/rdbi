@@ -22,6 +22,8 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Set;
 
+import static java.util.stream.Collectors.toList;
+
 /**
  * A circular buffer in redis. Head of the queue is the element at index 0 in redis.
  */
@@ -100,24 +102,8 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
 
     @Override
     public boolean containsAll(Collection<?> c) {
-        try (final Handle handle = rdbi.open()) {
-            final Pipeline pipeline = handle.jedis().pipelined();
-            Set<ValueType> currentSet = new HashSet<ValueType>();
-            final int size = handle.jedis().llen(key).intValue();
-            final Set<Response<String>> responses = Sets.newHashSetWithExpectedSize(size);
-
-            for (int i = 0; i < size; i++) {
-                responses.add(pipeline.lindex(key, i));
-            }
-            pipeline.sync();
-
-            for (final Response<String> res : responses) {
-                ValueType value = serializationHelper.decode(res.get());
-                currentSet.add(value);
-            }
-
-            return currentSet.containsAll(c);
-        }
+        List<ValueType> currentList = peekAll();
+        return currentList.containsAll(c);
     }
 
     @Override
@@ -204,21 +190,8 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
 
     public List<ValueType> peekAll() {
         try (final Handle handle = rdbi.open()) {
-            final Pipeline pipeline = handle.jedis().pipelined();
-            List<ValueType> currentList = new ArrayList<ValueType>();
-            final int size = handle.jedis().llen(key).intValue();
-            final List<Response<String>> responses = Lists.newArrayListWithCapacity(size);
-
-            for (int i = 0; i < size; i++) {
-                responses.add(pipeline.lindex(key, i));
-            }
-            pipeline.sync();
-
-            for (final Response<String> res : responses) {
-                ValueType value = serializationHelper.decode(res.get());
-                currentList.add(value);
-            }
-
+            List<String> strList = handle.jedis().lrange(key, 0, maxSize);
+            List<ValueType> currentList = strList.stream().map(str -> serializationHelper.decode(str)).collect(toList());
             return currentList;
         }
     }
