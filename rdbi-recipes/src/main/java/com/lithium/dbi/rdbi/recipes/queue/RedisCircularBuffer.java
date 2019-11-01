@@ -85,7 +85,12 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
 
     @Override
     public boolean add(ValueType value) {
-        return addAll(ImmutableList.of(value));
+        boolean success = offer(value);
+        if (!success) {
+            throw new IllegalStateException("Could not add to this circular buffer");
+        } else {
+            return success;
+        }
     }
 
     @Override
@@ -117,11 +122,12 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
 
     @Override
     public boolean addAll(Collection<? extends ValueType> toAdd) {
-        try (Handle handle = rdbi.open()) {
-            for (final ValueType value : toAdd) {
-                final String valueAsString = serializationHelper.encode(value);
-                final boolean success = handle.attach(RedisCircularBufferDAO.class)
-                      .add(key, valueAsString, maxSize);
+        for (final ValueType value : toAdd) {
+            final String valueAsString = serializationHelper.encode(value);
+            try (Handle handle = rdbi.open()) {
+                String valueStr = serializationHelper.encode(value);
+                final int newSize = handle.attach(RedisCircularBufferDAO.class).add(key, valueStr, maxSize);
+                boolean success =  newSize >= 0 && newSize <= maxSize;
                 if (!success) {
                     return false;
                 }

@@ -8,14 +8,15 @@ public interface RedisCircularBufferDAO {
 
     @Query(
             "local size = redis.call('RPUSH', $key$, $valueToAdd$)\n" +
-                    "   if size > $maxSize$ then\n" +
-                    "       redis.call('LPOP', $key$)\n" +
-                    "   end\n" +
-                    "return true\n"
+                    "if size > tonumber($maxSize$) then\n" +
+                    "   redis.call('LPOP', $key$)\n" +
+                    "   size = size - 1\n" +
+                    "end\n" +
+                    "return size\n"
     )
-    boolean add(
+    int add(
             @BindKey("key") String key,
-            @BindArg("toAdd") String valueToAdd,
+            @BindArg("valueToAdd") String valueToAdd,
             @BindArg("maxSize") Integer maxSize);
 
 }

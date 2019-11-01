@@ -6,10 +6,13 @@ import com.lithium.dbi.rdbi.recipes.cache.SerializationHelper;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
+import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertThrows;
 import static org.testng.Assert.assertTrue;
 
 @Test(groups = "integration")
@@ -28,14 +31,6 @@ public class RedisCircularBufferTest {
         public String encode(UUID value) {
             return value.toString();
         }
-    }
-
-    @Test
-    public void getFromEmptyTest() {
-        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 5, new UUIDSerialHelper());
-
-        circularBuffer.clear();
-        assertTrue(circularBuffer.isEmpty());
     }
 
     @Test
@@ -58,7 +53,7 @@ public class RedisCircularBufferTest {
     }
 
     @Test
-    public void bufferIsCircularTest() {
+    public void circularAddTest() {
         final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 5, new UUIDSerialHelper());
 
         circularBuffer.clear();
@@ -75,14 +70,15 @@ public class RedisCircularBufferTest {
 
         assertTrue(circularBuffer.containsAll(ImmutableList.of(second, third, fourth, fifth, sixth)));
         assertFalse(circularBuffer.contains(first));
+        assertEquals(circularBuffer.size(), 5);
 
         circularBuffer.clear();
         assertTrue(circularBuffer.isEmpty());
     }
 
     @Test
-    public void basicOperationTest() {
-        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 5, new UUIDSerialHelper());
+    public void basicAddTest() {
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 3, new UUIDSerialHelper());
 
         circularBuffer.clear();
         assertTrue(circularBuffer.isEmpty());
@@ -91,34 +87,215 @@ public class RedisCircularBufferTest {
         final UUID second = UUID.randomUUID();
         final UUID third = UUID.randomUUID();
 
-        circularBuffer.addAll(ImmutableList.of(first));
-        circularBuffer.addAll(ImmutableList.of(second,third));
+        circularBuffer.add(first);
+        assertEquals(circularBuffer.size(), 1);
 
+        circularBuffer.add(second);
+        assertEquals(circularBuffer.size(), 2);
+        assertEquals(circularBuffer.peek(), first);
+
+        circularBuffer.add(third);
+        assertEquals(circularBuffer.size(), 3);
+        assertEquals(circularBuffer.peek(), first);
         assertTrue(circularBuffer.containsAll(ImmutableList.of(first, second, third)));
 
-        circularBuffer.remove(second);
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+    }
 
-        assertFalse(circularBuffer.contains(second));
-        assertTrue(circularBuffer.contains(third));
-        assertFalse(circularBuffer.containsAll(ImmutableList.of(first, second)));
-        assertTrue(circularBuffer.containsAll(ImmutableList.of(first, third)));
+    @Test
+    public void basicOfferTest() {
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 3, new UUIDSerialHelper());
 
-//        assertEquals(circularBuffer.size(), 2);
-//
-//        assertEquals(circularBuffer.popRange(0, 10), ImmutableList.of(new RedisCircularBuffer.ValueWithScore<>(first, 9),
-//                                                           new RedisCircularBuffer.ValueWithScore<>(third, 10)));
-//
-//        assertTrue(circularBuffer.isEmpty());
-//
-//        circularBuffer.addAll(ImmutableList.of(second), 5);
-//        circularBuffer.add(third);
-//        circularBuffer.addAll(ImmutableList.of(first), 0);
-//
-//        assertEquals(circularBuffer.popRange(0, 0),
-//                     ImmutableList.of(new RedisCircularBuffer.ValueWithScore<>(first, 0)));
-//
-//        assertEquals(circularBuffer.popRange(1, 1),
-//                     ImmutableList.of(new RedisCircularBuffer.ValueWithScore<>(third, 10)));
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+
+        circularBuffer.offer(first);
+        assertEquals(circularBuffer.size(), 1);
+
+        circularBuffer.offer(second);
+        assertEquals(circularBuffer.size(), 2);
+        assertEquals(circularBuffer.peek(), first);
+
+        circularBuffer.offer(third);
+        assertEquals(circularBuffer.size(), 3);
+        assertEquals(circularBuffer.peek(), first);
+        assertTrue(circularBuffer.containsAll(ImmutableList.of(first, second, third)));
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+    }
+
+    public void basicAddAllTest() {
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 3, new UUIDSerialHelper());
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+
+        circularBuffer.addAll(ImmutableList.of(first, second, third));
+        assertEquals(circularBuffer.size(), 3);
+        assertEquals(circularBuffer.peek(), first);
+        assertTrue(circularBuffer.containsAll(ImmutableList.of(first, second, third)));
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+    }
+
+    @Test
+    public void basicRemoveTest() {
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 3, new UUIDSerialHelper());
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+        circularBuffer.addAll(ImmutableList.of(first, second, third));
+        assertEquals(circularBuffer.size(), 3);
+        assertEquals(circularBuffer.peek(), first);
+        assertTrue(circularBuffer.containsAll(ImmutableList.of(first, second, third)));
+
+        circularBuffer.remove();
+        assertEquals(circularBuffer.size(), 2);
+        assertEquals(circularBuffer.peek(), second);
+        assertTrue(circularBuffer.containsAll(ImmutableList.of(second, third)));
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+    }
+
+    @Test
+    public void basicPollTest() {
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 3, new UUIDSerialHelper());
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+        circularBuffer.addAll(ImmutableList.of(first, second, third));
+        assertEquals(circularBuffer.size(), 3);
+        assertEquals(circularBuffer.peek(), first);
+        assertTrue(circularBuffer.containsAll(ImmutableList.of(first, second, third)));
+
+        circularBuffer.poll();
+        assertEquals(circularBuffer.size(), 2);
+        assertEquals(circularBuffer.peek(), second);
+        assertTrue(circularBuffer.containsAll(ImmutableList.of(second, third)));
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+    }
+
+    @Test
+    public void removeFromEmptyTest() {
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 5, new UUIDSerialHelper());
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+
+        assertThrows(NoSuchElementException.class, () -> {
+            circularBuffer.remove();
+        });
+        assertTrue(circularBuffer.isEmpty());
+    }
+
+    @Test
+    public void pollFromEmptyTest() {
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 5, new UUIDSerialHelper());
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+
+        UUID result = circularBuffer.poll();
+        assertEquals(result, null);
+        assertTrue(circularBuffer.isEmpty());
+    }
+
+    @Test
+    public void basicElementTest() {
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 3, new UUIDSerialHelper());
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        circularBuffer.addAll(ImmutableList.of(first, second));
+        assertEquals(circularBuffer.size(), 2);
+        assertEquals(circularBuffer.element(), first);
+        assertTrue(circularBuffer.containsAll(ImmutableList.of(first, second)));
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+    }
+
+    @Test
+    public void elementFromEmptyTest() {
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 5, new UUIDSerialHelper());
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+
+        assertThrows(NoSuchElementException.class, () -> {
+            circularBuffer.element();
+        });
+        assertTrue(circularBuffer.isEmpty());
+    }
+
+    @Test
+    public void peekFromEmptyTest() {
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 5, new UUIDSerialHelper());
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+
+        UUID result = circularBuffer.peek();
+        assertEquals(result, null);
+    }
+
+    @Test
+    public void basicPeekAllTest() {
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 3, new UUIDSerialHelper());
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+
+        circularBuffer.addAll(ImmutableList.of(first, second, third));
+        assertEquals(circularBuffer.size(), 3);
+        assertEquals(circularBuffer.peek(), first);
+        assertTrue(circularBuffer.containsAll(ImmutableList.of(first, second, third)));
+
+        List<UUID> peekedList = circularBuffer.peekAll();
+        assertEquals(peekedList, ImmutableList.of(first, second, third));
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+    }
+
+    @Test
+    public void peekAllFromEmpty() {
+        final RedisCircularBuffer<UUID> circularBuffer = new RedisCircularBuffer(rdbi, circularBufferKey, 5, new UUIDSerialHelper());
+
+        circularBuffer.clear();
+        assertTrue(circularBuffer.isEmpty());
+
+        List<UUID> peekedList = circularBuffer.peekAll();
+        assertEquals(peekedList, ImmutableList.of());
 
         circularBuffer.clear();
         assertTrue(circularBuffer.isEmpty());
