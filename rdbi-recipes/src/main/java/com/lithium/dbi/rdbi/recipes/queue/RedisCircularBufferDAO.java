@@ -9,7 +9,9 @@ public interface RedisCircularBufferDAO {
     @Query(
             "local size = redis.call('RPUSH', $key$, $valueToAdd$)\n" +
                     "if size > tonumber($maxSize$) then\n" +
-                    "   redis.call('LPOP', $key$)\n" +
+                    "   local start = size - tonumber($maxSize$)\n" +
+                    "   local stop = start + tonumber($maxSize$)\n" +
+                    "   redis.call('LTRIM', $key$, start, stop)\n" +
                     "   size = size - 1\n" +
                     "end\n" +
                     "return size\n"
