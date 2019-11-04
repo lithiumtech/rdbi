@@ -1,5 +1,16 @@
 # Change Log
 
+## [rdbi-0.96](https://github.com/lithiumtech/rdbi/tree/rdbi-0.96) (2019-11-04)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.95...rdbi-0.96)
+
+## [rdbi-0.95](https://github.com/lithiumtech/rdbi/tree/rdbi-0.95) (2019-11-04)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.94...rdbi-0.95)
+
+**Merged pull requests:**
+
+- bump jackson version [\#93](https://github.com/lithiumtech/rdbi/pull/93) ([2bitoperations](https://github.com/2bitoperations))
+- RES-2942 Circular Buffer recipe for RDBI [\#91](https://github.com/lithiumtech/rdbi/pull/91) ([michelle-gu](https://github.com/michelle-gu))
+
 ## [rdbi-0.94](https://github.com/lithiumtech/rdbi/tree/rdbi-0.94) (2019-08-13)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.93...rdbi-0.94)
 
