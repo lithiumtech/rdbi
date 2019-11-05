@@ -1,5 +1,14 @@
 # Change Log
 
+## [rdbi-0.97](https://github.com/lithiumtech/rdbi/tree/rdbi-0.97) (2019-11-05)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.96...rdbi-0.97)
+
+**Merged pull requests:**
+
+- fix broken build. i owe double donuts. [\#96](https://github.com/lithiumtech/rdbi/pull/96) ([2bitoperations](https://github.com/2bitoperations))
+- fix broken build. i owe donuts. [\#95](https://github.com/lithiumtech/rdbi/pull/95) ([2bitoperations](https://github.com/2bitoperations))
+- pick \_specific\_ version of jackson [\#94](https://github.com/lithiumtech/rdbi/pull/94) ([2bitoperations](https://github.com/2bitoperations))
+
 ## [rdbi-0.96](https://github.com/lithiumtech/rdbi/tree/rdbi-0.96) (2019-11-04)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.95...rdbi-0.96)
 
