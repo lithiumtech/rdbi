@@ -131,15 +131,20 @@ public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
 
     @Override
     public ValueType remove(Object key) {
-        final String redisKey = generateRedisKey(turnObjectIntoKeyType(key));
         final Supplier<ValueType> oldValue;
         try (final Handle handle = rdbi.open()) {
             final Pipeline pl = handle.jedis().pipelined();
-            oldValue = getPipelined(key, pl);
-            pl.del(redisKey);
+            oldValue = removePipelined(key, pl);
             pl.sync();
         }
         return oldValue.get();
+    }
+
+    public Supplier<ValueType> removePipelined(final Object key, final Pipeline pipeline) {
+        final String redisKey = generateRedisKey(turnObjectIntoKeyType(key));
+        final Supplier<ValueType> oldValue = getPipelined(key, pipeline);
+        pipeline.del(redisKey);
+        return oldValue;
     }
 
     @Override
