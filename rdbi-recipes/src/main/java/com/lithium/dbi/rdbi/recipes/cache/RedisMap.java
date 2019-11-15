@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
     private static final Logger log = LoggerFactory.getLogger(RDBI.class);
@@ -70,29 +71,46 @@ public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
         throw new UnsupportedOperationException("containsValue not supported for this cache!");
     }
 
+    public Supplier<ValueType> getPipelined(final Object key, final Pipeline pipeline) {
+        final String redisKey = generateRedisKey(turnObjectIntoKeyType(key));
+        final Response<String> valAsString = pipeline.get(redisKey);
+        pipeline.expire(redisKey, valueTtl);
+        return new ValueSupplier(valAsString);
+    }
+
+    private class ValueSupplier implements Supplier<ValueType> {
+        private final Response<String> response;
+
+        ValueSupplier(Response<String> response) {
+            this.response = response;
+        }
+
+        @Override
+        public ValueType get() {
+            return getFromResponse(response);
+        }
+    }
+
     @Override
     public ValueType get(Object key) {
-        final String redisKey = generateRedisKey(turnObjectIntoKeyType(key));
-        final Response<String> valAsString;
+        final Supplier<ValueType> valueSupplier;
         try (final Handle handle = rdbi.open()) {
             final Pipeline pl = handle.jedis().pipelined();
-            valAsString = pl.get(redisKey);
-            pl.expire(redisKey, valueTtl);
+            valueSupplier = getPipelined(key, pl);
             pl.sync();
         }
-        return getFromResponse(valAsString);
+        return valueSupplier.get();
     }
 
     @Override
     public ValueType put(KeyType key, ValueType value) {
-        final Response<String> oldVal;
+        final Supplier<ValueType> oldVal;
         try (final Handle handle = rdbi.open()) {
             final Pipeline pl = handle.jedis().pipelined();
-            oldVal = put(key, value, pl);
+            oldVal = putPipelined(key, value, pl);
             pl.sync();
-
         }
-        return getFromResponse(oldVal);
+        return oldVal.get();
     }
 
     protected ValueType getFromResponse(Response<String> response) {
@@ -103,23 +121,25 @@ public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
         }
     }
 
-    @VisibleForTesting
-    protected Response<String> put(KeyType key, ValueType value, Pipeline pipeline) {
+    public Supplier<ValueType> putPipelined(KeyType key, ValueType value, Pipeline pipeline) {
         final String redisKey = generateRedisKey(key);
         final String valueAsString = serializationHelper.encode(value);
         final Response<String> currVal = pipeline.get(redisKey);
         pipeline.setex(redisKey, this.valueTtl, valueAsString);
-        return currVal;
+        return new ValueSupplier(currVal);
     }
 
     @Override
     public ValueType remove(Object key) {
         final String redisKey = generateRedisKey(turnObjectIntoKeyType(key));
-        final ValueType val = get(key);
+        final Supplier<ValueType> oldValue;
         try (final Handle handle = rdbi.open()) {
-            handle.jedis().del(redisKey);
+            final Pipeline pl = handle.jedis().pipelined();
+            oldValue = getPipelined(key, pl);
+            pl.del(redisKey);
+            pl.sync();
         }
-        return val;
+        return oldValue.get();
     }
 
     @Override
@@ -127,7 +147,7 @@ public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
         try(final Handle handle = rdbi.open()) {
             final Pipeline pl = handle.jedis().pipelined();
             for (final Entry<? extends KeyType, ? extends ValueType> entry : m.entrySet()) {
-                put(entry.getKey(), entry.getValue(), pl);
+                putPipelined(entry.getKey(), entry.getValue(), pl);
             }
             pl.sync();
         }
