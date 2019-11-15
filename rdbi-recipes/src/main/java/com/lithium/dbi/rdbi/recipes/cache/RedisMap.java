@@ -73,8 +73,7 @@ public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
 
     public Supplier<ValueType> getPipelined(final Object key, final Pipeline pipeline) {
         final String redisKey = generateRedisKey(turnObjectIntoKeyType(key));
-        final Response<String> valAsString;
-        valAsString = pipeline.get(redisKey);
+        final Response<String> valAsString = pipeline.get(redisKey);
         pipeline.expire(redisKey, valueTtl);
         return new ValueSupplier(valAsString);
     }
