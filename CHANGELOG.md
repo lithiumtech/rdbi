@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.99](https://github.com/lithiumtech/rdbi/tree/rdbi-0.99) (2019-11-15)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.98...rdbi-0.99)
+
+**Merged pull requests:**
+
+- RES-2921 add a pipelined remove too [\#98](https://github.com/lithiumtech/rdbi/pull/98) ([2bitoperations](https://github.com/2bitoperations))
+
 ## [rdbi-0.98](https://github.com/lithiumtech/rdbi/tree/rdbi-0.98) (2019-11-15)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.97...rdbi-0.98)
 
