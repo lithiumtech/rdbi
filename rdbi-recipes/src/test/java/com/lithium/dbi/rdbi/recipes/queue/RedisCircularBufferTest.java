@@ -300,4 +300,23 @@ public class RedisCircularBufferTest {
         circularBuffer.clear();
         assertTrue(circularBuffer.isEmpty());
     }
+
+    @Test
+    public void circularBufferTTL() throws InterruptedException {
+        final int ttlInSeconds = 5;
+        final RedisCircularBuffer<UUID> buffer = new RedisCircularBuffer<>(rdbi, circularBufferKey, 5, new UUIDSerialHelper(), ttlInSeconds);
+
+        buffer.clear();
+        assertTrue(buffer.isEmpty());
+
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        buffer.addAll(ImmutableList.of(first, second));
+        assertEquals(buffer.size(), 2);
+        assertEquals(buffer.peek(), first);
+        assertTrue(buffer.containsAll(ImmutableList.of(first, second)));
+
+        Thread.sleep(ttlInSeconds * 1000);
+        assertTrue(buffer.isEmpty());
+    }
 }

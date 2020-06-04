@@ -28,17 +28,27 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
     private final RDBI rdbi;
     private final SerializationHelper<ValueType> serializationHelper;
     private final int maxSize;
+    private final int ttlInSeconds;
+
+    public RedisCircularBuffer(final RDBI rdbi,
+                               @Nonnull final String key,
+                               final int maxSize,
+                               SerializationHelper<ValueType> serializationHelper,
+                               final int ttlInSeconds) {
+        this.rdbi = rdbi;
+        this.key = key;
+        this.maxSize = maxSize;
+        this.serializationHelper = serializationHelper;
+        this.ttlInSeconds = ttlInSeconds;
+
+        Preconditions.checkNotNull(key, "A null value was supplied for 'key'.");
+    }
 
     public RedisCircularBuffer(final RDBI rdbi,
                                @Nonnull final String key,
                                final int maxSize,
                                SerializationHelper<ValueType> serializationHelper) {
-        this.rdbi = rdbi;
-        this.key = key;
-        this.maxSize = maxSize;
-        this.serializationHelper = serializationHelper;
-
-        Preconditions.checkNotNull(key, "A null value was supplied for 'key'.");
+        this(rdbi, key, maxSize, serializationHelper, 0);
     }
 
     @Override
@@ -104,7 +114,7 @@ public class RedisCircularBuffer<ValueType> implements Queue<ValueType> {
         for (final ValueType value : toAdd) {
             try (Handle handle = rdbi.open()) {
                 String valueStr = serializationHelper.encode(value);
-                final int newSize = handle.attach(RedisCircularBufferDAO.class).add(key, valueStr, maxSize);
+                final int newSize = handle.attach(RedisCircularBufferDAO.class).add(key, valueStr, maxSize, ttlInSeconds);
                 boolean success = newSize >= 0 && newSize <= maxSize;
                 if (!success) {
                     return false;
