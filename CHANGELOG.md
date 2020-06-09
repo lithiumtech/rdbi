@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.100](https://github.com/lithiumtech/rdbi/tree/rdbi-0.100) (2020-06-09)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.99...rdbi-0.100)
+
+**Merged pull requests:**
+
+- RES-3947: Add option to set TTL on circular buffer [\#100](https://github.com/lithiumtech/rdbi/pull/100) ([andrewcchau](https://github.com/andrewcchau))
+
 ## [rdbi-0.99](https://github.com/lithiumtech/rdbi/tree/rdbi-0.99) (2019-11-15)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.98...rdbi-0.99)
 
