@@ -9,7 +9,9 @@ import redis.clients.jedis.JedisPool;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertThrows;
@@ -303,7 +305,7 @@ public class RedisCircularBufferTest {
 
     @Test
     public void circularBufferTTL() throws InterruptedException {
-        final int ttlInSeconds = 5;
+        final int ttlInSeconds = 1;
         final RedisCircularBuffer<UUID> buffer = new RedisCircularBuffer<>(rdbi, circularBufferKey, 5, new UUIDSerialHelper(), ttlInSeconds);
 
         buffer.clear();
@@ -317,6 +319,6 @@ public class RedisCircularBufferTest {
         assertTrue(buffer.containsAll(ImmutableList.of(first, second)));
 
         Thread.sleep(ttlInSeconds * 1000);
-        assertTrue(buffer.isEmpty());
+        await().atMost(2, TimeUnit.SECONDS).until(buffer::isEmpty);
     }
 }
