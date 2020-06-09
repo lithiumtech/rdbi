@@ -304,7 +304,7 @@ public class RedisCircularBufferTest {
     }
 
     @Test
-    public void circularBufferTTL() throws InterruptedException {
+    public void circularBufferTTL() {
         final int ttlInSeconds = 1;
         final RedisCircularBuffer<UUID> buffer = new RedisCircularBuffer<>(rdbi, circularBufferKey, 5, new UUIDSerialHelper(), ttlInSeconds);
 
@@ -318,7 +318,6 @@ public class RedisCircularBufferTest {
         assertEquals(buffer.peek(), first);
         assertTrue(buffer.containsAll(ImmutableList.of(first, second)));
 
-        Thread.sleep(ttlInSeconds * 1000);
         await().atMost(2, TimeUnit.SECONDS).until(buffer::isEmpty);
     }
 }
