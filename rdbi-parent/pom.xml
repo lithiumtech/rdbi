@@ -12,7 +12,7 @@
 
     <groupId>com.lithium.dbi.rdbi</groupId>
     <artifactId>rdbi-parent</artifactId>
-    <version>0.100</version>
+    <version>0.101-SNAPSHOT</version>
     <name>rDBI parent</name>
     <url>https://github.com/lithiumtech/rdbi</url>
     <packaging>pom</packaging>
@@ -260,9 +260,5 @@
             </plugin>
         </plugins>
     </build>
-
-  <scm>
-    <tag>rdbi-0.100</tag>
-  </scm>
 </project>
 
