@@ -9,7 +9,9 @@ import redis.clients.jedis.JedisPool;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertThrows;
@@ -299,5 +301,23 @@ public class RedisCircularBufferTest {
 
         circularBuffer.clear();
         assertTrue(circularBuffer.isEmpty());
+    }
+
+    @Test
+    public void circularBufferTTL() {
+        final int ttlInSeconds = 1;
+        final RedisCircularBuffer<UUID> buffer = new RedisCircularBuffer<>(rdbi, circularBufferKey, 5, new UUIDSerialHelper(), ttlInSeconds);
+
+        buffer.clear();
+        assertTrue(buffer.isEmpty());
+
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        buffer.addAll(ImmutableList.of(first, second));
+        assertEquals(buffer.size(), 2);
+        assertEquals(buffer.peek(), first);
+        assertTrue(buffer.containsAll(ImmutableList.of(first, second)));
+
+        await().atMost(2, TimeUnit.SECONDS).until(buffer::isEmpty);
     }
 }
