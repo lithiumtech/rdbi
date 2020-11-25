@@ -1,5 +1,13 @@
 # Change Log
 
+## [rdbi-0.102](https://github.com/lithiumtech/rdbi/tree/rdbi-0.102) (2020-11-25)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.101...rdbi-0.102)
+
+**Merged pull requests:**
+
+- optionally suppress TTL updates on gets [\#102](https://github.com/lithiumtech/rdbi/pull/102) ([2bitoperations](https://github.com/2bitoperations))
+- Bump jackson-databind from 2.9.10.1 to 2.9.10.4 in /rdbi-parent [\#99](https://github.com/lithiumtech/rdbi/pull/99) ([dependabot[bot]](https://github.com/apps/dependabot))
+
 ## [rdbi-0.101](https://github.com/lithiumtech/rdbi/tree/rdbi-0.101) (2020-06-09)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.100...rdbi-0.101)
 
