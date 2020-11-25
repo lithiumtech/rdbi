@@ -21,6 +21,7 @@ public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
     private final SerializationHelper<ValueType> serializationHelper;
     private final String cacheName;
     private final String keyPrefix;
+    private final boolean updateTtlOnGet;
     private final int valueTtl;
     protected final RDBI rdbi;
 
@@ -40,11 +41,32 @@ public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
                     String cacheName,
                     String keyPrefix,
                     Duration valueTtl) {
+        this(redisKeyGenerator, serializationHelper, rdbi, cacheName, keyPrefix, valueTtl, true);
+    }
+
+    /**
+     * @param redisKeyGenerator - something that will turn your key object into a string redis can use as a key.
+     *                     will be prefixed by the keyPrefix string.
+     * @param serializationHelper - a codec to get your value object to and from a string
+     * @param rdbi - RDBI instance to use.
+     * @param cacheName - name of cache, used in log statements
+     * @param keyPrefix - prefix of all keys used by this cache in redis
+     * @param valueTtl - redis entries holding your values will expire after this many seconds after access
+     * @param updateTtlOnGet - if true, update entry ttl on both get and put
+     */
+    public RedisMap(final KeyGenerator<KeyType> redisKeyGenerator,
+                    final SerializationHelper<ValueType> serializationHelper,
+                    final RDBI rdbi,
+                    final String cacheName,
+                    final String keyPrefix,
+                    final Duration valueTtl,
+                    final boolean updateTtlOnGet) {
         this.redisKeyGenerator = redisKeyGenerator;
         this.serializationHelper = serializationHelper;
         this.rdbi = rdbi;
         this.cacheName = cacheName;
         this.keyPrefix = keyPrefix;
+        this.updateTtlOnGet = updateTtlOnGet;
         if (valueTtl.getSeconds() > Integer.MAX_VALUE) {
             throw new IllegalArgumentException("Duration outside of valid Jedis/redis expiry range.");
         }
@@ -74,7 +96,9 @@ public class RedisMap<KeyType, ValueType> implements Map<KeyType, ValueType> {
     public Supplier<ValueType> getPipelined(final Object key, final Pipeline pipeline) {
         final String redisKey = generateRedisKey(turnObjectIntoKeyType(key));
         final Response<String> valAsString = pipeline.get(redisKey);
-        pipeline.expire(redisKey, valueTtl);
+        if (updateTtlOnGet) {
+            pipeline.expire(redisKey, valueTtl);
+        }
         return new ValueSupplier(valAsString);
     }
 
