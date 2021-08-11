@@ -26,7 +26,7 @@ class ProxyFactory {
 
     private final Factory jedisInterceptorFactory;
 
-    ProxyFactory(Tracer t) {
+    ProxyFactory() {
         factoryCache = new ConcurrentHashMap<>();
         methodContextCache =  new ConcurrentHashMap<>();
         jedisInterceptorFactory = JedisWrapperMethodInterceptor.newFactory();
