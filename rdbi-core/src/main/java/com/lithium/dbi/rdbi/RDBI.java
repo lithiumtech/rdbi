@@ -58,16 +58,12 @@ public class RDBI {
     }
 
     public Handle open() {
-        Span s = tracer.spanBuilder("rdbi handle open")
-                .startSpan();
-        try (Scope scope = s.makeCurrent()) {
+        try {
             Jedis resource = pool.getResource();
             return new Handle(pool, resource, proxyFactory, tracer);
         } catch (Exception ex) {
             logger.error("Exception caught during resource create!", ex);
             throw new RuntimeException(ex);
-        } finally {
-            s.end();
         }
     }
 }
