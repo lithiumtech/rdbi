@@ -27,7 +27,11 @@ public class RDBI {
     final Tracer tracer;
 
     public RDBI(Pool<Jedis> pool) {
-        tracer = GlobalOpenTelemetry.get().getTracer(TRACER_NAME);
+        this(pool, GlobalOpenTelemetry.get().getTracer(TRACER_NAME));
+    }
+
+    public RDBI(Pool<Jedis> pool, Tracer tracer) {
+        this.tracer = tracer;
         this.pool = pool;
         this.proxyFactory = new ProxyFactory();
         logger.info("RDBI created, ready for action.");
