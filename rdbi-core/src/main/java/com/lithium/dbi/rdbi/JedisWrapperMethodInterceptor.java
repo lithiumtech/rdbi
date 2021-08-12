@@ -60,6 +60,7 @@ class JedisWrapperMethodInterceptor implements MethodInterceptor {
             return methodProxy.invoke(jedis, args);
         } catch (JedisException e) {
             jedisBusted = true;
+            s.recordException(e);
             throw e;
         } finally {
             s.end();
