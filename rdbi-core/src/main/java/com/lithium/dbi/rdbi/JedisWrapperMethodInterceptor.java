@@ -50,7 +50,6 @@ class JedisWrapperMethodInterceptor implements MethodInterceptor {
             return jedisBusted;
         }
         Span s = tracer.spanBuilder(method.getName())
-                .setAttribute("db.type", "redis")
                 .setAllAttributes(commonAttributes)
                 .startSpan();
         if (args.length > 0 && args[0] instanceof String) {
