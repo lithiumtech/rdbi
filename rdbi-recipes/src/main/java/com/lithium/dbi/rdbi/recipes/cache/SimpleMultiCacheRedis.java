@@ -7,6 +7,7 @@ import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.params.SetParams;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -57,7 +58,7 @@ public class SimpleMultiCacheRedis implements SimpleMultiCache {
 
     private void cacheObject(Object object, String cacheKey, int cacheTimeToLive) {
         try (Handle h = rdbi.open()) {
-            h.jedis().set(cacheKey, jsonMapper.writeValueAsString(object), "NX", "EX", cacheTimeToLive);
+            h.jedis().set(cacheKey, jsonMapper.writeValueAsString(object), SetParams.setParams().nx().ex(cacheTimeToLive));
         } catch (IOException ioe) {
             logger.error("Got IOException writing cached result for {}", cacheKey, ioe);
         }

@@ -1,9 +1,10 @@
 package com.lithium.dbi.rdbi;
 
+import io.opentelemetry.api.trace.Tracer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
-import redis.clients.util.Pool;
+import redis.clients.jedis.util.Pool;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.Closeable;
@@ -13,22 +14,24 @@ public class Handle implements Closeable {
 
     private final Pool<Jedis> pool;
     private final Jedis jedis;
+    private final Tracer tracer;
     private JedisWrapperDoNotUse jedisWrapper;
     private boolean closed = false;
     private static final Logger logger = LoggerFactory.getLogger(Handle.class);
 
     private final ProxyFactory proxyFactory;
 
-    public Handle(Pool<Jedis> pool, Jedis jedis, ProxyFactory proxyFactory) {
+    public Handle(Pool<Jedis> pool, Jedis jedis, ProxyFactory proxyFactory, Tracer tracer) {
         this.pool = pool;
         this.jedis = jedis;
         this.proxyFactory = proxyFactory;
+        this.tracer = tracer;
     }
 
     public Jedis jedis() {
 
         if (jedisWrapper == null) {
-            jedisWrapper = proxyFactory.attachJedis(jedis);
+            jedisWrapper = proxyFactory.attachJedis(jedis, tracer);
         }
 
         return jedisWrapper;

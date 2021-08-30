@@ -1,9 +1,10 @@
 package com.lithium.dbi.rdbi;
 
+import io.opentelemetry.api.GlobalOpenTelemetry;
 import org.testng.annotations.Test;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisConnectionException;
-import redis.clients.util.Pool;
+import redis.clients.jedis.util.Pool;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -22,9 +23,9 @@ public class HandleTest {
 
         // mocks that return mocks.... forgive me....
         final ProxyFactory fakeProxyFactory = mock(ProxyFactory.class);
-        when(fakeProxyFactory.attachJedis(any(Jedis.class))).thenReturn(fakeWrapper);
+        when(fakeProxyFactory.attachJedis(any(Jedis.class), any())).thenReturn(fakeWrapper);
 
-        final Handle testHandle = new Handle(fakePool, fakeJedis, fakeProxyFactory);
+        final Handle testHandle = new Handle(fakePool, fakeJedis, fakeProxyFactory, GlobalOpenTelemetry.getTracer(RDBI.TRACER_NAME));
         testHandle.close();
 
         verify(fakePool).returnResource(fakeJedis);

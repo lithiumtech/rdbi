@@ -1,5 +1,6 @@
 package com.lithium.dbi.rdbi;
 
+import io.opentelemetry.api.trace.Tracer;
 import net.sf.cglib.proxy.Callback;
 import net.sf.cglib.proxy.CallbackFilter;
 import net.sf.cglib.proxy.Enhancer;
@@ -31,8 +32,8 @@ class ProxyFactory {
         jedisInterceptorFactory = JedisWrapperMethodInterceptor.newFactory();
     }
 
-    JedisWrapperDoNotUse attachJedis(final Jedis jedis) {
-        return JedisWrapperMethodInterceptor.newInstance(jedisInterceptorFactory, jedis);
+    JedisWrapperDoNotUse attachJedis(final Jedis jedis, Tracer tracer) {
+        return JedisWrapperMethodInterceptor.newInstance(jedisInterceptorFactory, jedis, tracer);
     }
 
     @SuppressWarnings("unchecked")
