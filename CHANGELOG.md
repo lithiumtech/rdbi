@@ -1,5 +1,15 @@
 # Change Log
 
+## [rdbi-0.103](https://github.com/lithiumtech/rdbi/tree/rdbi-0.103) (2021-08-30)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/0.103-otel...rdbi-0.103)
+
+**Merged pull requests:**
+
+- CARE-3616 Instrument RDBI with OpenTelemetry [\#105](https://github.com/lithiumtech/rdbi/pull/105) ([dmclain](https://github.com/dmclain))
+
+## [0.103-otel](https://github.com/lithiumtech/rdbi/tree/0.103-otel) (2021-08-12)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.102...0.103-otel)
+
 ## [rdbi-0.102](https://github.com/lithiumtech/rdbi/tree/rdbi-0.102) (2020-11-25)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.101...rdbi-0.102)
 
