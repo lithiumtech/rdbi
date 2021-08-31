@@ -5,6 +5,7 @@ import com.lithium.dbi.rdbi.RDBI;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 public class PriorityBasedJobScheduler extends AbstractJobScheduler<JobInfo> {
 
@@ -27,6 +28,20 @@ public class PriorityBasedJobScheduler extends AbstractJobScheduler<JobInfo> {
     public boolean schedule(final String tube, final String jobStr, final double priority) {
         return rdbi.withHandle(handle -> {
             handle.jedis().zadd(getReadyQueue(tube), priority, jobStr);
+            return true;
+        });
+    }
+
+    /**
+     * Add several new jobs to the TimeBasedJobScheduler
+     *
+     * @param tube Used in conjunction with the redisPrefixKey (constructor) to make up the full redis key name.
+     * @param jobStrPriorities The keys are the string representation of the jobs to be scheduled with their priorities as the values
+     * @return true if the job was successfully scheduled
+     */
+    public boolean scheduleMulti(final String tube, final Map<String, Double> jobStrPriorities) {
+        return rdbi.withHandle(handle -> {
+            handle.jedis().zadd(getReadyQueue(tube), jobStrPriorities);
             return true;
         });
     }

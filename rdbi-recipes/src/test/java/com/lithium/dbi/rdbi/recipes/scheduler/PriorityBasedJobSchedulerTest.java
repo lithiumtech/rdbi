@@ -1,5 +1,6 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
+import com.google.common.collect.ImmutableMap;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.RDBI;
 import com.lithium.dbi.rdbi.testutil.TubeUtils;
@@ -45,6 +46,20 @@ public class PriorityBasedJobSchedulerTest {
         assertEquals(result2.getJobStr(), "{hello:world}");
         JobInfo result3 = scheduledJobSystem.reserveSingle(tubeName, 1000);
         assertNull(result3);
+    }
+
+    @Test
+    public void testMultiSchedule() throws InterruptedException {
+        ImmutableMap<String, Double> jobs = ImmutableMap.of(
+                "{hello:world}", 3.00,
+                "{hello:texas}", 4.00,
+                "{hello:california}", 6.00
+        );
+        scheduledJobSystem.scheduleMulti(tubeName, jobs);
+        JobInfo result2 = scheduledJobSystem.reserveSingle(tubeName, 1000);
+        assertEquals(result2.getJobStr(), "{hello:world}");
+        JobInfo result3 = scheduledJobSystem.reserveSingle(tubeName, 1000);
+        assertEquals(result2.getJobStr(), "{hello:texas}");
     }
 
     @Test
