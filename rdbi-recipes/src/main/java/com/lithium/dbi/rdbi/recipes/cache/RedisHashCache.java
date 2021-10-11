@@ -205,7 +205,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
             pipeline.hset(cacheKey, keyTypeToRedisKey.apply(key), valueTypeSerializationHelper.encode(data));
             // Encode typed key -> string to remove from missing set.
             pipeline.srem(cacheMissingKey(), keyTypeSerializationHelper.encode(key));
-            pipeline.expire(keyTypeToRedisKey.apply(key), cacheKeyTTL);
+            pipeline.expire(cacheKey, cacheKeyTTL);
         } catch (Exception jpe) {
             throw new RuntimeException(jpe);
         }
