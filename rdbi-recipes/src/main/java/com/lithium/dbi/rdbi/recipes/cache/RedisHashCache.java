@@ -40,6 +40,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
     private final Callable<Collection<ValueType>> loadAll;
 
     private final String cacheKey;
+    private final long cacheKeyTTL;
     private final long cacheRefreshThresholdSecs;
     private final int lockTimeoutSecs;
     private final int lockReleaseRetries;
@@ -76,6 +77,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
             Callable<Collection<ValueType>> loadAll,
             String cacheName,
             String cacheKey,
+            long cacheKeyTTL,
             long cacheRefreshThresholdSecs,
             int lockTimeoutSecs,
             Optional<ExecutorService> asyncService,
@@ -93,6 +95,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
 
         this.loadAll = loadAll;
         this.cacheKey = cacheKey;
+        this.cacheKeyTTL = cacheKeyTTL;
         this.cacheRefreshThresholdSecs = cacheRefreshThresholdSecs;
         this.lockTimeoutSecs = lockTimeoutSecs;
 
@@ -202,6 +205,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
             pipeline.hset(cacheKey, keyTypeToRedisKey.apply(key), valueTypeSerializationHelper.encode(data));
             // Encode typed key -> string to remove from missing set.
             pipeline.srem(cacheMissingKey(), keyTypeSerializationHelper.encode(key));
+            pipeline.expire(keyTypeToRedisKey.apply(key), cacheKeyTTL);
         } catch (Exception jpe) {
             throw new RuntimeException(jpe);
         }
