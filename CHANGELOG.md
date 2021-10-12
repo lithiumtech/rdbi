@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.104](https://github.com/lithiumtech/rdbi/tree/rdbi-0.104) (2021-10-12)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.103...rdbi-0.104)
+
+**Merged pull requests:**
+
+- LSWR-9875 Add TTL to RedisHashCache [\#106](https://github.com/lithiumtech/rdbi/pull/106) ([ryan-an-lang](https://github.com/ryan-an-lang))
+
 ## [rdbi-0.103](https://github.com/lithiumtech/rdbi/tree/rdbi-0.103) (2021-08-30)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/0.103-otel...rdbi-0.103)
 
