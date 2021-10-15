@@ -244,6 +244,7 @@ public class RedisHashCache<KeyType, ValueType> extends AbstractRedisCache<KeyTy
         rdbi.consumeHandle(handle -> {
                 Jedis jedis = handle.jedis();
                 jedis.set(cacheLoadTimeKey(), String.valueOf(System.currentTimeMillis()));
+                jedis.expire(cacheLoadTimeKey(), cacheKeyTTL);
                 jedis.del(cacheMissingKey());
         });
     }
