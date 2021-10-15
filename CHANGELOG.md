@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.105](https://github.com/lithiumtech/rdbi/tree/rdbi-0.105) (2021-10-15)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.104...rdbi-0.105)
+
+**Merged pull requests:**
+
+- LSWR-9875 - Expire loadtime keys on RedisHashCache [\#107](https://github.com/lithiumtech/rdbi/pull/107) ([ryan-an-lang](https://github.com/ryan-an-lang))
+
 ## [rdbi-0.104](https://github.com/lithiumtech/rdbi/tree/rdbi-0.104) (2021-10-12)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.103...rdbi-0.104)
 
