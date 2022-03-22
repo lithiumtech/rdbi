@@ -43,7 +43,6 @@ public class Handle implements Closeable {
 
     @Override
     public void close() {
-
         if (closed) {
             return;
         }
