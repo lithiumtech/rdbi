@@ -5,7 +5,7 @@ import redis.clients.jedis.Jedis;
 abstract class JedisWrapperDoNotUse extends Jedis {
 
     JedisWrapperDoNotUse() {
-        super("doesntmatter");
+        super();
     }
 
     abstract boolean __rdbi_isJedisBusted__();
