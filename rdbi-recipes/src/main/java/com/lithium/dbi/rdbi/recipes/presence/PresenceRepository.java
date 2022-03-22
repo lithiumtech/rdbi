@@ -6,6 +6,7 @@ import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -32,7 +33,7 @@ public class PresenceRepository {
      * @param limit provide a max number of entries to return, will return all if not provided
      * @return all entries that have not expired
      */
-    public Set<String> getPresent(String tube, Optional<Integer> limit) {
+    public List<String> getPresent(String tube, Optional<Integer> limit) {
         final Instant now = Instant.now();
 
         try (final Handle handle = rdbi.open()) {
@@ -50,7 +51,7 @@ public class PresenceRepository {
      * @param limit provide a max number of entries to return, will return all if not provided
      * @return all entries that have expired
      */
-    public Set<String> getExpired(String tube, Optional<Integer> limit) {
+    public List<String> getExpired(String tube, Optional<Integer> limit) {
         final Instant now = Instant.now();
 
         try (final Handle handle = rdbi.open()) {

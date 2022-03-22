@@ -47,28 +47,30 @@ public class Handle implements Closeable {
             return;
         }
 
-        boolean isBusted;
-        try {
-            if (jedisWrapper != null) {
-                isBusted = jedisWrapper.__rdbi_isJedisBusted__();
-            } else {
-                isBusted = false;
-            }
-        } catch (Exception e) {
-            logger.error("Exception caught while checking isJedisBusted!", e);
-            isBusted = true;
-        }
-
-        if (isBusted) {
-            pool.returnBrokenResource(jedis);
-        } else {
-            try {
-                pool.returnResource(jedis);
-            } catch (Exception ex) {
-                logger.error("Exception caught while trying to return to pool. Returning as broken.", ex);
-                pool.returnBrokenResource(jedis);
-            }
-        }
+        jedis.close();
+//
+//        boolean isBusted;
+//        try {
+//            if (jedisWrapper != null) {
+//                isBusted = jedisWrapper.__rdbi_isJedisBusted__();
+//            } else {
+//                isBusted = false;
+//            }
+//        } catch (Exception e) {
+//            logger.error("Exception caught while checking isJedisBusted!", e);
+//            isBusted = true;
+//        }
+//
+//        if (isBusted) {
+//            pool.returnBrokenResource(jedis);
+//        } else {
+//            try {
+//                pool.returnResource(jedis);
+//            } catch (Exception ex) {
+//                logger.error("Exception caught while trying to return to pool. Returning as broken.", ex);
+//                pool.returnBrokenResource(jedis);
+//            }
+//        }
         closed = true;
     }
 }

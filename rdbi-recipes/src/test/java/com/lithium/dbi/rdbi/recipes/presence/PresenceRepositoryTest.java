@@ -6,6 +6,7 @@ import redis.clients.jedis.JedisPool;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -92,12 +93,12 @@ public class PresenceRepositoryTest {
         // put something in and verify we can get it back out
         final String uuid = UUID.randomUUID().toString();
         presenceRepository.addHeartbeat(mytube, uuid, Duration.ofSeconds(1).toMillis());
-        final Set<String> presentSet = presenceRepository.getPresent(mytube, Optional.empty());
+        final List<String> presentSet = presenceRepository.getPresent(mytube, Optional.empty());
         assertEquals(uuid, presentSet.iterator().next(), "Expected to have one heartbeat with uuid: " + uuid);
 
         // call cull and verify heart beat is still present
         presenceRepository.cull(mytube);
-        final Set<String> stillpresentSet = presenceRepository.getPresent(mytube, Optional.empty());
+        final List<String> stillpresentSet = presenceRepository.getPresent(mytube, Optional.empty());
         assertEquals(stillpresentSet.iterator().next(), uuid, "Expected to still have one heartbeat with uuid: " + uuid);
 
         // wait a second and verify previous heartbeat is expired
@@ -130,12 +131,12 @@ public class PresenceRepositoryTest {
         // put something in and verify we can get it back out
         final String uuid = UUID.randomUUID().toString();
         presenceRepository.addHeartbeat(mytube, uuid, Duration.ofSeconds(1).toMillis());
-        final Set<String> presentSet = presenceRepository.getPresent(mytube, Optional.empty());
+        final List<String> presentSet = presenceRepository.getPresent(mytube, Optional.empty());
         assertEquals(uuid, presentSet.iterator().next(), "Expected to have one heartbeat with uuid: " + uuid);
 
         // call cull and verify heart beat is still present
         presenceRepository.cull(mytube);
-        final Set<String> stillpresentSet = presenceRepository.getPresent(mytube, Optional.empty());
+        final List<String> stillpresentSet = presenceRepository.getPresent(mytube, Optional.empty());
         assertEquals(stillpresentSet.iterator().next(), uuid, "Expected to still have one heartbeat with uuid: " + uuid);
 
         // wait a second and verify previous heartbeat is expired

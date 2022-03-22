@@ -3,7 +3,7 @@ package com.lithium.dbi.rdbi.recipes.scheduler;
 import com.google.common.primitives.Ints;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import redis.clients.jedis.Tuple;
+import redis.clients.jedis.resps.Tuple;
 
 import java.util.List;
 import java.util.Optional;
@@ -376,10 +376,10 @@ public class MultiChannelScheduler {
 
     private List<TimeJobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
         try (Handle handle = rdbi.open()) {
-            Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
-            return tupleSet.stream()
-                           .map(t -> new TimeJobInfo(t.getElement(), t.getScore()))
-                           .collect(Collectors.toList());
+            List<Tuple> tupleList = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
+            return tupleList.stream()
+                            .map(t -> new TimeJobInfo(t.getElement(), t.getScore()))
+                            .collect(Collectors.toList());
         }
     }
 
