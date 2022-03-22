@@ -3,7 +3,7 @@ package com.lithium.dbi.rdbi.recipes.channel;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.lithium.dbi.rdbi.RDBI;
-import org.junit.Ignore;
+import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
