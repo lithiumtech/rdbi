@@ -1,5 +1,12 @@
 # Change Log
 
+## [rdbi-0.106](https://github.com/lithiumtech/rdbi/tree/rdbi-0.106) (2022-03-23)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.105...rdbi-0.106)
+
+**Merged pull requests:**
+
+- CARE 6735 [\#109](https://github.com/lithiumtech/rdbi/pull/109) ([gjesse](https://github.com/gjesse))
+
 ## [rdbi-0.105](https://github.com/lithiumtech/rdbi/tree/rdbi-0.105) (2021-10-15)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.104...rdbi-0.105)
 
