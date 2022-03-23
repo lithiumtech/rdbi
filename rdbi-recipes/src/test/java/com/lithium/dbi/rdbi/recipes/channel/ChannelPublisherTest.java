@@ -15,13 +15,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNotNull;
 import static org.testng.AssertJUnit.assertNull;
-import static org.testng.AssertJUnit.assertTrue;
 import static org.testng.AssertJUnit.fail;
 
 @Test(groups = "integration")
 public class ChannelPublisherTest {
-
-
 
     @Test
     public void testPublishChannelLuaPerformanceTest() throws InterruptedException {
@@ -35,27 +32,21 @@ public class ChannelPublisherTest {
         final AtomicBoolean thread1Finished = new AtomicBoolean(false);
         final AtomicBoolean thread2Finished = new AtomicBoolean(false);
 
-        Thread thread1 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for ( int i = 0; i < 1000; i++) {
-                    channelPublisher.publish(channel, value );
+        Thread thread1 = new Thread(() -> {
+            for ( int i = 0; i < 1000; i++) {
+                channelPublisher.publish(channel, value );
 
-                    if (Thread.interrupted()) {
-                        return;
-                    }
+                if (Thread.interrupted()) {
+                    return;
                 }
-                thread1Finished.set(true);
             }
+            thread1Finished.set(true);
         });
-        Thread thread2 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for ( int i = 0; i < 1000; i++) {
-                    channelPublisher.publish(channel, value );
-                }
-                thread2Finished.set(true);
+        Thread thread2 = new Thread(() -> {
+            for ( int i = 0; i < 1000; i++) {
+                channelPublisher.publish(channel, value );
             }
+            thread2Finished.set(true);
         });
 
         thread1.start();
@@ -108,7 +99,7 @@ public class ChannelPublisherTest {
         try {
             String copiedDepth = handle.jedis().get("channel1:processed");
             assertNotNull(copiedDepth);
-            assertTrue(Long.valueOf(copiedDepth) == 2L);
+            assertEquals(2L, Long.parseLong(copiedDepth));
 
             handle.jedis().del("channel1:processed");
         } finally {
@@ -123,7 +114,7 @@ public class ChannelPublisherTest {
         try {
             String copiedDepth = handle.jedis().get("channel1:processed");
             assertNotNull(copiedDepth);
-            assertTrue(Long.valueOf(copiedDepth) == 2L);
+            assertEquals(2L, Long.parseLong(copiedDepth));
 
             handle.jedis().del("channel1:processed");
         } finally {
@@ -143,20 +134,17 @@ public class ChannelPublisherTest {
 
         final ChannelReceiver receiver = new ChannelLuaReceiver(rdbi);
         Long result = receiver.getDepth("channel1");
-        assertTrue(result.equals(2L));
+        assertEquals(2L, (long) result);
 
         result = receiver.getDepth("channel1", "channel1:processed");
-        assertTrue(result.equals(2L));
+        assertEquals(2L, (long) result);
 
-        Handle handle = rdbi.open();
-        try {
+        try (Handle handle = rdbi.open()) {
             String copiedDepth = handle.jedis().get("channel1:processed");
             assertNotNull(copiedDepth);
-            assertTrue(Long.valueOf(copiedDepth) == 2L);
+            assertEquals(2L, (long) Long.parseLong(copiedDepth));
 
             handle.jedis().del("channel1:processed");
-        } finally {
-            handle.close();
         }
     }
 
