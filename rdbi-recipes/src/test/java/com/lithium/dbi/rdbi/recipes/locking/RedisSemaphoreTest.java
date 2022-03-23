@@ -18,7 +18,7 @@ import static org.testng.Assert.assertTrue;
 
 @Test(groups = "integration")
 public class RedisSemaphoreTest {
-    private static final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+    private static final RDBI rdbi = new RDBI(new JedisPool("localhost" , 6379));
     private static final String ownerId = "ownerSemaphoreTest";
     private static final String semaphoreKey = "semaphoreKeySemaphoreTest";
     private static final Integer semaphoreTimeoutInSeconds = 1;

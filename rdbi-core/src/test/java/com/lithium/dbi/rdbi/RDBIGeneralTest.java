@@ -11,7 +11,7 @@ import redis.clients.jedis.JedisPool;
 public class RDBIGeneralTest {
 
     public static void main(String[] args) {
-        RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
         Handle handle = rdbi.open();
 

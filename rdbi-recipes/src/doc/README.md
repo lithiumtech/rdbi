@@ -11,7 +11,7 @@ a Jedis client from the pool, use the client, then return the client to the pool
 to Redis either from a network or programming error, the client must be cleaned up before returning to the pool. The
 problem is the Jedis api forces this clean up on the application developer:
 
-	JedisPool pool = new JedisPool("localhost");	
+	JedisPool pool = new JedisPool("localhost", 6379);	
 	Jedis jedis = null;
 	boolean broken = false; //extra variable
 
@@ -90,7 +90,7 @@ is broken or not?
 The second question is whose api can I steal? I'm sure they've thought it through. That's easy, in Java 7 we could use
 [try-with-resource](http://docs.oracle.com/javase/tutorial/essential/exceptions/tryResourceClose.html):
 
-	JedisPool pool = new JedisPool("localhost");	
+	JedisPool pool = new JedisPool("localhost", 6379);	
 	
 	try(Jedis jedis = pool.getResource();) {
 		jedis.set("hello", "world");

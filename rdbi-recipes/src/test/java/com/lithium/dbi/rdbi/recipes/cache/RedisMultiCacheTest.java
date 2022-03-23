@@ -262,7 +262,7 @@ public class RedisMultiCacheTest {
     }
 
     private RDBI createRdbi() {
-        return new RDBI(new JedisPool("localhost"));
+        return new RDBI(new JedisPool("localhost", 6379));
     }
 
     private static abstract class CountingLoader implements Function<Set<Short>, Collection<Long>> {

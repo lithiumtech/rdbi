@@ -33,7 +33,7 @@ public class ChannelLuaReceiverTest {
         final int messageAmount = 100;
         final List<String> channelValues = new ArrayList<>();
 
-        RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
         for (int i = 0; i < messageAmount; i++) {
             channelValues.add(UUID.randomUUID().toString());
@@ -74,7 +74,7 @@ public class ChannelLuaReceiverTest {
             }
         }
 
-        RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
         channelPublisher.resetChannels(channelSet);
@@ -114,7 +114,7 @@ public class ChannelLuaReceiverTest {
             }
         }
 
-        RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
         channelPublisher.resetChannels(channelSet);
@@ -144,7 +144,7 @@ public class ChannelLuaReceiverTest {
         final Set<String> channelSet = ImmutableSet.of("channel1");
         final List<Long> lastSeenIds = ImmutableList.of(0L);
 
-        RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
 
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
@@ -166,7 +166,7 @@ public class ChannelLuaReceiverTest {
         final Set<String> channelSet = ImmutableSet.of("channel1", "channel2", "channel3", "channel4", "channel5");
         final int messageAmount = 50;
 
-        RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
         channelPublisher.resetChannels(channelSet);
@@ -295,7 +295,7 @@ public class ChannelLuaReceiverTest {
         List<Thread> threadList = new ArrayList<>(numThreads);
         List<AtomicBoolean> threadXFinished = new ArrayList();
 
-        RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
         channelPublisher.resetChannels(channelsSet);

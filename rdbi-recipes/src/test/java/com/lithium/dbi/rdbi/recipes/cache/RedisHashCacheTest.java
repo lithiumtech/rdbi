@@ -767,7 +767,7 @@ public class RedisHashCacheTest {
     }
 
     RDBI createRdbi() {
-        return new RDBI(new JedisPool("localhost"));
+        return new RDBI(new JedisPool("localhost", 6379));
     }
 
     public static class TestContainer {

@@ -28,7 +28,7 @@ public class ChannelPublisherTest {
 
         final Set<String> channel = ImmutableSet.of("channel1", "channel2", "channel3", "channel4", "channel5");
 
-        final ChannelPublisher channelPublisher = new ChannelPublisher(new RDBI(new JedisPool("localhost")));
+        final ChannelPublisher channelPublisher = new ChannelPublisher(new RDBI(new JedisPool("localhost", 6379)));
         channelPublisher.resetChannels(channel);
 
         final List<String> value =ImmutableList.of("value1");
@@ -73,7 +73,7 @@ public class ChannelPublisherTest {
     @Test
     public void simpleInsertTest() {
 
-        final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
         channelPublisher.resetChannel("channel1");
         channelPublisher.publish("channel1", "Hello");
@@ -93,7 +93,7 @@ public class ChannelPublisherTest {
 
         final Set<String> channel = ImmutableSet.of("channel1");
 
-        final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
         channelPublisher.resetChannels(channel);
 
@@ -135,7 +135,7 @@ public class ChannelPublisherTest {
     public void getDepthTest() {
         final Set<String> channel = ImmutableSet.of("channel1");
 
-        final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
         channelPublisher.resetChannels(channel);
 
@@ -165,7 +165,7 @@ public class ChannelPublisherTest {
 
         final Set<String> channel = ImmutableSet.of("channel1", "channel2", "channel3", "channel4", "channel5");
 
-        final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
         channelPublisher.resetChannels(channel);
 

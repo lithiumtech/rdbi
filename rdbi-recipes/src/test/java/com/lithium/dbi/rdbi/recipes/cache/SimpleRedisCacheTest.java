@@ -32,7 +32,7 @@ public class SimpleRedisCacheTest {
     @BeforeMethod
     public void setup() {
         if (rdbi == null) {
-            this.rdbi = new RDBI(new JedisPool("localhost"));
+            this.rdbi = new RDBI(new JedisPool("localhost", 6379));
         }
         this.simpleCache = new SimpleMultiCacheRedis(new ObjectMapper(), rdbi);
         this.cacheMetrics = new CacheMetrics(new MetricRegistry(), SimpleRedisCacheTest.class, "integrationTest");

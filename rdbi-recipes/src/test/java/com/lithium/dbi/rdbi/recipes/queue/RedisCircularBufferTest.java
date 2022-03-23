@@ -20,7 +20,7 @@ import static org.testng.Assert.assertTrue;
 @Test(groups = "integration")
 public class RedisCircularBufferTest {
     public String circularBufferKey = "REDISCIRCULARBUFFER" + UUID.randomUUID().toString();
-    final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+    final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
     public static class UUIDSerialHelper implements SerializationHelper<UUID> {
 

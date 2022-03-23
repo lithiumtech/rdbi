@@ -29,7 +29,7 @@ public class RedisCacheInvalidateTest {
 
     @BeforeClass
     public static void setUp() throws Exception {
-        jedisPool = new JedisPool("localhost");
+        jedisPool = new JedisPool("localhost", 6379);
 
         final RDBI rdbi = new RDBI(jedisPool);
 

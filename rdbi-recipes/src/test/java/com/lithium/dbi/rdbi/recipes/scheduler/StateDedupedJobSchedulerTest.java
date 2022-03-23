@@ -20,7 +20,7 @@ import static org.testng.Assert.fail;
 
 @Test(groups = "integration")
 public class StateDedupedJobSchedulerTest {
-    private static final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+    private static final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
     private String tubeName;
 
     private StateDedupedJobScheduler scheduledJobSystem = null;

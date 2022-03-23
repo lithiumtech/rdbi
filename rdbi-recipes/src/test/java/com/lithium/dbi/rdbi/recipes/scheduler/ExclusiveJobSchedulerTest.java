@@ -23,7 +23,7 @@ import static org.testng.Assert.assertTrue;
 @Test(groups = "integration")
 public class ExclusiveJobSchedulerTest {
 
-    private static final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+    private static final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
     private String tubeName;
 
     private ExclusiveJobScheduler scheduledJobSystem = null;

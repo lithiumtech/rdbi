@@ -21,7 +21,7 @@ public class PresenceRepositoryTest {
     @Test
     public void addTest () throws InterruptedException {
 
-        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost")), "myprefix");
+        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost", 6379)), "myprefix");
 
         presenceRepository.nukeForTest("mytube");
 
@@ -41,7 +41,7 @@ public class PresenceRepositoryTest {
     @Test
     public void basicPerformanceTest() throws InterruptedException {
 
-        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost")), "myprefix");
+        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost", 6379)), "myprefix");
         presenceRepository.nukeForTest("mytube");
 
         Instant before = Instant.now();
@@ -84,7 +84,7 @@ public class PresenceRepositoryTest {
     @Test
     public void getPresentTest() throws InterruptedException {
         final String mytube = "getPresentTest";
-        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost")), "myprefix");
+        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost", 6379)), "myprefix");
         presenceRepository.nukeForTest(mytube);
 
         // assert set is empty at start
@@ -122,7 +122,7 @@ public class PresenceRepositoryTest {
     @Test
     public void getExpiredTest() throws InterruptedException {
         final String mytube = "getPresentTest";
-        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost")), "myprefix");
+        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost", 6379)), "myprefix");
         presenceRepository.nukeForTest(mytube);
 
         // assert set is empty at start
