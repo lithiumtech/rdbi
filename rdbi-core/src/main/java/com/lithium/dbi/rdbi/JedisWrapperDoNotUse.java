@@ -8,5 +8,4 @@ abstract class JedisWrapperDoNotUse extends Jedis {
         super();
     }
 
-    abstract boolean __rdbi_isJedisBusted__();
 }

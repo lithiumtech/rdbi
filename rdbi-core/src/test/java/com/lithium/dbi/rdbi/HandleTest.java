@@ -1,9 +1,6 @@
 package com.lithium.dbi.rdbi;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
-import org.apache.commons.pool2.PooledObject;
-import org.apache.commons.pool2.impl.DefaultEvictionPolicy;
-import org.apache.commons.pool2.impl.EvictionConfig;
 import org.apache.commons.pool2.impl.EvictionPolicy;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
@@ -36,13 +33,12 @@ public class HandleTest {
         doThrow(new JedisConnectionException("boogaboogahey")).when(fakePool).returnResource(any(Jedis.class));
         final Jedis fakeJedis = mock(Jedis.class);
         final JedisWrapperDoNotUse fakeWrapper = mock(JedisWrapperDoNotUse.class);
-        when(fakeWrapper.__rdbi_isJedisBusted__()).thenReturn(false);
 
         // mocks that return mocks.... forgive me....
         final ProxyFactory fakeProxyFactory = mock(ProxyFactory.class);
         when(fakeProxyFactory.attachJedis(any(Jedis.class), any())).thenReturn(fakeWrapper);
 
-        final Handle testHandle = new Handle(fakePool, fakeJedis, fakeProxyFactory, GlobalOpenTelemetry.getTracer(RDBI.TRACER_NAME));
+        final Handle testHandle = new Handle(fakeJedis, fakeProxyFactory, GlobalOpenTelemetry.getTracer(RDBI.TRACER_NAME));
         testHandle.close();
 
         verify(fakePool).returnResource(fakeJedis);

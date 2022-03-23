@@ -1,0 +1,52 @@
+#!groovy
+
+pipeline {
+    agent { label 'java8 && small && dev' }
+    tools {
+        maven 'Maven 3 (latest)'
+        jdk 'Latest'
+    }
+
+    stages {
+        stage('Init') {
+            steps {
+                script {
+                    currentBuild.displayName = "#${env.BUILD_NUMBER}: Branch ${env.BRANCH_NAME}"
+                    currentBuild.description = "Branch ${env.BRANCH_NAME}"
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean verify -P code-coverage'
+            }
+        }
+    }
+
+    post {
+        success {
+            junit '**/surefire-reports/*.xml,**/failsafe-reports/*.xml'
+            jacoco classPattern: '**/target/classes', exclusionPattern: '**/*Test.class,**/*_*.class', execPattern: '**/jacoco.xml,**/jacoco-it.xml', inclusionPattern: '**/*.class'
+            slackSend channel: '#leeroy-jenkins',
+                    color: "good",
+                    message: "${env.JOB_NAME} - ${env.BUILD_DISPLAY_NAME} ${currentBuild.currentResult} after ${currentBuild.durationString} (<${env.BUILD_URL}|Open>)"
+        }
+        unstable {
+            junit '**/surefire-reports/*.xml,**/failsafe-reports/*.xml'
+            jacoco classPattern: '**/target/classes', exclusionPattern: '**/*Test.class,**/*_*.class', execPattern: '**/jacoco.xml,**/jacoco-it.xml', inclusionPattern: '**/*.class'
+            slackSend channel: '#leeroy-jenkins',
+                    color: "warning",
+                    message: "${env.JOB_NAME} - ${env.BUILD_DISPLAY_NAME} ${currentBuild.currentResult} after ${currentBuild.durationString} (<${env.BUILD_URL}|Open>)"
+        }
+        failure {
+            slackSend channel: '#leeroy-jenkins',
+                    color: "danger",
+                    message: "${env.JOB_NAME} - ${env.BUILD_DISPLAY_NAME} ${currentBuild.currentResult} after ${currentBuild.durationString} (<${env.BUILD_URL}|Open>)"
+        }
+        aborted {
+            slackSend channel: '#leeroy-jenkins',
+                    message: "${env.JOB_NAME} - ${env.BUILD_DISPLAY_NAME} ${currentBuild.currentResult} after ${currentBuild.durationString} (<${env.BUILD_URL}|Open>)"
+        }
+    }
+}

@@ -13,13 +13,11 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisException;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
 
 class JedisWrapperMethodInterceptor implements MethodInterceptor {
 
     private final Jedis jedis;
     private final Tracer tracer;
-    private boolean jedisBusted;
     private final Attributes commonAttributes;
 
     static Factory newFactory() {
@@ -41,14 +39,10 @@ class JedisWrapperMethodInterceptor implements MethodInterceptor {
                 AttributeKey.stringKey("db.type"), "redis",
                 AttributeKey.stringKey("component"), "rdbi"
         );
-        jedisBusted = false;
     }
 
     @Override
     public Object intercept(Object o, Method method, Object[] args, MethodProxy methodProxy) throws Throwable {
-        if ( method.getName().equals("__rdbi_isJedisBusted__")) {
-            return jedisBusted;
-        }
         Span s = tracer.spanBuilder(method.getName())
                 .setAllAttributes(commonAttributes)
                 .startSpan();
@@ -58,7 +52,6 @@ class JedisWrapperMethodInterceptor implements MethodInterceptor {
         try (Scope scope = s.makeCurrent()) {
             return methodProxy.invoke(jedis, args);
         } catch (JedisException e) {
-            jedisBusted = true;
             s.recordException(e);
             throw e;
         } finally {
