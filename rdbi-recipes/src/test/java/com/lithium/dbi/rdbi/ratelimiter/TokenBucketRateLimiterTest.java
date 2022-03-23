@@ -253,7 +253,7 @@ public class TokenBucketRateLimiterTest {
         // creates an entry that should expire in 2s
         try (Handle handle = rdbi.open()) {
             final Jedis jedis = handle.jedis();
-            assertEquals(jedis.ttl(tokenBucketRateLimiter.getKey()).longValue(), 2L);
+            assertEquals(jedis.ttl(tokenBucketRateLimiter.getKey()), 2L);
             await().atMost(5, TimeUnit.SECONDS).until(() -> !jedis.exists(tokenBucketRateLimiter.getKey()));
         }
     }

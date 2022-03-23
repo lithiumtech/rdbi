@@ -15,7 +15,7 @@ import static org.testng.Assert.assertTrue;
 @Test(groups = "integration")
 public class RedisSetTest {
     public String setKey = "REDISSET" + UUID.randomUUID().toString();
-    final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+    final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
     public static class UUIDSerialHelper implements SerializationHelper<UUID> {
 

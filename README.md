@@ -10,7 +10,7 @@ The main cleanup we made with Jedis is, if the jedis client came from a pool, it
 	// You don't have to know if jedis is broken or which pool it comes from
 	// Just close the handle and you're good to go!
 	
-	RDBI rdbi = new RDBI(new JedisPool("localhost"));
+	RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 	
 	JedisHandle handle = rdbi.open();
 	
@@ -49,7 +49,7 @@ Jedis provides a basic way of loading a Lua script into Redis and eval the scrip
 	
 	//...
 	
-	RDBI rdbi = new RDBI(new JedisPool("localhost"));
+	RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
 	// use it with a handle to make sure everything is closed out automatically
 	rdbi.withHandle(new JedisCallback<Integer>() {

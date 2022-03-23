@@ -26,7 +26,7 @@ public class TimeBasedJobSchedulerTest {
 
     private static final int QUIESCENCE = 1000;
 
-    private static final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+    private static final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
     private String tubeName;
 
     private TimeBasedJobScheduler scheduledJobSystem = null;

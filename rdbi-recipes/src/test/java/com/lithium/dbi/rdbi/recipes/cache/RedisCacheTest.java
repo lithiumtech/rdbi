@@ -101,7 +101,7 @@ public class RedisCacheTest {
                 return mappings.get(s);
         };
 
-        final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
         final CounterRunnable hits = new CounterRunnable();
         final CounterRunnable misses = new CounterRunnable();
@@ -205,7 +205,7 @@ public class RedisCacheTest {
                                                           TimeUnit.SECONDS,
                                                           new ArrayBlockingQueue<Runnable>(10));
 
-        final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
         final CounterRunnable hits = new CounterRunnable();
         final CounterRunnable misses = new CounterRunnable();

@@ -18,7 +18,7 @@ import static org.testng.Assert.assertTrue;
 
 public class PriorityBasedJobSchedulerTest {
 
-    private static final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+    private static final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
     private String tubeName;
 
     private PriorityBasedJobScheduler scheduledJobSystem = null;

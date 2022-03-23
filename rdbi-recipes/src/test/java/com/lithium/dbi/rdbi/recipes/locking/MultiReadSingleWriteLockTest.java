@@ -11,6 +11,7 @@ import redis.clients.jedis.Protocol;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -108,7 +109,7 @@ public class MultiReadSingleWriteLockTest {
 
             // acquire a read lock and verify that we own a read lock
             lock.acquireReadLock(lockOwnerId);
-            final Set<String> owners = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
+            final List<String> owners = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
             assertEquals(1, owners.size());
             assertTrue(owners.contains(lockOwnerId));
 
@@ -123,13 +124,13 @@ public class MultiReadSingleWriteLockTest {
             lock.acquireReadLock(newOwner1);
             lock.acquireReadLock(newOwner2);
             lock.acquireReadLock(newOwner3);
-            final Set<String> newOwners = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
+            final List<String> newOwners = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
             assertEquals(3, newOwners.size());
             assertTrue(newOwners.containsAll(ImmutableList.of(newOwner1, newOwner2, newOwner3)));
 
             // release one lock and verify the others are still there
             lock.releaseReadLock(newOwner1);
-            final Set<String> newOwner2And3 = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
+            final List<String> newOwner2And3 = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
             assertEquals(2, newOwner2And3.size());
             assertTrue(newOwner2And3.containsAll(ImmutableList.of(newOwner2, newOwner3)));
 
@@ -155,7 +156,7 @@ public class MultiReadSingleWriteLockTest {
 
             // acquire a read lock but let's not release it...
             lock.acquireReadLock(lockOwnerId);
-            final Set<String> owners = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
+            final List<String> owners = handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf");
             assertEquals(1, owners.size());
             assertTrue(owners.contains(lockOwnerId));
 

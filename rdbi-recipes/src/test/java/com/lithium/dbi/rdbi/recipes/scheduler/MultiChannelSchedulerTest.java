@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Test(groups = "integration")
 public class MultiChannelSchedulerTest {
-    private static final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+    private static final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
     private static final String prefix = "mc-test:";
     private String tube1 = "tube1";
     private String channel1 = "channel1";

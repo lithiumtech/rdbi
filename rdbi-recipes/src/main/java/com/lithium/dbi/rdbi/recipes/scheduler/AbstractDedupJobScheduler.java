@@ -4,10 +4,9 @@ import com.google.common.collect.Lists;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import redis.clients.jedis.Tuple;
+import redis.clients.jedis.resps.Tuple;
 
 import java.util.List;
-import java.util.Set;
 import java.util.function.LongSupplier;
 
 public abstract class AbstractDedupJobScheduler {
@@ -132,7 +131,7 @@ public abstract class AbstractDedupJobScheduler {
     private List<TimeJobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
         final List<TimeJobInfo> jobInfos = Lists.newArrayList();
         try (Handle handle = rdbi.open()) {
-            Set<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
+            List<Tuple> tupleSet = handle.jedis().zrangeByScoreWithScores(queue, min, max, offset, count);
             for (Tuple tuple : tupleSet) {
                 jobInfos.add(new TimeJobInfo(tuple.getElement(), tuple.getScore()));
             }

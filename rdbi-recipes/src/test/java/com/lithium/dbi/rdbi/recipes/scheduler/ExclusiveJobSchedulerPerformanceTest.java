@@ -15,7 +15,7 @@ public class ExclusiveJobSchedulerPerformanceTest {
     @Test
     public void testPerformance() throws InterruptedException {
 
-        RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
         final ExclusiveJobScheduler scheduledJobSystem = new ExclusiveJobScheduler(rdbi, "myprefix:");
 

@@ -23,7 +23,7 @@ public class RedisMapTest {
 
     @BeforeMethod
     public void clobberThings() {
-        final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
         try (final Handle h = rdbi.open()) {
             final Set<String> keys = h.jedis().keys(cachePrefix + "*");
             final Pipeline pipeline = h.jedis().pipelined();
@@ -36,7 +36,7 @@ public class RedisMapTest {
 
     @Test
     public void sniffTest() {
-        final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
         final Map<String, RedisCacheTest.TestContainer> rMap = new RedisMap<>(RedisCacheTest.keyGenerator,
                                                                               RedisCacheTest.helper,
@@ -57,7 +57,7 @@ public class RedisMapTest {
 
     @Test
     public void multiInstanceTest() {
-        final RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
         final String cacheName = "mycache" + UUID.randomUUID().toString();
 
         final Map<String, RedisCacheTest.TestContainer> rMap = new RedisMap<>(RedisCacheTest.keyGenerator,
