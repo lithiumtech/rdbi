@@ -1,15 +1,14 @@
 package com.lithium.dbi.rdbi;
 
 import io.opentelemetry.api.trace.Tracer;
-import net.sf.cglib.proxy.Callback;
-import net.sf.cglib.proxy.CallbackFilter;
-import net.sf.cglib.proxy.Enhancer;
-import net.sf.cglib.proxy.Factory;
-import net.sf.cglib.proxy.MethodInterceptor;
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.implementation.MethodDelegation;
+import net.bytebuddy.matcher.ElementMatchers;
 import redis.clients.jedis.Jedis;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,14 +16,11 @@ import java.util.concurrent.ConcurrentMap;
 
 class ProxyFactory {
 
-    private static final MethodInterceptor NO_OP = new MethodNoOpInterceptor();
-    private static final CallbackFilter FINALIZE_FILTER = new FinalizeFilter();
-
-    final ConcurrentMap<Class<?>, Factory> factoryCache;
+    final ConcurrentMap<Class<?>, DynamicType.Loaded<?>> factoryCache;
 
     final ConcurrentMap<Class<?>, Map<Method, MethodContext>> methodContextCache;
 
-    private final Factory jedisInterceptorFactory;
+   // private final Factory jedisInterceptorFactory;
 
     ProxyFactory() {
         factoryCache = new ConcurrentHashMap<>();
@@ -39,35 +35,50 @@ class ProxyFactory {
     @SuppressWarnings("unchecked")
     <T> T createInstance(final Jedis jedis, final Class<T> t) {
 
-        Factory factory;
-        if (factoryCache.containsKey(t)) {
-            return (T) factoryCache.get(t).newInstance(new Callback[]{NO_OP,new MethodContextInterceptor(jedis, methodContextCache.get(t))});
-        } else {
+        DynamicType.Loaded<T> loaded = getLoadedType(jedis, t);
+        try {
+            return loaded.getLoaded().getDeclaredConstructor().newInstance();
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
+    private <T> DynamicType.Loaded<T> getLoadedType(Jedis jedis, Class<T> t) {
+//        if (!factoryCache.containsKey(t)) {
+//            try {
+//                DynamicType.Loaded<T> loaded = buildMethodContext(t, jedis)
+//                        .make()
+//                        .load(t.getClassLoader());
+//
+//                factoryCache.put(t, loaded);
+//            } catch (InstantiationException | IllegalAccessException e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
+        return (DynamicType.Loaded<T>) factoryCache.computeIfAbsent(t, (key) -> {
+            DynamicType.Loaded<T> loaded = null;
             try {
-                buildMethodContext(t, jedis);
+                loaded = buildMethodContext(t, jedis)
+                        .make()
+                        .load(t.getClassLoader());
             } catch (InstantiationException | IllegalAccessException e) {
                 throw new RuntimeException(e);
             }
 
-            Enhancer e = new Enhancer();
-            e.setSuperclass(t);
-            e.setCallbacks(new Callback[]{NO_OP,NO_OP}); //this will be overriden anyway, we set 2 so that it valid for FINALIZE_FILTER
-            e.setCallbackFilter(FINALIZE_FILTER);
-
-            factory = (Factory) e.create();
-            factoryCache.putIfAbsent(t, factory);
-            return (T) factory.newInstance(new Callback[]{NO_OP, new MethodContextInterceptor(jedis, methodContextCache.get(t))});
-        }
+            return loaded;
+        });
     }
 
-    private <T> void buildMethodContext(Class<T> t, Jedis jedis) throws IllegalAccessException, InstantiationException {
+    private <T> DynamicType.Builder<T> buildMethodContext(Class<T> t, Jedis jedis) throws IllegalAccessException, InstantiationException {
 
-        if (methodContextCache.containsKey(t)) {
-            return;
-        }
+//        if (methodContextCache.containsKey(t)) {
+//            return;
+//        }
 
-        Map<Method, MethodContext> contexts = new HashMap<>();
+        DynamicType.Builder<T> builder = new ByteBuddy()
+                .subclass(t);
+
+      //  Map<Method, MethodContext> contexts = new HashMap<>();
 
         for (Method method : t.getDeclaredMethods()) {
 
@@ -85,15 +96,19 @@ class ProxyFactory {
             }
 
             Mapper methodMapper = method.getAnnotation(Mapper.class);
-            ResultMapper mapper = null;
+            ResultMapper<?, ?> mapper = null;
             if (methodMapper != null) {
                 mapper = methodMapper.value().newInstance();
             }
 
-            contexts.put(method, new MethodContext(sha1, mapper, luaContext));
+            builder.method(ElementMatchers.is(method))
+                           .intercept(MethodDelegation.to(new BBMethodContextInterceptor( new MethodContext(sha1, mapper, luaContext))));
+
+           // contexts.put(method, new MethodContext(sha1, mapper, luaContext));
         }
 
-        methodContextCache.putIfAbsent(t, contexts);
+       // methodContextCache.putIfAbsent(t, contexts);
+        return builder;
     }
 
     /**
@@ -106,15 +121,16 @@ class ProxyFactory {
                 || (method.getParameterTypes()[0] == List.class);
     }
 
-    private static class FinalizeFilter implements CallbackFilter {
-        @Override
-        public int accept(Method method) {
-            if (method.getName().equals("finalize") &&
-                    method.getParameterTypes().length == 0 &&
-                    method.getReturnType() == Void.TYPE) {
-                return 0; //the NO_OP method interceptor
-            }
-            return 1; //the everything else method interceptor
-        }
-    }
+    // i don't think we need this because we don't have to lookup finalize, we just don't override it
+//    private static class FinalizeFilter implements CallbackFilter {
+//        @Override
+//        public int accept(Method method) {
+//            if (method.getName().equals("finalize") &&
+//                    method.getParameterTypes().length == 0 &&
+//                    method.getReturnType() == Void.TYPE) {
+//                return 0; //the NO_OP method interceptor
+//            }
+//            return 1; //the everything else method interceptor
+//        }
+//    }
 }
