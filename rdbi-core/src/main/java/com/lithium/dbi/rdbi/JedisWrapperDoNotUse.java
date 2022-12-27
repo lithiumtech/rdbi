@@ -4,7 +4,7 @@ import redis.clients.jedis.Jedis;
 
 abstract class JedisWrapperDoNotUse extends Jedis {
 
-    JedisWrapperDoNotUse() {
+    public JedisWrapperDoNotUse() {
         super();
     }
 

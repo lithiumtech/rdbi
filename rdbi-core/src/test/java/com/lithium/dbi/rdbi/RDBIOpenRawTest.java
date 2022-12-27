@@ -9,7 +9,7 @@ public class RDBIOpenRawTest {
     @Test
     public void testNormalOpen() {
 
-        RDBI rdbi = new RDBI(RDBITest.getJedisPool());
+        RDBI rdbi = new RDBI(RDBITest.getMockJedisPool());
 
         Handle jedis = rdbi.open();
 

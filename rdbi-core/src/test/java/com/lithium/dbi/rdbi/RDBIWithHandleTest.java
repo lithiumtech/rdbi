@@ -22,7 +22,7 @@ public class RDBIWithHandleTest {
 
     @Test
     public void testBasicWithHandle() {
-        RDBI rdbi = new RDBI(RDBITest.getJedisPool());
+        RDBI rdbi = new RDBI(RDBITest.getMockJedisPool());
 
         rdbi.withHandle(new Callback<Object>() {
             @Override

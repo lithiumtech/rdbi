@@ -45,7 +45,13 @@ public class RDBITest {
         @Query(
                 "redis.call('SET', $a$, $b$); return 0;"
         )
-        int testExec(@BindKey("a") String a, @BindArg("b") String b);
+        long testExec(@BindKey("a") String a, @BindArg("b") String b);
+
+//        @Query(
+//                "redis.call('SET', $a$, $b$); return 0;"
+//        )
+//        int testExec2(@BindKey("a") String a, @BindArg("b") String b);
+
     }
 
     static class BasicObjectUnderTest {
@@ -66,7 +72,7 @@ public class RDBITest {
             return new BasicObjectUnderTest(result);
         }
     }
-    static interface TestDAOWithResultSetMapper {
+    interface TestDAOWithResultSetMapper {
 
         @Query(
             "redis.call('SET',  KEYS[1], ARGV[1]);" +
@@ -112,7 +118,7 @@ public class RDBITest {
     @SuppressWarnings("unchecked")
     public void testBasicAttachRun() {
 
-        RDBI rdbi = new RDBI(getJedisPool());
+        RDBI rdbi = new RDBI(getMockJedisPool());
 
         Handle handle1 = rdbi.open();
         try {
@@ -142,7 +148,7 @@ public class RDBITest {
 
     @Test
     public void testAttachWithResultSetMapper() {
-        RDBI rdbi = new RDBI(getJedisPool());
+        RDBI rdbi = new RDBI(getMockJedisPool());
 
         Handle handle = rdbi.open();
         try {
@@ -156,7 +162,7 @@ public class RDBITest {
 
     @Test
     public void testMethodWithNoInput() {
-        RDBI rdbi = new RDBI(getJedisPool());
+        RDBI rdbi = new RDBI(getMockJedisPool());
 
         Handle handle = rdbi.open();
         try {
@@ -167,21 +173,25 @@ public class RDBITest {
         }
     }
 
+    // good test to make sure shit works
     @Test
     public void testDynamicDAO() {
-        RDBI rdbi = new RDBI(getJedisPool());
-        Handle handle = rdbi.open();
+//        RDBI rdbi = new RDBI(getMockJedisPool());
+        RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
-        try {
+        try (Handle handle = rdbi.open()) {
             handle.attach(DynamicDAO.class).testExec("a", "b");
-        } finally {
-            handle.close();
+        }
+
+        try (Handle handle = rdbi.open()) {
+            String val = handle.jedis().get("a");
+            assertEquals(val, "b");
         }
     }
 
     @Test
     public void testCacheHitDAO() {
-        RDBI rdbi = new RDBI(getJedisPool());
+        RDBI rdbi = new RDBI(getMockJedisPool());
         Handle handle = rdbi.open();
 
         try {
@@ -195,7 +205,7 @@ public class RDBITest {
     }
 
     @SuppressWarnings("unchecked")
-    static JedisPool getJedisPool() {
+    static JedisPool getMockJedisPool() {
         Jedis jedis = mock(Jedis.class);
         when(jedis.scriptLoad(anyString())).thenReturn("my-sha1-hash");
         when(jedis.evalsha(anyString(), anyList(), anyList())).thenReturn(0);
