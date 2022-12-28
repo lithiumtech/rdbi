@@ -6,6 +6,7 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
 import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.TypeCache;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.implementation.bind.annotation.AllArguments;
@@ -21,32 +22,31 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.concurrent.Callable;
 
-class JedisWrapperMethodInterceptor {
+public class JedisWrapperMethodInterceptor {
 
     private final Jedis jedis;
     private final Tracer tracer;
     private final Attributes commonAttributes;
+    private static final TypeCache<Class<?>> cache = new TypeCache<>();
 
     static Jedis newInstance(final Jedis realJedis, final Tracer tracer) {
 
         try {
-            // todo cache some of this
-            // https://github.com/raphw/byte-buddy/issues/663
-            return new ByteBuddy()
-                    .subclass(JedisWrapperDoNotUse.class)
-                    .method(ElementMatchers.isMethod())
-                    .intercept(MethodDelegation.to(new JedisWrapperMethodInterceptor(realJedis, tracer), "intercept"))
-                    .make()
-                    .load(Jedis.class.getClassLoader(), ClassLoadingStrategy.UsingLookup.withFallback(MethodHandles::lookup))
-                    .getLoaded()
-                    .getDeclaredConstructor()
-                    .newInstance();
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            return (Jedis) cache.findOrInsert(Jedis.class.getClassLoader(), Jedis.class, () -> new ByteBuddy()
+                                        .subclass(JedisWrapperDoNotUse.class)
+                                        .method(ElementMatchers.isMethod())
+                                        .intercept(MethodDelegation.to(new JedisWrapperMethodInterceptor(realJedis, tracer), "intercept"))
+                                        .make()
+                                        .load(Jedis.class.getClassLoader(), ClassLoadingStrategy.UsingLookup.withFallback(MethodHandles::lookup))
+                                        .getLoaded()).getDeclaredConstructor()
+                                .newInstance();
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                 NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private JedisWrapperMethodInterceptor(Jedis jedis, Tracer tracer) {
+    public JedisWrapperMethodInterceptor(Jedis jedis, Tracer tracer) {
         this.jedis = jedis;
         this.tracer = tracer;
         commonAttributes = Attributes.of(
@@ -67,7 +67,8 @@ class JedisWrapperMethodInterceptor {
             s.setAttribute("redis.key", (String) args[0]);
         }
         try (Scope ignored = s.makeCurrent()) {
-            return callable.call();
+            return method.invoke(jedis, args);
+//            return callable.call();
         } catch (JedisException e) {
             s.recordException(e);
             throw e;

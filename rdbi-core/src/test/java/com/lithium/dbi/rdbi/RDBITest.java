@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
@@ -45,7 +46,7 @@ public class RDBITest {
         @Query(
                 "redis.call('SET', $a$, $b$); return 0;"
         )
-        long testExec(@BindKey("a") String a, @BindArg("b") String b);
+        int testExec(@BindKey("a") String a, @BindArg("b") String b);
 
 //        @Query(
 //                "redis.call('SET', $a$, $b$); return 0;"
@@ -89,11 +90,11 @@ public class RDBITest {
         Handle handle = rdbi.open();
         try {
             handle.attach(TestCopyDAO.class);
+            // real problem
             fail("Should have thrown exception for loadScript error");
         } catch (RuntimeException e) {
             //expected
-            assertFalse(rdbi.proxyFactory.factoryCache.containsKey(TestCopyDAO.class));
-            assertFalse(rdbi.proxyFactory.methodContextCache.containsKey(TestCopyDAO.class));
+            assertFalse(rdbi.proxyFactory.isCached(TestCopyDAO.class));
         } finally {
             handle.close();
         }
@@ -108,7 +109,7 @@ public class RDBITest {
             handle.jedis().get("hello");
             fail("Should have thrown exception on get");
         } catch (Exception e) {
-            //expected
+            //expected // hmm i don't think this is right
         } finally {
             handle.close();
         }
@@ -134,9 +135,7 @@ public class RDBITest {
             handle2.close();
         }
 
-        assertTrue(rdbi.proxyFactory.factoryCache.containsKey(TestDAO.class));
-        assertTrue(rdbi.proxyFactory.methodContextCache.containsKey(TestDAO.class));
-
+        assertTrue(rdbi.proxyFactory.isCached(TestDAO.class));
 
         Handle handle3 = rdbi.open();
         try {
@@ -198,7 +197,7 @@ public class RDBITest {
             for (int i = 0; i < 2; i++) {
                 handle.attach(DynamicDAO.class).testExec("a", "b");
             }
-            assertTrue(rdbi.proxyFactory.factoryCache.containsKey(DynamicDAO.class));
+            assertTrue(rdbi.proxyFactory.isCached(DynamicDAO.class));
         } finally {
             handle.close();
         }

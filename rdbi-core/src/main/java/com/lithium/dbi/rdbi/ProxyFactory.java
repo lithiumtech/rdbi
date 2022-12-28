@@ -2,6 +2,7 @@ package com.lithium.dbi.rdbi;
 
 import io.opentelemetry.api.trace.Tracer;
 import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.TypeCache;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.implementation.MethodDelegation;
@@ -14,21 +15,10 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 class ProxyFactory {
 
-    final ConcurrentMap<Class<?>, DynamicType.Loaded<?>> factoryCache;
-
-    final ConcurrentMap<Class<?>, Map<Method, MethodContext>> methodContextCache;
-
-    // private final Factory jedisInterceptorFactory;
-
-    ProxyFactory() {
-        factoryCache = new ConcurrentHashMap<>();
-        methodContextCache = new ConcurrentHashMap<>();
-    }
+    private final TypeCache<Class<?>> cache = new TypeCache<>();
 
     Jedis attachJedis(final Jedis jedis, Tracer tracer) {
         return JedisWrapperMethodInterceptor.newInstance(jedis, tracer);
@@ -36,55 +26,27 @@ class ProxyFactory {
 
     @SuppressWarnings("unchecked")
     <T> T createInstance(final Jedis jedis, final Class<T> t) {
-
-        DynamicType.Loaded<T> loaded = getLoadedType(jedis, t);
         try {
-            return loaded.getLoaded().getDeclaredConstructor().newInstance();
+            return (T) cache.findOrInsert(t.getClassLoader(), t, () ->
+                                                  buildClass(t, jedis)
+                                         ).getDeclaredConstructor().newInstance();
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
                  NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private <T> DynamicType.Loaded<T> getLoadedType(Jedis jedis, Class<T> t) {
-        //        if (!factoryCache.containsKey(t)) {
-        //            try {
-        //                DynamicType.Loaded<T> loaded = buildMethodContext(t, jedis)
-        //                        .make()
-        //                        .load(t.getClassLoader());
-        //
-        //                factoryCache.put(t, loaded);
-        //            } catch (InstantiationException | IllegalAccessException e) {
-        //                throw new RuntimeException(e);
-        //            }
-        //        }
-        // TODO use a TypeCache instead of our own
-        return (DynamicType.Loaded<T>) factoryCache.computeIfAbsent(t, (key) -> {
-            DynamicType.Loaded<T> loaded = null;
-            try {
-                loaded = buildMethodContext(t, jedis)
-                        .make()
-                        .load(t.getClassLoader(), ClassLoadingStrategy.UsingLookup.withFallback(MethodHandles::lookup));
-            } catch (InstantiationException | IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-
-            return loaded;
-        });
+    boolean isCached(Class<?> t) {
+        return cache.find(t.getClassLoader(), t) != null;
     }
 
-    private <T> DynamicType.Builder<T> buildMethodContext(Class<T> t, Jedis jedis) throws IllegalAccessException, InstantiationException {
 
-        //        if (methodContextCache.containsKey(t)) {
-        //            return;
-        //        }
+    private <T> Class<? extends T> buildClass(Class<T> t, Jedis jedis) throws IllegalAccessException, InstantiationException {
 
         DynamicType.Builder<T> builder = new ByteBuddy()
                 .subclass(t);
 
         Map<Method, MethodContext> contexts = new HashMap<>();
-
-
         for (Method method : t.getDeclaredMethods()) {
             Query query = method.getAnnotation(Query.class);
             String queryStr = query.value();
@@ -102,15 +64,20 @@ class ProxyFactory {
             Mapper methodMapper = method.getAnnotation(Mapper.class);
             ResultMapper<?, ?> mapper = null;
             if (methodMapper != null) {
-                mapper = methodMapper.value().newInstance();
+                try {
+                    mapper = methodMapper.value().getDeclaredConstructor().newInstance();
+                } catch (InvocationTargetException | NoSuchMethodException e) {
+                    throw new RuntimeException(e);
+                }
             }
-
             contexts.put(method, new MethodContext(sha1, mapper, luaContext));
-            // don't think we need this
-            // methodContextCache.putIfAbsent(t, contexts);
         }
+
         return builder.method(ElementMatchers.any())
-                      .intercept(MethodDelegation.to(new BBMethodContextInterceptor(jedis, contexts)));
+                      .intercept(MethodDelegation.to(new BBMethodContextInterceptor(jedis, contexts)))
+                      .make()
+                      .load(t.getClassLoader(), ClassLoadingStrategy.UsingLookup.withFallback(MethodHandles::lookup))
+                      .getLoaded();
 
     }
 

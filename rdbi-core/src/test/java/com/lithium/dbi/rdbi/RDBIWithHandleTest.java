@@ -8,11 +8,12 @@ import java.util.List;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNull;
 import static org.testng.Assert.fail;
 
 public class RDBIWithHandleTest {
 
-    static interface TestDAO {
+    interface TestDAO {
         @Query(
                 "redis.call('SET',  KEYS[1], ARGV[1]);" +
                         "return 0;"
@@ -24,12 +25,9 @@ public class RDBIWithHandleTest {
     public void testBasicWithHandle() {
         RDBI rdbi = new RDBI(RDBITest.getMockJedisPool());
 
-        rdbi.withHandle(new Callback<Object>() {
-            @Override
-            public Object run(Handle handle) {
-                assertEquals(handle.attach(TestDAO.class).testExec(Collections.singletonList("hello"), Collections.singletonList("world")), 0);
-                return null;
-            }
+        rdbi.withHandle(handle -> {
+            assertEquals(handle.attach(TestDAO.class).testExec(Collections.singletonList("hello"), Collections.singletonList("world")), 0);
+            return null;
         });
     }
 
@@ -38,16 +36,12 @@ public class RDBIWithHandleTest {
         RDBI rdbi = new RDBI(RDBITest.getBadJedisPool());
 
         try {
-            rdbi.withHandle(new Callback<Object>() {
-                @Override
-                public Object run(Handle handle) {
-                    handle.attach(TestDAO.class);
-                    return null;
-                }
+            rdbi.withHandle(handle -> {
+                handle.attach(TestDAO.class);
+                return null;
             });
         } catch (RuntimeException e) {
-            assertFalse(rdbi.proxyFactory.methodContextCache.containsKey(TestDAO.class));
-            assertFalse(rdbi.proxyFactory.factoryCache.containsKey(TestDAO.class));
+            assertFalse(rdbi.proxyFactory.isCached(TestDAO.class));
         }
     }
 
@@ -56,13 +50,11 @@ public class RDBIWithHandleTest {
 
         RDBI rdbi = new RDBI(RDBITest.getBadJedisPool());
 
-        rdbi.withHandle(new Callback<Object>() {
-            @Override
-            public Object run(Handle handle) {
-                handle.jedis().get("hello");
-                fail("Should have thrown exception on get");
-                return null;
-            }
+        rdbi.withHandle(handle -> {
+            handle.jedis().get("hello");
+            // probably same issue as other exception tests
+            fail("Should have thrown exception on get");
+            return null;
         });
     }
 }

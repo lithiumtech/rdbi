@@ -31,15 +31,36 @@ public class BBMethodContextInterceptor {
 
         Object ret = context.hasDynamicLists() ? callEvalDynamicList(context, args)
                                                : callEval(context, args);
-        // problem here is we are getting a LONG but expected an int
-        // did this work on older jdks? doesn't seem to be a cglib vs bytebuddy thing
-        // java.lang.ClassCastException: class java.lang.Long cannot be cast to class java.lang.Integer (java.lang.Long and java.lang.Integer are in module java.base of loader 'bootstrap')
         if (ret == null) {
             return null;
         }
 
+
         if (context.getMapper() != null) {
-            return context.getMapper().map(ret);
+            // here we need to adjust for the expected input to the mapper
+            Class<?> parameterType;
+            try {
+                parameterType = context.getMapper().getClass().getMethod("map", Integer.class).getParameterTypes()[0];
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+            return context.getMapper().map(adjust(parameterType, ret));
+        } else {
+            return adjust(method.getReturnType(), ret);
+        }
+    }
+
+    private Object adjust(Class<?> c, Object ret) {
+        // problem here is we are getting a LONG but expected an int
+        // did this work on older jdks? doesn't seem to be a cglib vs bytebuddy thing
+        // java.lang.ClassCastException: class java.lang.Long cannot be cast to class java.lang.Integer (java.lang.Long and java.lang.Integer are in module java.base of loader 'bootstrap')
+        // i am not sure why this wasn't required before, and there's probably a utility out there
+        // to do it better the primary thing to handle is explicit cast to int where jedis returns a number
+        // as a long
+        if (c == null) {
+            return ret;
+        } else if ((c.equals(Integer.TYPE) || c.isAssignableFrom(Integer.class)) && ret instanceof Long) {
+            return ((Long) ret).intValue();
         } else {
             return ret;
         }
@@ -49,8 +70,8 @@ public class BBMethodContextInterceptor {
     @SuppressWarnings("unchecked")
     private Object callEval(MethodContext context, Object[] objects) {
 
-        List<String> keys = objects.length > 0 ? (List<String>) objects[0] : null;
-        List<String> argv = objects.length > 1 ? (List<String>) objects[1] : null;
+        List<String> keys = objects.length > 0 ? (List<String>) objects[0] : new ArrayList<>();
+        List<String> argv = objects.length > 1 ? (List<String>) objects[1] : new ArrayList<>();
 
         return evalShaHandleReloadScript(context, keys, argv);
     }
