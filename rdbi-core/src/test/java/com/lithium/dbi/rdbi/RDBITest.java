@@ -203,6 +203,41 @@ public class RDBITest {
         }
     }
 
+    @Test
+    public void testSeparation() {
+        RDBI realRdbi = new RDBI(new JedisPool("localhost", 6379));
+        RDBI mockRdbi = new RDBI(getMockJedisPool());
+        RDBI badRdbi = new RDBI(getBadJedisPool());
+
+
+        Jedis realJedis = realRdbi.open().jedis();
+        Jedis mockJedis = mockRdbi.open().jedis();
+        Jedis badJedis = badRdbi.open().jedis();
+
+
+        realRdbi.withHandle(h -> {
+            Jedis jedis = h.jedis();
+            jedis.set("hi", "there");
+            return 0;
+        });
+
+
+        mockRdbi.withHandle(h -> {
+            Jedis jedis = h.jedis();
+            jedis.set("hi", "there");
+            return 0;
+        });
+
+
+        badRdbi.withHandle(h -> {
+            Jedis jedis = h.jedis();
+            jedis.set("hi", "there");
+            return 0;
+        });
+
+
+    }
+
     @SuppressWarnings("unchecked")
     static JedisPool getMockJedisPool() {
         Jedis jedis = mock(Jedis.class);
