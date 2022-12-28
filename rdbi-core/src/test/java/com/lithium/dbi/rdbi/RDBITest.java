@@ -21,7 +21,7 @@ import static org.testng.Assert.fail;
 
 public class RDBITest {
 
-    interface TestDAO {
+    public interface TestDAO {
         @Query(
             "redis.call('SET',  KEYS[1], ARGV[1]);" +
             "return 0;"
@@ -29,7 +29,7 @@ public class RDBITest {
         int testExec(List<String> keys, List<String> args);
     }
 
-    interface TestCopyDAO {
+    public interface TestCopyDAO {
         @Query(
                 "redis.call('SET',  KEYS[1], ARGV[1]);" +
                         "return 0;"
@@ -37,12 +37,12 @@ public class RDBITest {
         int testExec2(List<String> keys, List<String> args);
     }
 
-    interface NoInputDAO {
+    public interface NoInputDAO {
         @Query("return 0;")
         int noInputMethod();
     }
 
-    interface DynamicDAO {
+    public interface DynamicDAO {
         @Query(
                 "redis.call('SET', $a$, $b$); return 0;"
         )
@@ -55,7 +55,7 @@ public class RDBITest {
 
     }
 
-    static class BasicObjectUnderTest {
+    public static class BasicObjectUnderTest {
 
         private final String input;
 
@@ -67,13 +67,13 @@ public class RDBITest {
             return input;
         }
     }
-    static class BasicResultMapper implements ResultMapper<BasicObjectUnderTest, Integer> {
+    public static class BasicResultMapper implements ResultMapper<BasicObjectUnderTest, Integer> {
         @Override
         public BasicObjectUnderTest map(Integer result) {
             return new BasicObjectUnderTest(result);
         }
     }
-    interface TestDAOWithResultSetMapper {
+    public interface TestDAOWithResultSetMapper {
 
         @Query(
             "redis.call('SET',  KEYS[1], ARGV[1]);" +
@@ -201,41 +201,6 @@ public class RDBITest {
         } finally {
             handle.close();
         }
-    }
-
-    @Test
-    public void testSeparation() {
-        RDBI realRdbi = new RDBI(new JedisPool("localhost", 6379));
-        RDBI mockRdbi = new RDBI(getMockJedisPool());
-        RDBI badRdbi = new RDBI(getBadJedisPool());
-
-
-        Jedis realJedis = realRdbi.open().jedis();
-        Jedis mockJedis = mockRdbi.open().jedis();
-        Jedis badJedis = badRdbi.open().jedis();
-
-
-        realRdbi.withHandle(h -> {
-            Jedis jedis = h.jedis();
-            jedis.set("hi", "there");
-            return 0;
-        });
-
-
-        mockRdbi.withHandle(h -> {
-            Jedis jedis = h.jedis();
-            jedis.set("hi", "there");
-            return 0;
-        });
-
-
-        badRdbi.withHandle(h -> {
-            Jedis jedis = h.jedis();
-            jedis.set("hi", "there");
-            return 0;
-        });
-
-
     }
 
     @SuppressWarnings("unchecked")

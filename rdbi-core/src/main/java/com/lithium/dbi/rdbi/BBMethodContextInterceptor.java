@@ -42,7 +42,7 @@ public class BBMethodContextInterceptor {
             try {
                 parameterType = context.getMapper().getClass().getMethod("map", Integer.class).getParameterTypes()[0];
             } catch (NoSuchMethodException e) {
-                throw new RuntimeException(e);
+                parameterType = null;
             }
             return context.getMapper().map(adjust(parameterType, ret));
         } else {

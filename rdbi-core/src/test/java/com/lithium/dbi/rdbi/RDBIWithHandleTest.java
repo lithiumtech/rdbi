@@ -13,7 +13,7 @@ import static org.testng.Assert.fail;
 
 public class RDBIWithHandleTest {
 
-    interface TestDAO {
+    public interface TestDAO {
         @Query(
                 "redis.call('SET',  KEYS[1], ARGV[1]);" +
                         "return 0;"

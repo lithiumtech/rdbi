@@ -2,9 +2,11 @@ package com.lithium.dbi.rdbi;
 
 import io.opentelemetry.api.trace.Tracer;
 import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.NamingStrategy;
 import net.bytebuddy.TypeCache;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
+import net.bytebuddy.dynamic.scaffold.subclass.ConstructorStrategy;
 import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.matcher.ElementMatchers;
 import redis.clients.jedis.Jedis;
@@ -12,9 +14,11 @@ import redis.clients.jedis.Jedis;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 class ProxyFactory {
 
@@ -27,9 +31,11 @@ class ProxyFactory {
     @SuppressWarnings("unchecked")
     <T> T createInstance(final Jedis jedis, final Class<T> t) {
         try {
+            // return  buildClass(t, jedis)
             return (T) cache.findOrInsert(t.getClassLoader(), t, () ->
                                                   buildClass(t, jedis)
-                                         ).getDeclaredConstructor().newInstance();
+                                         )
+                            .getDeclaredConstructor().newInstance();
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
                  NoSuchMethodException e) {
             throw new RuntimeException(e);
@@ -43,9 +49,21 @@ class ProxyFactory {
 
     private <T> Class<? extends T> buildClass(Class<T> t, Jedis jedis) throws IllegalAccessException, InstantiationException {
 
-        DynamicType.Builder<T> builder = new ByteBuddy()
-                .subclass(t);
+        BBMethodContextInterceptor interceptor = new BBMethodContextInterceptor(jedis, getMethodMethodContextMap(t, jedis));
+        DynamicType.Unloaded<T> make = new ByteBuddy()
+                .subclass(t, ConstructorStrategy.Default.DEFAULT_CONSTRUCTOR)
+                .method(ElementMatchers.any())
+                .intercept(MethodDelegation.to(interceptor))
+                .make();
 
+        return make
+  //              .load(t.getClassLoader(), ClassLoadingStrategy.UsingLookup.withFallback(MethodHandles::lookup, true)) // this works for the DAO tests in rdbi core but nothing else
+                                .load(getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)  // this works for everything BUT the DAO tests in rdbi core
+                .getLoaded();
+
+    }
+
+    private <T> Map<Method, MethodContext> getMethodMethodContextMap(Class<T> t, Jedis jedis) throws InstantiationException, IllegalAccessException {
         Map<Method, MethodContext> contexts = new HashMap<>();
         for (Method method : t.getDeclaredMethods()) {
             Query query = method.getAnnotation(Query.class);
@@ -72,13 +90,7 @@ class ProxyFactory {
             }
             contexts.put(method, new MethodContext(sha1, mapper, luaContext));
         }
-
-        return builder.method(ElementMatchers.any())
-                      .intercept(MethodDelegation.to(new BBMethodContextInterceptor(jedis, contexts)))
-                      .make()
-                      .load(t.getClassLoader(), ClassLoadingStrategy.UsingLookup.withFallback(MethodHandles::lookup))
-                      .getLoaded();
-
+        return Collections.unmodifiableMap(contexts);
     }
 
     /**
