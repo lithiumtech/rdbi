@@ -28,13 +28,14 @@ public class ChannelPublisherTest {
         final ChannelPublisher channelPublisher = new ChannelPublisher(new RDBI(new JedisPool("localhost", 6379)));
         channelPublisher.resetChannels(channel);
 
-        final List<String> value =ImmutableList.of("value1");
+        final List<String> value = ImmutableList.of("value1");
         final AtomicBoolean thread1Finished = new AtomicBoolean(false);
         final AtomicBoolean thread2Finished = new AtomicBoolean(false);
 
+
         Thread thread1 = new Thread(() -> {
-            for ( int i = 0; i < 1000; i++) {
-                channelPublisher.publish(channel, value );
+            for (int i = 0; i < 1000; i++) {
+                channelPublisher.publish(channel, value);
 
                 if (Thread.interrupted()) {
                     return;
@@ -43,8 +44,8 @@ public class ChannelPublisherTest {
             thread1Finished.set(true);
         });
         Thread thread2 = new Thread(() -> {
-            for ( int i = 0; i < 1000; i++) {
-                channelPublisher.publish(channel, value );
+            for (int i = 0; i < 1000; i++) {
+                channelPublisher.publish(channel, value);
             }
             thread2Finished.set(true);
         });
@@ -157,15 +158,15 @@ public class ChannelPublisherTest {
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
         channelPublisher.resetChannels(channel);
 
-        final List<String> value =ImmutableList.of("value1");
+        final List<String> value = ImmutableList.of("value1");
         final AtomicBoolean thread1Finished = new AtomicBoolean(false);
         final AtomicBoolean thread2Finished = new AtomicBoolean(false);
 
         Thread thread1 = new Thread(new Runnable() {
             @Override
             public void run() {
-                for ( int i = 0; i < 1000; i++) {
-                    channelPublisher.publish(channel, value );
+                for (int i = 0; i < 1000; i++) {
+                    channelPublisher.publish(channel, value);
 
                     if (Thread.interrupted()) {
                         return;
@@ -177,8 +178,8 @@ public class ChannelPublisherTest {
         Thread thread2 = new Thread(new Runnable() {
             @Override
             public void run() {
-                for ( int i = 0; i < 1000; i++) {
-                    channelPublisher.publish(channel, value );
+                for (int i = 0; i < 1000; i++) {
+                    channelPublisher.publish(channel, value);
                 }
                 thread2Finished.set(true);
             }
