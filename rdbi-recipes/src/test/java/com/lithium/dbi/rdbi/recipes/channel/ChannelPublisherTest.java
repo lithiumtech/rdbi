@@ -53,7 +53,7 @@ public class ChannelPublisherTest {
         thread1.start();
         thread2.start();
 
-        long timeToFinish = 5500;
+        long timeToFinish = 1500;
         thread1.join(timeToFinish);
         thread2.join(timeToFinish);
 
