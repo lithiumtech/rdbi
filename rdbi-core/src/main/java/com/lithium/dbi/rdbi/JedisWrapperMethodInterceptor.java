@@ -7,78 +7,49 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.TypeCache;
+import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.implementation.bind.annotation.AllArguments;
 import net.bytebuddy.implementation.bind.annotation.Origin;
 import net.bytebuddy.implementation.bind.annotation.RuntimeType;
-import net.bytebuddy.implementation.bind.annotation.SuperCall;
 import net.bytebuddy.matcher.ElementMatchers;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisException;
 
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Objects;
-import java.util.concurrent.Callable;
 
 public class JedisWrapperMethodInterceptor {
 
     private final Jedis jedis;
     private final Tracer tracer;
     private final Attributes commonAttributes;
-    private static final TypeCache<Key> cache = new TypeCache<>();
-
-
-    static class Key {
-        private final Class<?> klass;
-        private final long hashCode;
-
-        Key(Object toCache) {
-            this(toCache.getClass(), System.identityHashCode(toCache));
-        }
-
-        Key(Class<?> klass, long hashCode){
-            this.klass = klass;
-            this.hashCode = hashCode;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            Key key = (Key) o;
-
-            if (hashCode != key.hashCode) return false;
-            return Objects.equals(klass, key.klass);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(klass, hashCode);
-        }
-    }
+    private static final TypeCache<Class<?>> cache = new TypeCache<>();
 
     static Jedis newInstance(final Jedis realJedis, final Tracer tracer) {
 
         try {
-            return (Jedis) cache.findOrInsert(Jedis.class.getClassLoader(), new Key(realJedis), () ->
-                                        newLoadedClass(realJedis, tracer))
+            Object proxy = cache.findOrInsert(Jedis.class.getClassLoader(), Jedis.class, JedisWrapperMethodInterceptor::newLoadedClass)
                                 .getDeclaredConstructor()
                                 .newInstance();
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                 NoSuchMethodException e) {
+            final Field field = proxy.getClass().getDeclaredField("handler");
+            field.set(proxy, new JedisWrapperMethodInterceptor(realJedis, tracer));
+            return (Jedis) proxy;
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException |
+                 NoSuchFieldException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static Class<? extends JedisWrapperDoNotUse> newLoadedClass(Jedis realJedis, Tracer tracer) {
+    private static Class<? extends JedisWrapperDoNotUse> newLoadedClass() {
         return new ByteBuddy()
                 .subclass(JedisWrapperDoNotUse.class)
+                .defineField("handler", JedisWrapperMethodInterceptor.class, Visibility.PUBLIC)
                 .method(ElementMatchers.isMethod())
-                .intercept(MethodDelegation.to(new JedisWrapperMethodInterceptor(realJedis, tracer), "intercept"))
+                .intercept(MethodDelegation.toField("handler"))
                 .make()
                 .load(Jedis.class.getClassLoader(), ClassLoadingStrategy.UsingLookup.withFallback(MethodHandles::lookup))
                 .getLoaded();
@@ -96,8 +67,7 @@ public class JedisWrapperMethodInterceptor {
     @RuntimeType
     public Object intercept(
             @AllArguments Object[] args,
-            @Origin Method method,
-            @SuperCall Callable<?> callable) {
+            @Origin Method method) {
         Span s = tracer.spanBuilder(method.getName())
                        .setAllAttributes(commonAttributes)
                        .startSpan();
