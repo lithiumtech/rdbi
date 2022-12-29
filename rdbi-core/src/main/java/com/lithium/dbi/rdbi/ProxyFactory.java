@@ -2,8 +2,6 @@ package com.lithium.dbi.rdbi;
 
 import io.opentelemetry.api.trace.Tracer;
 import net.bytebuddy.ByteBuddy;
-import net.bytebuddy.NamingStrategy;
-import net.bytebuddy.TypeCache;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.dynamic.scaffold.subclass.ConstructorStrategy;
@@ -11,30 +9,27 @@ import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.matcher.ElementMatchers;
 import redis.clients.jedis.Jedis;
 
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 class ProxyFactory {
 
-    private final TypeCache<Class<?>> cache = new TypeCache<>();
-
+    //private final TypeCache<Class<?>> cache = new TypeCache<>();
+    final Map<Class<?>, Class<?>> cache = new ConcurrentHashMap<>();
     Jedis attachJedis(final Jedis jedis, Tracer tracer) {
         return JedisWrapperMethodInterceptor.newInstance(jedis, tracer);
     }
 
     @SuppressWarnings("unchecked")
     <T> T createInstance(final Jedis jedis, final Class<T> t) {
+        // TODO: implement delegate/field pattern here too?
         try {
-            // return  buildClass(t, jedis)
-            return (T) cache.findOrInsert(t.getClassLoader(), t, () ->
-                                                  buildClass(t, jedis)
-                                         )
+            return (T) get(t, jedis)
                             .getDeclaredConstructor().newInstance();
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
                  NoSuchMethodException e) {
@@ -43,10 +38,20 @@ class ProxyFactory {
     }
 
     boolean isCached(Class<?> t) {
-        return cache.find(t.getClassLoader(), t) != null;
+        return cache.get(t) != null;
     }
 
 
+    private  Class<?>  get(Class<?> t, Jedis jedis) throws IllegalAccessException, InstantiationException {
+        Class<?> cached = cache.get(t);
+        if (cached != null){
+            return cached;
+        } else {
+            Class<?> newClass = buildClass(t, jedis);
+            cache.putIfAbsent(t, newClass);
+            return cache.get(t);
+        }
+    }
     private <T> Class<? extends T> buildClass(Class<T> t, Jedis jedis) throws IllegalAccessException, InstantiationException {
 
         BBMethodContextInterceptor interceptor = new BBMethodContextInterceptor(jedis, getMethodMethodContextMap(t, jedis));

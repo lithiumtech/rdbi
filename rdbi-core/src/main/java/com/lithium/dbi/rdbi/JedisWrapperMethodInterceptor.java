@@ -6,7 +6,6 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
 import net.bytebuddy.ByteBuddy;
-import net.bytebuddy.TypeCache;
 import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.implementation.MethodDelegation;
@@ -27,13 +26,11 @@ public class JedisWrapperMethodInterceptor {
     private final Jedis jedis;
     private final Tracer tracer;
     private final Attributes commonAttributes;
-    private static final TypeCache<Class<?>> cache = new TypeCache<>();
+    private static final Class<? extends JedisWrapperDoNotUse> clazz = newLoadedClass();
 
     static Jedis newInstance(final Jedis realJedis, final Tracer tracer) {
-
         try {
-            Object proxy = cache.findOrInsert(Jedis.class.getClassLoader(), Jedis.class, JedisWrapperMethodInterceptor::newLoadedClass)
-                                .getDeclaredConstructor()
+            Object proxy = clazz.getDeclaredConstructor()
                                 .newInstance();
             final Field field = proxy.getClass().getDeclaredField("handler");
             field.set(proxy, new JedisWrapperMethodInterceptor(realJedis, tracer));
