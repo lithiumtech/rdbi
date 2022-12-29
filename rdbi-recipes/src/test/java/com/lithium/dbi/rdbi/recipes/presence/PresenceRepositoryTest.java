@@ -10,7 +10,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
+import static com.lithium.dbi.rdbi.testutil.Utils.assertTiming;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -19,7 +22,7 @@ import static org.testng.Assert.assertTrue;
 public class PresenceRepositoryTest {
 
     @Test
-    public void addTest () throws InterruptedException {
+    public void addTest() throws InterruptedException {
 
         final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost", 6379)), "myprefix");
 
@@ -44,41 +47,29 @@ public class PresenceRepositoryTest {
         final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost", 6379)), "myprefix");
         presenceRepository.nukeForTest("mytube");
 
-        Instant before = Instant.now();
-        for ( int i = 0; i < 10000; i++ ) {
-            presenceRepository.addHeartbeat("mytube", "id" + i, 10 * 1000L);
-        }
-        Instant after = Instant.now();
-        System.out.println("Time for 10,000 heartbeats " + Long.toString(after.toEpochMilli() - before.toEpochMilli()));
+        assertTiming(2000, TimeUnit.MILLISECONDS,
+                     () -> IntStream
+                             .range(0, 10_000)
+                             .forEach(i -> presenceRepository.addHeartbeat("mytube", "id" + i, 10 * 1000L))
+                    );
 
-        assertTrue(after.toEpochMilli() - before.toEpochMilli() < 2000L);
+        assertTiming(2000, TimeUnit.MILLISECONDS,
+                     () -> IntStream
+                             .range(0, 10_000)
+                             .forEach(i -> assertFalse(presenceRepository.expired("mytube", "id" + i)))
+                    );
+        Thread.sleep(2_000L);
 
-        Instant before2 = Instant.now();
-        for ( int i = 0; i < 10000; i++ ) {
-            assertFalse(presenceRepository.expired("mytube", "id" + i));
-        }
-        Instant after2 = Instant.now();
-        System.out.println("Time for 10,000 expired " + Long.toString(after2.toEpochMilli() - before2.toEpochMilli()));
+        assertTiming(2000, TimeUnit.MILLISECONDS,
+                     () -> IntStream
+                             .range(0, 5_000)
+                             .forEach(i -> assertTrue(presenceRepository.remove("mytube", "id" + i)))
+                    );
 
-        assertTrue(after2.toEpochMilli() - before2.toEpochMilli() < 2000L);
+        assertTiming(500L, TimeUnit.MILLISECONDS,
+                     () ->  presenceRepository.cull("mytube")
+                    );
 
-        Thread.sleep(10 * 1000L);
-
-        Instant before3 = Instant.now();
-        for ( int i = 0; i < 5000; i++ ) {
-            assertTrue(presenceRepository.remove("mytube", "id" + i));
-        }
-        Instant after3 = Instant.now();
-        System.out.println("Time for 5000 removes " + Long.toString(after3.toEpochMilli() - before3.toEpochMilli()));
-
-        assertTrue(after3.toEpochMilli() - before3.toEpochMilli() < 1000L);
-
-        Instant before4 = Instant.now();
-        presenceRepository.cull("mytube");
-        Instant after4 = Instant.now();
-        System.out.println("Time for 5000 cull " + Long.toString(after4.toEpochMilli() - before4.toEpochMilli()));
-
-        assertTrue(after4.toEpochMilli() - before4.toEpochMilli() < 500L);
     }
 
     @Test
