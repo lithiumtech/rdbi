@@ -2,6 +2,7 @@ package com.lithium.dbi.rdbi;
 
 import io.opentelemetry.api.trace.Tracer;
 import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.dynamic.scaffold.subclass.ConstructorStrategy;
@@ -9,6 +10,7 @@ import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.matcher.ElementMatchers;
 import redis.clients.jedis.Jedis;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -19,20 +21,23 @@ import java.util.concurrent.ConcurrentHashMap;
 
 class ProxyFactory {
 
-    //private final TypeCache<Class<?>> cache = new TypeCache<>();
     final Map<Class<?>, Class<?>> cache = new ConcurrentHashMap<>();
+    final Map<Class<?>, Map<Method, MethodContext>> methodContextCache = new ConcurrentHashMap<>();
+
     Jedis attachJedis(final Jedis jedis, Tracer tracer) {
         return JedisWrapperMethodInterceptor.newInstance(jedis, tracer);
     }
 
     @SuppressWarnings("unchecked")
     <T> T createInstance(final Jedis jedis, final Class<T> t) {
-        // TODO: implement delegate/field pattern here too?
         try {
-            return (T) get(t, jedis)
-                            .getDeclaredConstructor().newInstance();
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                 NoSuchMethodException e) {
+            BBMethodContextInterceptor interceptor = new BBMethodContextInterceptor(jedis, getMethodMethodContextMap(t, jedis));
+            Object instance = get(t).getDeclaredConstructor().newInstance();
+            final Field field = instance.getClass().getDeclaredField("handler");
+            field.set(instance, interceptor);
+            return (T) instance;
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException |
+                 NoSuchFieldException e) {
             throw new RuntimeException(e);
         }
     }
@@ -42,33 +47,37 @@ class ProxyFactory {
     }
 
 
-    private  Class<?>  get(Class<?> t, Jedis jedis) throws IllegalAccessException, InstantiationException {
+    private Class<?> get(Class<?> t) throws IllegalAccessException, InstantiationException {
         Class<?> cached = cache.get(t);
-        if (cached != null){
+        if (cached != null) {
             return cached;
         } else {
-            Class<?> newClass = buildClass(t, jedis);
+            Class<?> newClass = buildClass(t);
             cache.putIfAbsent(t, newClass);
             return cache.get(t);
         }
     }
-    private <T> Class<? extends T> buildClass(Class<T> t, Jedis jedis) throws IllegalAccessException, InstantiationException {
 
-        BBMethodContextInterceptor interceptor = new BBMethodContextInterceptor(jedis, getMethodMethodContextMap(t, jedis));
-        DynamicType.Unloaded<T> make = new ByteBuddy()
+    private <T> Class<? extends T> buildClass(Class<T> t) throws IllegalAccessException, InstantiationException {
+
+
+        return new ByteBuddy()
                 .subclass(t, ConstructorStrategy.Default.DEFAULT_CONSTRUCTOR)
+                .defineField("handler", BBMethodContextInterceptor.class, Visibility.PUBLIC)
                 .method(ElementMatchers.any())
-                .intercept(MethodDelegation.to(interceptor))
-                .make();
-
-        return make
-  //              .load(t.getClassLoader(), ClassLoadingStrategy.UsingLookup.withFallback(MethodHandles::lookup, true)) // this works for the DAO tests in rdbi core but nothing else
-                                .load(getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)  // this works for everything BUT the DAO tests in rdbi core
+                .intercept(MethodDelegation.toField("handler"))
+                .make()
+                .load(getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)  // this works for everything BUT the DAO tests in rdbi core
                 .getLoaded();
 
     }
 
     private <T> Map<Method, MethodContext> getMethodMethodContextMap(Class<T> t, Jedis jedis) throws InstantiationException, IllegalAccessException {
+        Map<Method, MethodContext> cached = methodContextCache.get(t);
+        if (cached != null) {
+            return cached;
+        }
+
         Map<Method, MethodContext> contexts = new HashMap<>();
         for (Method method : t.getDeclaredMethods()) {
             Query query = method.getAnnotation(Query.class);
@@ -95,7 +104,8 @@ class ProxyFactory {
             }
             contexts.put(method, new MethodContext(sha1, mapper, luaContext));
         }
-        return Collections.unmodifiableMap(contexts);
+        methodContextCache.putIfAbsent(t, Collections.unmodifiableMap(contexts));
+        return methodContextCache.get(t);
     }
 
     /**
