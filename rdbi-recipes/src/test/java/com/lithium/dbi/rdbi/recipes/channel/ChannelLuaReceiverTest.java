@@ -14,9 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.IntStream;
 
+import static com.lithium.dbi.rdbi.testutil.Utils.assertTiming;
 import static java.util.stream.Collectors.toList;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertTrue;
@@ -162,7 +165,7 @@ public class ChannelLuaReceiverTest {
     }
 
     @Test
-    public void testMultiThreadedMultiChannelPublishAndReceive() throws InterruptedException {
+    public void testMultiThreadedMultiChannelPublishAndReceive() {
         final Set<String> channelSet = ImmutableSet.of("channel1", "channel2", "channel3", "channel4", "channel5");
         final int messageAmount = 50;
 
@@ -171,55 +174,24 @@ public class ChannelLuaReceiverTest {
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
         channelPublisher.resetChannels(channelSet);
 
-        final AtomicBoolean thread1Finished = new AtomicBoolean(false);
-        final AtomicBoolean thread2Finished = new AtomicBoolean(false);
-
         Map<String, Integer> uuidMap = new HashMap<>();
 
-        Thread thread1 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < messageAmount; i++) {
-                    String stringVal = "value" + UUID.randomUUID();
-                    uuidMap.put(stringVal, 0);
-                    final List<String> value = ImmutableList.of(stringVal);
-                    channelPublisher.publish(channelSet, value);
-
-                    if (Thread.interrupted()) {
-                        return;
-                    }
-                }
-                thread1Finished.set(true);
-            }
-        });
-
-        Thread thread2 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < messageAmount; i++) {
-                    String stringVal = "value" + UUID.randomUUID();
-                    uuidMap.put(stringVal, 0);
-                    final List<String> value = ImmutableList.of(stringVal);
-                    channelPublisher.publish(channelSet, value);
-
-                    if (Thread.interrupted()) {
-                        return;
-                    }
-                }
-                thread2Finished.set(true);
-            }
-        });
-
-        thread1.start();
-        thread2.start();
-
-        long timeToFinish = 1500;
-        thread1.join(timeToFinish);
-        thread2.join(timeToFinish);
-
-        if (!thread1Finished.get() && !thread2Finished.get()) {
-            fail("Did not finish in time");
-        }
+        assertTiming(1500L, TimeUnit.MILLISECONDS,
+                     () -> IntStream.range(0, messageAmount)
+                                    .forEach(i -> {
+                                        String stringVal = "value" + UUID.randomUUID();
+                                        uuidMap.put(stringVal, 0);
+                                        final List<String> value = ImmutableList.of(stringVal);
+                                        channelPublisher.publish(channelSet, value);
+                                    }),
+                     () -> IntStream.range(0, messageAmount)
+                                    .forEach(i -> {
+                                        String stringVal = "value" + UUID.randomUUID();
+                                        uuidMap.put(stringVal, 0);
+                                        final List<String> value = ImmutableList.of(stringVal);
+                                        channelPublisher.publish(channelSet, value);
+                                    })
+                    );
 
         final List<String> channels = ImmutableList.of("channel1", "channel2", "channel3", "channel4", "channel5");
 
