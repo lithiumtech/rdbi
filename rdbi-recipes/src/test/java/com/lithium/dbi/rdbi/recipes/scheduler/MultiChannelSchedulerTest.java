@@ -2,7 +2,7 @@ package com.lithium.dbi.rdbi.recipes.scheduler;
 
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import com.lithium.dbi.rdbi.TestClock;
+import com.lithium.dbi.rdbi.testutil.TestClock;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;

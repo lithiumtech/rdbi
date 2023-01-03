@@ -1,7 +1,8 @@
 package com.lithium.dbi.rdbi;
 
-import net.sf.cglib.proxy.MethodInterceptor;
-import net.sf.cglib.proxy.MethodProxy;
+import net.bytebuddy.implementation.bind.annotation.AllArguments;
+import net.bytebuddy.implementation.bind.annotation.Origin;
+import net.bytebuddy.implementation.bind.annotation.RuntimeType;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisDataException;
 
@@ -10,43 +11,68 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-class MethodContextInterceptor implements MethodInterceptor {
+public class MethodContextInterceptor {
 
     private final Jedis jedis;
     private final Map<Method, MethodContext> contexts;
+
 
     public MethodContextInterceptor(Jedis jedis, Map<Method, MethodContext> contexts) {
         this.jedis = jedis;
         this.contexts = contexts;
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
+    @RuntimeType
+    public Object intercept(@AllArguments Object[] args,
+                            @Origin Method method) {
 
         MethodContext context = contexts.get(method);
 
-        Object ret = context.hasDynamicLists() ? callEvalDynamicList(context, objects)
-                                               : callEval(context, objects);
-
+        Object ret = context.hasDynamicLists() ? callEvalDynamicList(context, args)
+                                               : callEval(context, args);
         if (ret == null) {
             return null;
         }
 
-        if (contexts.get(method).getMapper() != null) {
-            return contexts.get(method).getMapper().map(ret);
+
+        if (context.getMapper() != null) {
+            // here we need to adjust for the expected input to the mapper
+            Class<?> parameterType;
+            try {
+                parameterType = context.getMapper().getClass().getMethod("map", Integer.class).getParameterTypes()[0];
+            } catch (NoSuchMethodException e) {
+                parameterType = null;
+            }
+            return context.getMapper().map(adjust(parameterType, ret));
+        } else {
+            return adjust(method.getReturnType(), ret);
+        }
+    }
+
+    private Object adjust(Class<?> c, Object ret) {
+        // problem here is we are getting a LONG but expected an int
+        // did this work on older jdks? doesn't seem to be a cglib vs bytebuddy thing
+        // java.lang.ClassCastException: class java.lang.Long cannot be cast to class java.lang.Integer (java.lang.Long and java.lang.Integer are in module java.base of loader 'bootstrap')
+        // i am not sure why this wasn't required before, and there's probably a utility out there
+        // to do it better the primary thing to handle is explicit cast to int where jedis returns a number
+        // as a long
+        if (c == null) {
+            return ret;
+        } else if ((c.equals(Integer.TYPE) || c.isAssignableFrom(Integer.class)) && ret instanceof Long) {
+            return ((Long) ret).intValue();
         } else {
             return ret;
         }
     }
 
+
     @SuppressWarnings("unchecked")
     private Object callEval(MethodContext context, Object[] objects) {
 
-        List<String> keys = objects.length > 0 ? (List<String>) objects[0] : null;
-        List<String> argv = objects.length > 1 ? (List<String>) objects[1] : null;
+        List<String> keys = objects.length > 0 ? (List<String>) objects[0] : new ArrayList<>();
+        List<String> argv = objects.length > 1 ? (List<String>) objects[1] : new ArrayList<>();
 
-        return  evalShaHandleReloadScript(context, keys, argv);
+        return evalShaHandleReloadScript(context, keys, argv);
     }
 
     private Object callEvalDynamicList(MethodContext context, Object[] objects) {
@@ -62,7 +88,7 @@ class MethodContextInterceptor implements MethodInterceptor {
             }
         }
 
-        return  evalShaHandleReloadScript(context, keys, argv);
+        return evalShaHandleReloadScript(context, keys, argv);
     }
 
     private Object evalShaHandleReloadScript(MethodContext context, List<String> keys, List<String> argv) {

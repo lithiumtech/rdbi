@@ -37,7 +37,8 @@ The main cleanup we made with Jedis is, if the jedis client came from a pool, it
 
 ## Now onto Lua and Coolness:
 
-Jedis provides a basic way of loading a Lua script into Redis and eval the script by its sha1 hash. rDBI provides this functionality via fluent queries, based off of [jDBI's fluent queries](http://jdbi.org/fluent_queries/). The application developer does not have to think about preloading the scripts on startup of the app or creating enums and storing sha1 in hashmaps. rDBI will cache the lua scripts internally and load them on demand while keeping it all thread-safe.
+Jedis provides a basic way of loading a Lua script into Redis and eval the script by its sha1 hash. rDBI provides this functionality via fluent queries, based off of [jDBI's fluent queries](http://jdbi.org/fluent_queries/). 
+The application developer does not have to think about preloading the scripts on startup of the app or creating enums and storing sha1 in hashmaps. rDBI will cache the lua scripts internally and load them on demand while keeping it all thread-safe.
 
 	private static interface TestDAO {
 		@RedisQuery(
