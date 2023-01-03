@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import static com.lithium.dbi.rdbi.testutil.Utils.assertTiming;
+import static org.awaitility.Awaitility.await;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -67,13 +68,13 @@ public class PresenceRepositoryTest {
                     );
 
         assertTiming(500L, TimeUnit.MILLISECONDS,
-                     () ->  presenceRepository.cull("mytube")
+                     () -> presenceRepository.cull("mytube")
                     );
 
     }
 
     @Test
-    public void getPresentTest() throws InterruptedException {
+    public void getPresentTest() {
         final String mytube = "getPresentTest";
         RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
         final PresenceRepository presenceRepository = new PresenceRepository(rdbi, "myprefix");
@@ -95,18 +96,17 @@ public class PresenceRepositoryTest {
         assertEquals(stillpresentSet.iterator().next(), uuid, "Expected to still have one heartbeat with uuid: " + uuid);
 
         // wait a second and verify previous heartbeat is expired
-        final Instant beforeSleep = Instant.now();
-        while (true) {
-            Thread.sleep(Duration.ofSeconds(1).toMillis());
-            if (Duration.between(beforeSleep, Instant.now()).compareTo(Duration.ofSeconds(1)) > 0) {
-                break;
-            }
-        }
-        final long expirationCheckApprox = Instant.now().toEpochMilli();
-        List<String> tubeContents = presenceRepository.getPresent(mytube, Optional.empty());
-        assertTrue(tubeContents.isEmpty(), String.format("tube contents should be empty, but are %s. inserted around %d, checked at %d." +
-                                                                 " should have expire at 1s", tubeContents, insertionTimeApprox, expirationCheckApprox));
+        await()
+                .atLeast(Duration.ofSeconds(1))
+                .atMost(Duration.ofMillis(1250L))
+                .untilAsserted(
+                        () -> {
+                            final long expirationCheckApprox = Instant.now().toEpochMilli();
+                            List<String> tubeContents = presenceRepository.getPresent(mytube, Optional.empty());
+                            assertTrue(tubeContents.isEmpty(), String.format("tube contents should be empty, but are %s. inserted around %d, checked at %d." +
+                                                                                     " should have expire at 1s", tubeContents, insertionTimeApprox, expirationCheckApprox));
 
+                        });
         // test with limit will not return full set
         for (int i = 0; i < 100; ++i) {
             presenceRepository.addHeartbeat(mytube, UUID.randomUUID().toString(), Duration.ofMinutes(1).toMillis());
@@ -136,14 +136,10 @@ public class PresenceRepositoryTest {
         assertEquals(stillpresentSet.iterator().next(), uuid, "Expected to still have one heartbeat with uuid: " + uuid);
 
         // wait a second and verify previous heartbeat is expired
-        final Instant beforeSleep = Instant.now();
-        while (true) {
-            Thread.sleep(Duration.ofSeconds(1).toMillis());
-            if (Duration.between(beforeSleep, Instant.now()).compareTo(Duration.ofSeconds(1)) > 0) {
-                break;
-            }
-        }
-        assertFalse(presenceRepository.getExpired(mytube, Optional.empty()).isEmpty());
+        await()
+                .atLeast(Duration.ofSeconds(1))
+                .atMost(Duration.ofMillis(1250L))
+                .untilAsserted(() -> assertFalse(presenceRepository.getExpired(mytube, Optional.empty()).isEmpty()));
 
         // test with limit will not return full set
         for (int i = 0; i < 100; ++i) {
