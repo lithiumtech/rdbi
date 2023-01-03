@@ -155,14 +155,12 @@ public class MultiReadSingleWriteLockTest {
             assertTrue(owners.contains(lockOwnerId));
 
             // wait for expiration and verify the lock has expired
-            final Instant beyondExpiration = Instant.now().plus(Duration.ofMillis(500));
-            while (true) {
-                Thread.sleep(100);
-                if (Instant.now().isAfter(beyondExpiration)) {
-                    break;
-                }
-            }
-            assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf", 0, 1).isEmpty());
+            await()
+                    .atLeast(Duration.ofMillis(500))
+                    .atMost(Duration.ofSeconds(1))
+                    .untilAsserted(() -> {
+                        assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf", 0, 1).isEmpty());
+                    });
         }
     }
 
