@@ -11,7 +11,8 @@ import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.fail;
 
-public class RDBIWithHandleTest {
+public class
+RDBIWithHandleTest {
 
     public interface TestDAO {
         @Query(
@@ -52,7 +53,6 @@ public class RDBIWithHandleTest {
 
         rdbi.withHandle(handle -> {
             handle.jedis().get("hello");
-            // probably same issue as other exception tests
             fail("Should have thrown exception on get");
             return null;
         });

@@ -47,12 +47,6 @@ public class RDBITest {
                 "redis.call('SET', $a$, $b$); return 0;"
         )
         int testExec(@BindKey("a") String a, @BindArg("b") String b);
-
-//        @Query(
-//                "redis.call('SET', $a$, $b$); return 0;"
-//        )
-//        int testExec2(@BindKey("a") String a, @BindArg("b") String b);
-
     }
 
     public static class BasicObjectUnderTest {
@@ -90,7 +84,6 @@ public class RDBITest {
         Handle handle = rdbi.open();
         try {
             handle.attach(TestCopyDAO.class);
-            // real problem
             fail("Should have thrown exception for loadScript error");
         } catch (RuntimeException e) {
             //expected
@@ -172,19 +165,12 @@ public class RDBITest {
         }
     }
 
-    // good test to make sure shit works
     @Test
     public void testDynamicDAO() {
-//        RDBI rdbi = new RDBI(getMockJedisPool());
-        RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
+        RDBI rdbi = new RDBI(getMockJedisPool());
 
         try (Handle handle = rdbi.open()) {
             handle.attach(DynamicDAO.class).testExec("a", "b");
-        }
-
-        try (Handle handle = rdbi.open()) {
-            String val = handle.jedis().get("a");
-            assertEquals(val, "b");
         }
     }
 

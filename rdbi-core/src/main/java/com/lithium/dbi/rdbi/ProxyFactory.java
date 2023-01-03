@@ -3,7 +3,6 @@ package com.lithium.dbi.rdbi;
 import io.opentelemetry.api.trace.Tracer;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.modifier.Visibility;
-import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.dynamic.scaffold.subclass.ConstructorStrategy;
 import net.bytebuddy.implementation.MethodDelegation;
@@ -31,7 +30,7 @@ class ProxyFactory {
     @SuppressWarnings("unchecked")
     <T> T createInstance(final Jedis jedis, final Class<T> t) {
         try {
-            BBMethodContextInterceptor interceptor = new BBMethodContextInterceptor(jedis, getMethodMethodContextMap(t, jedis));
+            MethodContextInterceptor interceptor = new MethodContextInterceptor(jedis, getMethodMethodContextMap(t, jedis));
             Object instance = get(t).getDeclaredConstructor().newInstance();
             final Field field = instance.getClass().getDeclaredField("handler");
             field.set(instance, interceptor);
@@ -63,11 +62,11 @@ class ProxyFactory {
 
         return new ByteBuddy()
                 .subclass(t, ConstructorStrategy.Default.DEFAULT_CONSTRUCTOR)
-                .defineField("handler", BBMethodContextInterceptor.class, Visibility.PUBLIC)
+                .defineField("handler", MethodContextInterceptor.class, Visibility.PUBLIC)
                 .method(ElementMatchers.any())
                 .intercept(MethodDelegation.toField("handler"))
                 .make()
-                .load(getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)  // this works for everything BUT the DAO tests in rdbi core
+                .load(getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
                 .getLoaded();
 
     }
@@ -118,17 +117,4 @@ class ProxyFactory {
         return (method.getParameterTypes().length == 0)
                 || (method.getParameterTypes()[0] == List.class);
     }
-
-    // i don't think we need this because we don't have to lookup finalize, we just don't override it
-    //    private static class FinalizeFilter implements CallbackFilter {
-    //        @Override
-    //        public int accept(Method method) {
-    //            if (method.getName().equals("finalize") &&
-    //                    method.getParameterTypes().length == 0 &&
-    //                    method.getReturnType() == Void.TYPE) {
-    //                return 0; //the NO_OP method interceptor
-    //            }
-    //            return 1; //the everything else method interceptor
-    //        }
-    //    }
 }

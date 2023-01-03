@@ -385,7 +385,6 @@ public class RedisHashCacheTest {
         // manipulate the data source for key1
         final TestContainer newValueForKey1 = new TestContainer(key1, UUID.randomUUID(), "test-remove-new-value-for-key-1");
         dataSource.put(key1, newValueForKey1);
-        // wait.. why did this pass???
         assertEquals(cache.get(key1), originalValueForKey1);
 
         // invalidate the key ... should reload on next request

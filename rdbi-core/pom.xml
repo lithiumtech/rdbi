@@ -13,38 +13,6 @@
     <artifactId>rdbi-core</artifactId>
     <name>rDBI-core</name>
 
-<!--    <build>-->
-<!--        <plugins>-->
-<!--            &lt;!&ndash; shading dangerous libs cglib and asm &ndash;&gt;-->
-<!--            <plugin>-->
-<!--                <groupId>org.apache.maven.plugins</groupId>-->
-<!--                <artifactId>maven-shade-plugin</artifactId>-->
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <id>shade-proxying-implementation</id>-->
-<!--                        <phase>package</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>shade</goal>-->
-<!--                        </goals>-->
-<!--                        <configuration>-->
-<!--                            <artifactSet>-->
-<!--                                <includes>-->
-<!--                                    <include>cglib:cglib-nodep</include>-->
-<!--                                </includes>-->
-<!--                            </artifactSet>-->
-<!--                            <relocations>-->
-<!--                                <relocation>-->
-<!--                                    <pattern>net.sf.cglib</pattern>-->
-<!--                                    <shadedPattern>com.lithium.dbi.rdbi.shaded.net.sf.cglib</shadedPattern>-->
-<!--                                </relocation>-->
-<!--                            </relocations>-->
-<!--                        </configuration>-->
-<!--                    </execution>-->
-<!--                </executions>-->
-<!--            </plugin>-->
-<!--        </plugins>-->
-<!--    </build>-->
-
     <dependencies>
         <dependency>
             <groupId>net.bytebuddy</groupId>
