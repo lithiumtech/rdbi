@@ -84,6 +84,7 @@ public class PresenceRepositoryTest {
         // put something in and verify we can get it back out
         final String uuid = UUID.randomUUID().toString();
         presenceRepository.addHeartbeat(mytube, uuid, Duration.ofSeconds(1).toMillis());
+        final long insertionTimeApprox = Instant.now().toEpochMilli();
         final List<String> presentSet = presenceRepository.getPresent(mytube, Optional.empty());
         assertEquals(uuid, presentSet.iterator().next(), "Expected to have one heartbeat with uuid: " + uuid);
 
@@ -100,8 +101,10 @@ public class PresenceRepositoryTest {
                 break;
             }
         }
+        final long expirationCheckApprox = Instant.now().toEpochMilli();
         List<String> tubeContents = presenceRepository.getPresent(mytube, Optional.empty());
-        assertTrue(tubeContents.isEmpty(), String.format("tube contents should be empty, but are %s", tubeContents));
+        assertTrue(tubeContents.isEmpty(), String.format("tube contents should be empty, but are %s. inserted around %d, checked at %d." +
+                                                                 " should have expire at 1s", tubeContents, insertionTimeApprox, expirationCheckApprox));
 
         // test with limit will not return full set
         for (int i = 0; i < 100; ++i) {
