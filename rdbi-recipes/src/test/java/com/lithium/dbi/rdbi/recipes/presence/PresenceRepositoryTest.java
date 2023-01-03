@@ -100,7 +100,8 @@ public class PresenceRepositoryTest {
                 break;
             }
         }
-        assertTrue(presenceRepository.getPresent(mytube, Optional.empty()).isEmpty());
+        List<String> tubeContents = presenceRepository.getPresent(mytube, Optional.empty());
+        assertTrue(tubeContents.isEmpty(), String.format("tube contents should be empty, but are %s", tubeContents));
 
         // test with limit will not return full set
         for (int i = 0; i < 100; ++i) {
