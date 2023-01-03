@@ -12,7 +12,6 @@ import redis.clients.jedis.Protocol;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -82,15 +81,6 @@ public class MultiReadSingleWriteLockTest {
             final String newLockOwnerId = UUID.randomUUID().toString();
             lock.acquireWriteLock(newLockOwnerId);
             assertEquals(newLockOwnerId, handle.jedis().get(writeLockKey));
-
-//            // wait for new owner to expire and check that no one owns lock
-//            final Instant beyondExpiration = Instant.now().plus(Duration.ofMillis(500));
-//            while (true) {
-//                Thread.sleep(100);
-//                if (Instant.now().isAfter(beyondExpiration)) {
-//                    break;
-//                }
-//            }
             await()
                     .atLeast(Duration.ofMillis(500))
                     .atMost(Duration.ofSeconds(1))
