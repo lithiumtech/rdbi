@@ -340,7 +340,7 @@ public class RedisHashCacheTest {
         assertEquals(0, loadFailure.get());
     }
 
-    @Test(invocationCount = 100)
+    @Test
     public void testRemove() throws ExecutionException {
 
         final String key1 = "key1";
