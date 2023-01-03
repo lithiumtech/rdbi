@@ -75,7 +75,8 @@ public class PresenceRepositoryTest {
     @Test
     public void getPresentTest() throws InterruptedException {
         final String mytube = "getPresentTest";
-        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost", 6379)), "myprefix");
+        RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
+        final PresenceRepository presenceRepository = new PresenceRepository(rdbi, "myprefix");
         presenceRepository.nukeForTest(mytube);
 
         // assert set is empty at start
