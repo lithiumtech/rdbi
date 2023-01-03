@@ -1,7 +1,7 @@
 #!groovy
 
 pipeline {
-    agent { label 'java11 && small && dev' }
+    agent { label 'java8 && small && dev' }
     tools {
         maven 'Maven 3 (latest)'
         jdk 'Latest'
