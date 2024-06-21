@@ -42,6 +42,27 @@ public class ChannelLuaReceiver implements ChannelReceiver {
         @Query(
             "local current_count = redis.call(\"GET\", $countKey$)\n" +
             "if not current_count then\n" +
+            "    return {tostring(0)}\n" +
+            "else\n" +
+            "    current_count = tonumber(current_count)\n" +
+            "end\n" +
+            "if current_count <= tonumber($lastSeenCount$) then\n" +
+            "    return {tostring(current_count)}\n" +
+            "end\n" +
+            "local results = redis.call(\"LRANGE\", $listKey$, 0, current_count - tonumber($lastSeenCount$) - 1)\n" +
+            "results[#results + 1] = tostring(current_count)\n" +
+            "return results"
+        )
+        @Mapper(GetWithDepthResultMapper.class)
+        GetResult getAndReturnCurrentDepth(
+            @BindKey("countKey") String countKey,
+            @BindKey("listKey") String listKey,
+            @BindArg("lastSeenCount") Long lastSeenCount
+        );
+
+        @Query(
+            "local current_count = redis.call(\"GET\", $countKey$)\n" +
+            "if not current_count then\n" +
             "    current_count = 0\n" +
             "else\n" +
             "   current_count = tonumber(current_count)\n" +
@@ -85,8 +106,8 @@ public class ChannelLuaReceiver implements ChannelReceiver {
         )
         @Mapper(GetBulkResultMapper.class)
         GetBulkResult getMulti(
-                @BindKey("allKeys") List<String> inputKeys,
-                @BindArg("allArgs") List<String> inputArgs
+            @BindKey("allKeys") List<String> inputKeys,
+            @BindArg("allArgs") List<String> inputArgs
         );
 
         @Query(
@@ -114,7 +135,7 @@ public class ChannelLuaReceiver implements ChannelReceiver {
                       @BindKey("copyDepthToKey") String copyDepthToKey);
     }
 
-    public static class GetResultMapper implements ResultMapper<GetResult,List<String>> {
+    public static class GetResultMapper implements ResultMapper<GetResult, List<String>> {
 
         @Override
         public GetResult map(List<String> result) {
@@ -127,7 +148,24 @@ public class ChannelLuaReceiver implements ChannelReceiver {
         }
     }
 
-    public static class GetBulkResultMapper implements ResultMapper<GetBulkResult,List<List<String>>> {
+    public static class GetWithDepthResultMapper implements ResultMapper<GetResult, List<String>> {
+
+        @Override
+        public GetResult map(List<String> result) {
+
+            if (result.size() == 0) {
+                throw new IllegalStateException("unexpected 0 length return from redis lua script");
+            }
+
+            if (result.size() == 1) {
+                return new GetResult(null, Long.valueOf(result.get(0)));
+            }
+
+            return new GetResult(Lists.reverse(result.subList(0, result.size() - 1)), Long.valueOf(result.get(result.size() - 1)));
+        }
+    }
+
+    public static class GetBulkResultMapper implements ResultMapper<GetBulkResult, List<List<String>>> {
 
         @Override
         public GetBulkResult map(List<List<String>> result) {
@@ -136,17 +174,17 @@ public class ChannelLuaReceiver implements ChannelReceiver {
                 return null;
             }
 
-            List<List<String>> listsResult =  new ArrayList<>();
+            List<List<String>> listsResult = new ArrayList<>();
             List<Long> listsSizes = new ArrayList<>();
 
-            for (List<String> each: result) {
+            for (List<String> each : result) {
                 if (each.size() == 0) {
                     listsResult.add(each);
                     listsSizes.add(0L);
                     continue;
                 }
                 listsResult.add(Lists.reverse(each.subList(0, each.size() - 1)));
-                listsSizes.add(Long.valueOf(each.get(each.size()-1)));
+                listsSizes.add(Long.valueOf(each.get(each.size() - 1)));
             }
 
             return new GetBulkResult(listsResult, listsSizes);
@@ -162,8 +200,32 @@ public class ChannelLuaReceiver implements ChannelReceiver {
         return get(channel, lastSeenId, null);
     }
 
+    /**
+     * Gets new data from the channel and returns the current channel depth.
+     * This is unlike the get method, that returns the input channel depth if no data was found.
+     *
+     * This is useful because if the channel was reset, the client will see their id > the channel's id and should reset.
+     * This happens on redis clearing etc.
+     *
+     * @param channel the channel's name
+     * @param lastSeenId the last seen id by the client
+     * @return GetResult that contains the channel's latest depth
+     */
+    @Override
+    public GetResult getAndReturnCurrentCount(String channel, Long lastSeenId) {
+
+        try (Handle handle = rdbi.open()) {
+            DAO dao = handle.attach(DAO.class);
+
+            return dao.getAndReturnCurrentDepth(ChannelPublisher.getChannelDepthKey(channel),
+                    ChannelPublisher.getChannelQueueKey(channel),
+                    lastSeenId);
+        }
+    }
+
     @Override
     public GetResult get(String channel, Long lastSeenId, String copyDepthToKey) {
+
         try (Handle handle = rdbi.open()) {
             DAO dao = handle.attach(DAO.class);
             if (copyDepthToKey == null) {

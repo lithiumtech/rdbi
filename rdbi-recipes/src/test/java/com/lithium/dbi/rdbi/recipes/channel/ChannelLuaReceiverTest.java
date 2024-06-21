@@ -18,9 +18,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.stream.Collectors.toList;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
-import static org.testng.AssertJUnit.fail;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
+
 
 public class ChannelLuaReceiverTest {
 
@@ -162,6 +164,37 @@ public class ChannelLuaReceiverTest {
     }
 
     @Test
+    public void testGetAndReturnCurrentCount() {
+
+        final String channel = "channel1";
+
+        RDBI rdbi = new RDBI(new JedisPool("localhost"));
+        final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
+        channelPublisher.resetChannel(channel);
+
+        try {
+            final ChannelReceiver channelReceiver = new ChannelLuaReceiver(rdbi);
+            GetResult result = channelReceiver.getAndReturnCurrentCount(channel, 0L);
+
+            assertEquals((Long) 0L, result.getDepth());
+
+            channelPublisher.publish(channel, "1");
+            GetResult result2 = channelReceiver.getAndReturnCurrentCount(channel, 0L);
+
+            assertEquals((Long) 1L, result2.getDepth());
+            assertEquals(1, result2.getMessages().size());
+            assertEquals("1", result2.getMessages().get(0));
+
+            GetResult result3 = channelReceiver.getAndReturnCurrentCount(channel, 1000L);
+            assertEquals((Long) 1L, result3.getDepth());
+            assertNull(result3.getMessages());
+
+        } finally {
+            channelPublisher.resetChannel(channel);
+        }
+    }
+
+    @Test
     public void testMultiThreadedMultiChannelPublishAndReceive() throws InterruptedException {
         final Set<String> channelSet = ImmutableSet.of("channel1", "channel2", "channel3", "channel4", "channel5");
         final int messageAmount = 50;
@@ -176,39 +209,8 @@ public class ChannelLuaReceiverTest {
 
         Map<String, Integer> uuidMap = new HashMap<>();
 
-        Thread thread1 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < messageAmount; i++) {
-                    String stringVal = "value" + UUID.randomUUID();
-                    uuidMap.put(stringVal, 0);
-                    final List<String> value = ImmutableList.of(stringVal);
-                    channelPublisher.publish(channelSet, value);
-
-                    if (Thread.interrupted()) {
-                        return;
-                    }
-                }
-                thread1Finished.set(true);
-            }
-        });
-
-        Thread thread2 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < messageAmount; i++) {
-                    String stringVal = "value" + UUID.randomUUID();
-                    uuidMap.put(stringVal, 0);
-                    final List<String> value = ImmutableList.of(stringVal);
-                    channelPublisher.publish(channelSet, value);
-
-                    if (Thread.interrupted()) {
-                        return;
-                    }
-                }
-                thread2Finished.set(true);
-            }
-        });
+        Thread thread1 = randomPublish(channelSet, messageAmount, channelPublisher, thread1Finished, uuidMap);
+        Thread thread2 = randomPublish(channelSet, messageAmount, channelPublisher, thread2Finished, uuidMap);
 
         thread1.start();
         thread2.start();
@@ -241,6 +243,22 @@ public class ChannelLuaReceiverTest {
             assertTrue(uuidMap.get(key) == channels.size());
         }
 
+    }
+
+    private Thread randomPublish(Set<String> channelSet, int messageAmount, ChannelPublisher channelPublisher, AtomicBoolean thread1Finished, Map<String, Integer> uuidMap) {
+        return new Thread(() -> {
+            for (int i = 0; i < messageAmount; i++) {
+                String stringVal = "value" + UUID.randomUUID();
+                uuidMap.put(stringVal, 0);
+                final List<String> value = ImmutableList.of(stringVal);
+                channelPublisher.publish(channelSet, value);
+
+                if (Thread.interrupted()) {
+                    return;
+                }
+            }
+            thread1Finished.set(true);
+        });
     }
 
     //ignored because this is a test to compare consecutive single channel gets vs. batch channel gets

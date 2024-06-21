@@ -4,6 +4,7 @@ import java.util.List;
 
 public interface ChannelReceiver {
     GetResult get(String channel, Long lastSeenId);
+    GetResult getAndReturnCurrentCount(String channel, Long lastSeenId);
     GetResult get(String channel, Long lastSeenId, String copyDepthToKey);
     GetBulkResult getMulti(List<String> channels, List<Long> lastSeenIds);
     Long getDepth(String channel);
