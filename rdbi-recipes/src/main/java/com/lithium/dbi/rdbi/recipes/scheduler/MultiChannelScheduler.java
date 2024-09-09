@@ -1,13 +1,10 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
-import com.google.common.primitives.Ints;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
 import redis.clients.jedis.resps.Tuple;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
@@ -342,11 +339,6 @@ public class MultiChannelScheduler {
         return rdbi.withHandle(handle -> handle.jedis().zcount(queue, 0, clock.getAsLong()));
     }
 
-    public long getRunningJobCount(String tube) {
-        final String queue = getRunningQueue(tube);
-        return rdbi.withHandle(handle -> handle.jedis().zcard(queue));
-    }
-
     /**
      * returns a list of jobs scheduled with a delay - to run in the future
      */
@@ -364,14 +356,6 @@ public class MultiChannelScheduler {
 
     public List<TimeJobInfo> peekExpired(String tube, int offset, int count) {
         return peekInternal(getRunningQueue(tube), 0.0d, (double) clock.getAsLong(), offset, count);
-    }
-
-    public Integer getRunningCountForChannel(String channel, String tube) {
-        final String key = getRunningCountKey(channel, tube);
-        final String count = rdbi.withHandle(h -> h.jedis().get(key));
-        return Optional.ofNullable(count)
-                       .map(Ints::tryParse)
-                       .orElse(0);
     }
 
     private List<TimeJobInfo> peekInternal(String queue, Double min, Double max, int offset, int count) {
