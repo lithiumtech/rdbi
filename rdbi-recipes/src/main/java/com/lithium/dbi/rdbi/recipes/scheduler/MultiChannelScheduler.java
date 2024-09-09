@@ -153,15 +153,6 @@ public class MultiChannelScheduler {
         }
     }
 
-    public long getAllReadyJobCount(String tube) {
-        try (Handle handle = rdbi.open()) {
-            return handle.attach(MultiChannelSchedulerDAO.class)
-                         .getAllReadyJobCount(
-                                 getMultiChannelCircularBuffer(tube),
-                                 clock.getAsLong());
-        }
-    }
-
     /**
      * See {@link StateDedupedJobScheduler#ackJob(java.lang.String, java.lang.String)}
      */
@@ -332,11 +323,6 @@ public class MultiChannelScheduler {
             handle.jedis().del(getPausedKey(channel, tube));
             return null;
         });
-    }
-
-    public long getReadyJobCount(String channel, String tube) {
-        final String queue = getReadyQueue(channel, tube);
-        return rdbi.withHandle(handle -> handle.jedis().zcount(queue, 0, clock.getAsLong()));
     }
 
     /**
