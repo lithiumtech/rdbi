@@ -1,5 +1,19 @@
 # Change Log
 
+## [rdbi-0.108](https://github.com/lithiumtech/rdbi/tree/rdbi-0.108) (2024-09-09)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.107...rdbi-0.108)
+
+**Merged pull requests:**
+
+- CARE-16897 release strategy [\#116](https://github.com/lithiumtech/rdbi/pull/116) ([marklaver](https://github.com/marklaver))
+
+## [rdbi-0.107](https://github.com/lithiumtech/rdbi/tree/rdbi-0.107) (2024-09-09)
+[Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.106...rdbi-0.107)
+
+**Merged pull requests:**
+
+- CARE-16897 Add scheduleReader [\#112](https://github.com/lithiumtech/rdbi/pull/112) ([marklaver](https://github.com/marklaver))
+
 ## [rdbi-0.106](https://github.com/lithiumtech/rdbi/tree/rdbi-0.106) (2022-03-23)
 [Full Changelog](https://github.com/lithiumtech/rdbi/compare/rdbi-0.105...rdbi-0.106)
 
