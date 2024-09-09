@@ -48,6 +48,14 @@
         <metrics-core.version>4.1.29</metrics-core.version>
         <slf4j.version>1.7.32</slf4j.version>
     </properties>
+    
+    <distributionManagement>
+        <repository>
+            <id>lithium-releases</id>
+            <name>nexus-maven-repo</name>
+            <url>https://nexus.dev.lithium.com/nexus/content/repositories/releases</url>
+        </repository>
+    </distributionManagement>
 
     <dependencyManagement>
         <dependencies>
