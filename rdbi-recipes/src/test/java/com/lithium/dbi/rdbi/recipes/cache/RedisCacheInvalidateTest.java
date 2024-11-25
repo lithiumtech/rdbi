@@ -28,7 +28,7 @@ public class RedisCacheInvalidateTest {
     private static AtomicInteger sharedMutableState;
 
     @BeforeClass
-    public static void setUp() throws Exception {
+    public void setUp() {
         jedisPool = new JedisPool("localhost", 6379);
 
         final RDBI rdbi = new RDBI(jedisPool);
@@ -84,7 +84,7 @@ public class RedisCacheInvalidateTest {
     }
 
     @AfterClass
-    public static void tearDown() throws Exception {
+    public void tearDown() {
         jedisPool.close();
     }
 

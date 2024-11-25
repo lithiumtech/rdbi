@@ -19,7 +19,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'mvn clean verify -P code-coverage'
+                sh 'mvn clean verify'
             }
         }
     }

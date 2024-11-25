@@ -1,4 +1,4 @@
-package com.lithium.dbi.rdbi;
+package com.lithium.dbi.rdbi.testutil;
 
 import java.util.function.LongSupplier;
 

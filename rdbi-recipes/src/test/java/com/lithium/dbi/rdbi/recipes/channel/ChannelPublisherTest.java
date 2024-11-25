@@ -7,11 +7,12 @@ import com.lithium.dbi.rdbi.RDBI;
 import org.testng.annotations.Test;
 import redis.clients.jedis.JedisPool;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
+import static com.lithium.dbi.rdbi.testutil.Utils.assertTiming;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNotNull;
 import static org.testng.AssertJUnit.assertNull;
@@ -28,37 +29,12 @@ public class ChannelPublisherTest {
         final ChannelPublisher channelPublisher = new ChannelPublisher(new RDBI(new JedisPool("localhost", 6379)));
         channelPublisher.resetChannels(channel);
 
-        final List<String> value =ImmutableList.of("value1");
-        final AtomicBoolean thread1Finished = new AtomicBoolean(false);
-        final AtomicBoolean thread2Finished = new AtomicBoolean(false);
+        final List<String> value = ImmutableList.of("value1");
 
-        Thread thread1 = new Thread(() -> {
-            for ( int i = 0; i < 1000; i++) {
-                channelPublisher.publish(channel, value );
-
-                if (Thread.interrupted()) {
-                    return;
-                }
-            }
-            thread1Finished.set(true);
-        });
-        Thread thread2 = new Thread(() -> {
-            for ( int i = 0; i < 1000; i++) {
-                channelPublisher.publish(channel, value );
-            }
-            thread2Finished.set(true);
-        });
-
-        thread1.start();
-        thread2.start();
-
-        long timeToFinish = 1500;
-        thread1.join(timeToFinish);
-        thread2.join(timeToFinish);
-
-        if (!thread1Finished.get() && !thread2Finished.get()) {
-            fail("Did not finish in time");
-        }
+        assertTiming(1500, TimeUnit.MILLISECONDS,
+                     () -> IntStream.range(0, 1000).forEach(i -> channelPublisher.publish(channel, value)),
+                     () -> IntStream.range(0, 1000).forEach(i -> channelPublisher.publish(channel, value))
+                    );
     }
 
     @Test
@@ -149,7 +125,7 @@ public class ChannelPublisherTest {
     }
 
     @Test
-    public void testPublishChannelPerformanceTest() throws InterruptedException {
+    public void testPublishChannelPerformanceTest() {
 
         final Set<String> channel = ImmutableSet.of("channel1", "channel2", "channel3", "channel4", "channel5");
 
@@ -157,81 +133,19 @@ public class ChannelPublisherTest {
         final ChannelPublisher channelPublisher = new ChannelPublisher(rdbi);
         channelPublisher.resetChannels(channel);
 
-        final List<String> value =ImmutableList.of("value1");
-        final AtomicBoolean thread1Finished = new AtomicBoolean(false);
-        final AtomicBoolean thread2Finished = new AtomicBoolean(false);
+        final List<String> value = ImmutableList.of("value1");
 
-        Thread thread1 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for ( int i = 0; i < 1000; i++) {
-                    channelPublisher.publish(channel, value );
-
-                    if (Thread.interrupted()) {
-                        return;
-                    }
-                }
-                thread1Finished.set(true);
-            }
-        });
-        Thread thread2 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for ( int i = 0; i < 1000; i++) {
-                    channelPublisher.publish(channel, value );
-                }
-                thread2Finished.set(true);
-            }
-        });
-
-        thread1.start();
-        thread2.start();
-
-        long timeToFinish = 1500;
-        thread1.join(timeToFinish);
-        thread2.join(timeToFinish);
-
-        if (!thread1Finished.get() || !thread2Finished.get()) {
-            fail("Did not finish in time");
-        }
+        assertTiming(1500, TimeUnit.MILLISECONDS,
+                     () -> IntStream.range(0, 1000).forEach(i -> channelPublisher.publish(channel, value)),
+                     () -> IntStream.range(0, 1000).forEach(i -> channelPublisher.publish(channel, value))
+                    );
 
         final ChannelReceiver receiver = new ChannelLuaReceiver(rdbi);
-        final AtomicBoolean thread3Finished = new AtomicBoolean(false);
-        final AtomicBoolean thread4Finished = new AtomicBoolean(false);
 
+        assertTiming(1500, TimeUnit.MILLISECONDS,
+                     () -> IntStream.range(0, 1000).forEach(i -> channelPublisher.publish(channel, value)),
+                     () -> IntStream.range(0, 1000).forEach(i -> channelPublisher.publish(channel, value))
+                    );
 
-        Thread thread3 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < 100; i++) {
-                    receiver.get(channel.iterator().next(), 900L);
-                }
-                thread3Finished.set(true);
-            }
-        });
-
-        Thread thread4 = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i < 100; i++) {
-                    receiver.get(channel.iterator().next(), 900L);
-                }
-                thread4Finished.set(true);
-            }
-        });
-
-        Instant before = Instant.now();
-        thread3.start();
-        thread4.start();
-
-        thread3.join(timeToFinish);
-        thread4.join(timeToFinish);
-        Instant after = Instant.now();
-
-        if (!thread3Finished.get() || !thread3Finished.get()) {
-            fail("Did not finish in time");
-        }
-
-        System.out.println("final time " + (after.toEpochMilli() - before.toEpochMilli()));
     }
 }

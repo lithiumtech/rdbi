@@ -11,7 +11,7 @@ public class Handle implements Closeable {
 
     private final Jedis jedis;
     private final Tracer tracer;
-    private JedisWrapperDoNotUse jedisWrapper;
+    private Jedis jedisWrapper;
 
     private final ProxyFactory proxyFactory;
 

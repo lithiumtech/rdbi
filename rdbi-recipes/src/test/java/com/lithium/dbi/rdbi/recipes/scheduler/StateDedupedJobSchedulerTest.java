@@ -1,8 +1,8 @@
 package com.lithium.dbi.rdbi.recipes.scheduler;
 
 import com.lithium.dbi.rdbi.RDBI;
-import com.lithium.dbi.rdbi.TestClock;
-import com.lithium.dbi.rdbi.testutil.TubeUtils;
+import com.lithium.dbi.rdbi.testutil.TestClock;
+import com.lithium.dbi.rdbi.testutil.Utils;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -27,7 +27,7 @@ public class StateDedupedJobSchedulerTest {
 
     @BeforeMethod
     public void setup() {
-        tubeName = TubeUtils.uniqueTubeName();
+        tubeName = Utils.uniqueTubeName();
         scheduledJobSystem = new StateDedupedJobScheduler(rdbi, "myprefix:");
     }
 

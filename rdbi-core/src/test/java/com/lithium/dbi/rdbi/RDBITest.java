@@ -15,12 +15,13 @@ import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
 public class RDBITest {
 
-    interface TestDAO {
+    public interface TestDAO {
         @Query(
             "redis.call('SET',  KEYS[1], ARGV[1]);" +
             "return 0;"
@@ -28,7 +29,7 @@ public class RDBITest {
         int testExec(List<String> keys, List<String> args);
     }
 
-    interface TestCopyDAO {
+    public interface TestCopyDAO {
         @Query(
                 "redis.call('SET',  KEYS[1], ARGV[1]);" +
                         "return 0;"
@@ -36,19 +37,19 @@ public class RDBITest {
         int testExec2(List<String> keys, List<String> args);
     }
 
-    interface NoInputDAO {
+    public interface NoInputDAO {
         @Query("return 0;")
         int noInputMethod();
     }
 
-    interface DynamicDAO {
+    public interface DynamicDAO {
         @Query(
                 "redis.call('SET', $a$, $b$); return 0;"
         )
         int testExec(@BindKey("a") String a, @BindArg("b") String b);
     }
 
-    static class BasicObjectUnderTest {
+    public static class BasicObjectUnderTest {
 
         private final String input;
 
@@ -60,13 +61,13 @@ public class RDBITest {
             return input;
         }
     }
-    static class BasicResultMapper implements ResultMapper<BasicObjectUnderTest, Integer> {
+    public static class BasicResultMapper implements ResultMapper<BasicObjectUnderTest, Integer> {
         @Override
         public BasicObjectUnderTest map(Integer result) {
             return new BasicObjectUnderTest(result);
         }
     }
-    static interface TestDAOWithResultSetMapper {
+    public interface TestDAOWithResultSetMapper {
 
         @Query(
             "redis.call('SET',  KEYS[1], ARGV[1]);" +
@@ -86,8 +87,7 @@ public class RDBITest {
             fail("Should have thrown exception for loadScript error");
         } catch (RuntimeException e) {
             //expected
-            assertFalse(rdbi.proxyFactory.factoryCache.containsKey(TestCopyDAO.class));
-            assertFalse(rdbi.proxyFactory.methodContextCache.containsKey(TestCopyDAO.class));
+            assertFalse(rdbi.proxyFactory.isCached(TestCopyDAO.class));
         } finally {
             handle.close();
         }
@@ -102,7 +102,7 @@ public class RDBITest {
             handle.jedis().get("hello");
             fail("Should have thrown exception on get");
         } catch (Exception e) {
-            //expected
+            //expected // hmm i don't think this is right
         } finally {
             handle.close();
         }
@@ -112,7 +112,7 @@ public class RDBITest {
     @SuppressWarnings("unchecked")
     public void testBasicAttachRun() {
 
-        RDBI rdbi = new RDBI(getJedisPool());
+        RDBI rdbi = new RDBI(getMockJedisPool());
 
         Handle handle1 = rdbi.open();
         try {
@@ -128,9 +128,7 @@ public class RDBITest {
             handle2.close();
         }
 
-        assertTrue(rdbi.proxyFactory.factoryCache.containsKey(TestDAO.class));
-        assertTrue(rdbi.proxyFactory.methodContextCache.containsKey(TestDAO.class));
-
+        assertTrue(rdbi.proxyFactory.isCached(TestDAO.class));
 
         Handle handle3 = rdbi.open();
         try {
@@ -142,7 +140,7 @@ public class RDBITest {
 
     @Test
     public void testAttachWithResultSetMapper() {
-        RDBI rdbi = new RDBI(getJedisPool());
+        RDBI rdbi = new RDBI(getMockJedisPool());
 
         Handle handle = rdbi.open();
         try {
@@ -156,7 +154,7 @@ public class RDBITest {
 
     @Test
     public void testMethodWithNoInput() {
-        RDBI rdbi = new RDBI(getJedisPool());
+        RDBI rdbi = new RDBI(getMockJedisPool());
 
         Handle handle = rdbi.open();
         try {
@@ -169,33 +167,30 @@ public class RDBITest {
 
     @Test
     public void testDynamicDAO() {
-        RDBI rdbi = new RDBI(getJedisPool());
-        Handle handle = rdbi.open();
+        RDBI rdbi = new RDBI(getMockJedisPool());
 
-        try {
+        try (Handle handle = rdbi.open()) {
             handle.attach(DynamicDAO.class).testExec("a", "b");
-        } finally {
-            handle.close();
         }
     }
 
     @Test
     public void testCacheHitDAO() {
-        RDBI rdbi = new RDBI(getJedisPool());
+        RDBI rdbi = new RDBI(getMockJedisPool());
         Handle handle = rdbi.open();
 
         try {
             for (int i = 0; i < 2; i++) {
                 handle.attach(DynamicDAO.class).testExec("a", "b");
             }
-            assertTrue(rdbi.proxyFactory.factoryCache.containsKey(DynamicDAO.class));
+            assertTrue(rdbi.proxyFactory.isCached(DynamicDAO.class));
         } finally {
             handle.close();
         }
     }
 
     @SuppressWarnings("unchecked")
-    static JedisPool getJedisPool() {
+    static JedisPool getMockJedisPool() {
         Jedis jedis = mock(Jedis.class);
         when(jedis.scriptLoad(anyString())).thenReturn("my-sha1-hash");
         when(jedis.evalsha(anyString(), anyList(), anyList())).thenReturn(0);

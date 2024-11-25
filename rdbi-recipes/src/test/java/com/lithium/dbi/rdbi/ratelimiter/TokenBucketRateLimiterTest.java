@@ -3,7 +3,7 @@ package com.lithium.dbi.rdbi.ratelimiter;
 import com.lithium.dbi.rdbi.Callback;
 import com.lithium.dbi.rdbi.Handle;
 import com.lithium.dbi.rdbi.RDBI;
-import com.lithium.dbi.rdbi.TestClock;
+import com.lithium.dbi.rdbi.testutil.TestClock;
 import org.testng.annotations.Test;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;

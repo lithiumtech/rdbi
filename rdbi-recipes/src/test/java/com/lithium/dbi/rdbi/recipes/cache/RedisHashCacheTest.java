@@ -379,19 +379,19 @@ public class RedisHashCacheTest {
         cache.invalidateAll();
 
         // cache contains expected keys
-        assertEquals(originalValueForKey1, cache.get(key1));
-        assertEquals(originalValueForKey2, cache.get(key2));
+        assertEquals(cache.get(key1), originalValueForKey1);
+        assertEquals(cache.get(key2), originalValueForKey2);
 
         // manipulate the data source for key1
         final TestContainer newValueForKey1 = new TestContainer(key1, UUID.randomUUID(), "test-remove-new-value-for-key-1");
         dataSource.put(key1, newValueForKey1);
-        assertEquals(originalValueForKey1, cache.get(key1));
+        assertEquals(cache.get(key1), originalValueForKey1);
 
         // invalidate the key ... should reload on next request
         cache.invalidate(key1);
         assertTrue(cache.getMissing().contains(key1));
-        assertEquals(newValueForKey1, cache.get(key1));
-        assertEquals(originalValueForKey2, cache.get(key2));
+        assertEquals(cache.get(key1), newValueForKey1);
+        assertEquals(cache.get(key2), originalValueForKey2);
         assertTrue(cache.getMissing().isEmpty());
 
         // manipulate the data source for key1

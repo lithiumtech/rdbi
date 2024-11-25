@@ -10,7 +10,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
+import static com.lithium.dbi.rdbi.testutil.Utils.assertTiming;
+import static org.awaitility.Awaitility.await;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -19,7 +23,7 @@ import static org.testng.Assert.assertTrue;
 public class PresenceRepositoryTest {
 
     @Test
-    public void addTest () throws InterruptedException {
+    public void addTest() throws InterruptedException {
 
         final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost", 6379)), "myprefix");
 
@@ -44,47 +48,36 @@ public class PresenceRepositoryTest {
         final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost", 6379)), "myprefix");
         presenceRepository.nukeForTest("mytube");
 
-        Instant before = Instant.now();
-        for ( int i = 0; i < 10000; i++ ) {
-            presenceRepository.addHeartbeat("mytube", "id" + i, 10 * 1000L);
-        }
-        Instant after = Instant.now();
-        System.out.println("Time for 10,000 heartbeats " + Long.toString(after.toEpochMilli() - before.toEpochMilli()));
+        assertTiming(2000, TimeUnit.MILLISECONDS,
+                     () -> IntStream
+                             .range(0, 10_000)
+                             .forEach(i -> presenceRepository.addHeartbeat("mytube", "id" + i, 10 * 1000L))
+                    );
 
-        assertTrue(after.toEpochMilli() - before.toEpochMilli() < 2000L);
+        assertTiming(2000, TimeUnit.MILLISECONDS,
+                     () -> IntStream
+                             .range(0, 10_000)
+                             .forEach(i -> assertFalse(presenceRepository.expired("mytube", "id" + i)))
+                    );
+        Thread.sleep(2_000L);
 
-        Instant before2 = Instant.now();
-        for ( int i = 0; i < 10000; i++ ) {
-            assertFalse(presenceRepository.expired("mytube", "id" + i));
-        }
-        Instant after2 = Instant.now();
-        System.out.println("Time for 10,000 expired " + Long.toString(after2.toEpochMilli() - before2.toEpochMilli()));
+        assertTiming(2000, TimeUnit.MILLISECONDS,
+                     () -> IntStream
+                             .range(0, 5_000)
+                             .forEach(i -> assertTrue(presenceRepository.remove("mytube", "id" + i)))
+                    );
 
-        assertTrue(after2.toEpochMilli() - before2.toEpochMilli() < 2000L);
+        assertTiming(500L, TimeUnit.MILLISECONDS,
+                     () -> presenceRepository.cull("mytube")
+                    );
 
-        Thread.sleep(10 * 1000L);
-
-        Instant before3 = Instant.now();
-        for ( int i = 0; i < 5000; i++ ) {
-            assertTrue(presenceRepository.remove("mytube", "id" + i));
-        }
-        Instant after3 = Instant.now();
-        System.out.println("Time for 5000 removes " + Long.toString(after3.toEpochMilli() - before3.toEpochMilli()));
-
-        assertTrue(after3.toEpochMilli() - before3.toEpochMilli() < 1000L);
-
-        Instant before4 = Instant.now();
-        presenceRepository.cull("mytube");
-        Instant after4 = Instant.now();
-        System.out.println("Time for 5000 cull " + Long.toString(after4.toEpochMilli() - before4.toEpochMilli()));
-
-        assertTrue(after4.toEpochMilli() - before4.toEpochMilli() < 500L);
     }
 
     @Test
-    public void getPresentTest() throws InterruptedException {
+    public void getPresentTest() {
         final String mytube = "getPresentTest";
-        final PresenceRepository presenceRepository = new PresenceRepository(new RDBI(new JedisPool("localhost", 6379)), "myprefix");
+        RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
+        final PresenceRepository presenceRepository = new PresenceRepository(rdbi, "myprefix");
         presenceRepository.nukeForTest(mytube);
 
         // assert set is empty at start
@@ -93,6 +86,7 @@ public class PresenceRepositoryTest {
         // put something in and verify we can get it back out
         final String uuid = UUID.randomUUID().toString();
         presenceRepository.addHeartbeat(mytube, uuid, Duration.ofSeconds(1).toMillis());
+        final long insertionTimeApprox = Instant.now().toEpochMilli();
         final List<String> presentSet = presenceRepository.getPresent(mytube, Optional.empty());
         assertEquals(uuid, presentSet.iterator().next(), "Expected to have one heartbeat with uuid: " + uuid);
 
@@ -102,15 +96,17 @@ public class PresenceRepositoryTest {
         assertEquals(stillpresentSet.iterator().next(), uuid, "Expected to still have one heartbeat with uuid: " + uuid);
 
         // wait a second and verify previous heartbeat is expired
-        final Instant beforeSleep = Instant.now();
-        while (true) {
-            Thread.sleep(Duration.ofSeconds(1).toMillis());
-            if (Duration.between(beforeSleep, Instant.now()).compareTo(Duration.ofSeconds(1)) > 0) {
-                break;
-            }
-        }
-        assertTrue(presenceRepository.getPresent(mytube, Optional.empty()).isEmpty());
+        await()
+                .atLeast(Duration.ofSeconds(1))
+                .atMost(Duration.ofMillis(1250L))
+                .untilAsserted(
+                        () -> {
+                            final long expirationCheckApprox = Instant.now().toEpochMilli();
+                            List<String> tubeContents = presenceRepository.getPresent(mytube, Optional.empty());
+                            assertTrue(tubeContents.isEmpty(), String.format("tube contents should be empty, but are %s. inserted around %d, checked at %d." +
+                                                                                     " should have expire at 1s", tubeContents, insertionTimeApprox, expirationCheckApprox));
 
+                        });
         // test with limit will not return full set
         for (int i = 0; i < 100; ++i) {
             presenceRepository.addHeartbeat(mytube, UUID.randomUUID().toString(), Duration.ofMinutes(1).toMillis());
@@ -140,14 +136,10 @@ public class PresenceRepositoryTest {
         assertEquals(stillpresentSet.iterator().next(), uuid, "Expected to still have one heartbeat with uuid: " + uuid);
 
         // wait a second and verify previous heartbeat is expired
-        final Instant beforeSleep = Instant.now();
-        while (true) {
-            Thread.sleep(Duration.ofSeconds(1).toMillis());
-            if (Duration.between(beforeSleep, Instant.now()).compareTo(Duration.ofSeconds(1)) > 0) {
-                break;
-            }
-        }
-        assertFalse(presenceRepository.getExpired(mytube, Optional.empty()).isEmpty());
+        await()
+                .atLeast(Duration.ofSeconds(1))
+                .atMost(Duration.ofMillis(1250L))
+                .untilAsserted(() -> assertFalse(presenceRepository.getExpired(mytube, Optional.empty()).isEmpty()));
 
         // test with limit will not return full set
         for (int i = 0; i < 100; ++i) {

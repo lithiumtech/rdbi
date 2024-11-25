@@ -12,10 +12,10 @@ import redis.clients.jedis.Protocol;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.testng.Assert.assertNull;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertTrue;
@@ -81,16 +81,10 @@ public class MultiReadSingleWriteLockTest {
             final String newLockOwnerId = UUID.randomUUID().toString();
             lock.acquireWriteLock(newLockOwnerId);
             assertEquals(newLockOwnerId, handle.jedis().get(writeLockKey));
-
-            // wait for new owner to expire and check that no one owns lock
-            final Instant beyondExpiration = Instant.now().plus(Duration.ofMillis(500));
-            while (true) {
-                Thread.sleep(100);
-                if (Instant.now().isAfter(beyondExpiration)) {
-                    break;
-                }
-            }
-            assertNull(handle.jedis().get(writeLockKey));
+            await()
+                    .atLeast(Duration.ofMillis(500))
+                    .atMost(Duration.ofSeconds(1))
+                    .untilAsserted(() -> assertNull(handle.jedis().get(writeLockKey)));
         }
     }
 
@@ -161,14 +155,12 @@ public class MultiReadSingleWriteLockTest {
             assertTrue(owners.contains(lockOwnerId));
 
             // wait for expiration and verify the lock has expired
-            final Instant beyondExpiration = Instant.now().plus(Duration.ofMillis(500));
-            while (true) {
-                Thread.sleep(100);
-                if (Instant.now().isAfter(beyondExpiration)) {
-                    break;
-                }
-            }
-            assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf", 0, 1).isEmpty());
+            await()
+                    .atLeast(Duration.ofMillis(500))
+                    .atMost(Duration.ofSeconds(1))
+                    .untilAsserted(() -> {
+                        assertTrue(handle.jedis().zrangeByScore(readLockKey, Long.toString(Instant.now().toEpochMilli()), "+inf", 0, 1).isEmpty());
+                    });
         }
     }
 
@@ -211,7 +203,7 @@ public class MultiReadSingleWriteLockTest {
         assertTrue(Instant.now().isAfter(expiration));
     }
 
-    @Test (timeOut = 5000L)
+    @Test(timeOut = 5000L)
     public void testReacquireReadLock() throws Exception {
         final MultiReadSingleWriteLock lock = new MultiReadSingleWriteLock(rdbi,
                                                                            writeLockKey,

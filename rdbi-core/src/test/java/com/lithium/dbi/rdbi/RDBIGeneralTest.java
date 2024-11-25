@@ -3,6 +3,8 @@ package com.lithium.dbi.rdbi;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
+import static org.testng.Assert.assertEquals;
+
 /**
  * User: phutwo
  * Date: 9/8/13
@@ -13,12 +15,15 @@ public class RDBIGeneralTest {
     public static void main(String[] args) {
         RDBI rdbi = new RDBI(new JedisPool("localhost", 6379));
 
-        Handle handle = rdbi.open();
-
-        try {
+        try (Handle handle = rdbi.open()) {
             Jedis jedis = handle.jedis();
-        } finally {
-            handle.close();
+            jedis.set("hey", "now");
+        }
+
+        try (Handle handle = rdbi.open()) {
+            Jedis jedis = handle.jedis();
+            String hey = jedis.get("hey");
+            assertEquals(hey, "now");
         }
     }
 }
